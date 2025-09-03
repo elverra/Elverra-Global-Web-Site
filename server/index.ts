@@ -43,7 +43,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -53,23 +53,24 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
   // For Vercel, export the app instead of starting a server
   if (process.env.VERCEL) {
     // Export for Vercel serverless functions
     module.exports = app;
   } else {
     // Local development server
+    const server = require("http").createServer(app);
     const port = Number(process.env.PORT) || 5000;
     const host = process.env.HOST || "127.0.0.1";
+
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
 
     server.listen(port, host, () => {
       log(`🚀 Server running on http://${host}:${port}`);

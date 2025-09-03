@@ -9,7 +9,7 @@ import { db } from "./db";
 import { sendWelcomeEmail } from "./emailService";
 import { otpService } from "./otpService";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export function registerRoutes(app: Express): void {
   // Mount project routes
   app.use('/api/projects', projectRoutes);
   
@@ -2199,6 +2199,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  // No need to return server for Vercel serverless
 }

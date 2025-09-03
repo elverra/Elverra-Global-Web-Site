@@ -3,20 +3,16 @@ import express from 'express';
 import { registerRoutes } from '../server/routes';
 import { serveStatic } from '../server/vite';
 
-async function createApp() {
-  const app = express();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-  // Initialize routes
-  await registerRoutes(app);
+// Initialize routes synchronously
+registerRoutes(app);
 
-  // Serve static files in production
-  if (process.env.NODE_ENV === 'production') {
-    serveStatic(app);
-  }
-
-  return app;
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  serveStatic(app);
 }
 
-export default createApp();
+export default app;
