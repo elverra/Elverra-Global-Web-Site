@@ -1,0 +1,94 @@
+Website UI & Design
+Update the website UI colors to match the logo colors.
+
+Apply proper CSS styles to all CTA (Call to Action) buttons for consistent design.
+
+Registration Page
+In the "Choose Client Tier" section, change the text from "Card Issuance Fee:" to "Card Issuance Fees".
+
+Competitions Page
+Remove the login requirement for simply viewing the Competitions page.
+
+Make login mandatory only when a user wants to participate in competitions.
+
+Display the text:
+“Events & Awards – Participate in exciting events and vote for your favorite participants. Win amazing prizes and recognition!”
+
+Create dummy competitions with their own inner pages.
+
+Project Requests Page
+Fix existing errors and issues on the Project Requests page.
+
+Create dummy projects and link them to proper inner pages.
+
+Affiliate Dashboard
+Fix the error:
+Error Loading Data: Unexpected token '<', "<!DOCTYPE "... is not valid JSON”.
+
+Content & Terminology Changes
+On the "Our Affiliate" page, replace the word "Africa" with "our network of markets".
+
+On the Members Affiliates page:
+
+Replace "Member" with "Client".
+
+Replace "Africa" with "our client network".
+
+Across the entire website:
+
+Replace "member" with "Client".
+
+Replace "members" with "Clients".
+
+Replace "membership" with "client".
+
+Replace "Club 66 Global" with "Elverra Global" everywhere.
+
+Replace "Mali" with "our markets" in content (but not in menu or contact details).
+
+Payday Advance Page
+Fix the last section CTA visibility issue using proper CSS.
+
+Ensure all CTAs across the site follow consistent color combinations.
+
+Hire Purchase Page
+The "Apply Now" button is inactive — activate it to either:
+
+Open a form for users to fill out, or
+
+Redirect to a customer hotline for Elverra Global or the Hire Purchase Partner.
+
+O Secour Page
+Allow all users to access the O Secour page.
+
+Require login to access services on this page.
+
+Show premium content only to users with a premium subscription.
+
+Online Store Page
+Allow all users to access the Online Store page.
+
+Require login + premium subscription to open a product listing.
+
+Create proper product cards and a checkout page linked to a payment gateway.
+
+Add backend options for uploading products.
+
+"Buy Now" should go directly to checkout.
+
+"Add to Cart" should go to the product description page.
+
+Show Cart and Wishlist only on the product page (not in the banner).
+
+Online store should work like OLX:
+
+Only premium users can upload and list products.
+
+Only premium users can view product details.
+
+Jobs Listing Pages
+Fix errors on job listing pages.
+
+Create inner job detail pages with the ability to apply for jobs.
+
+Add backend options for job posting.
