@@ -25,7 +25,7 @@ const About = () => {
         const data = await response.json();
         setPageContent(data);
       } else {
-        console.log('No about contet found, using default content');
+        console.log('No about content found, using default content');
       }
     } catch (error: any) {
       console.error('Error fetching about content:', error);
