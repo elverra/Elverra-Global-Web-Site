@@ -1,13 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import projectRoutes from "./routes/projects";
-import { insertUserSchema, insertJobSchema, insertJobApplicationSchema, insertProductSchema, insertLoanApplicationSchema, users } from "@shared/schema";
+import { storage } from "./storage.js";
+import projectRoutes from "./routes/projects.js";
+import { insertUserSchema, insertJobSchema, insertJobApplicationSchema, insertProductSchema, insertLoanApplicationSchema, users } from "../shared/schema.js";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { db } from "./db";
-import { sendWelcomeEmail } from "./emailService";
-import { otpService } from "./otpService";
+import { db } from "./db.js";
+import { sendWelcomeEmail } from "./emailService.js";
+import { otpService } from "./otpService.js";
 
 export function registerRoutes(app: Express): void {
   // Mount project routes
