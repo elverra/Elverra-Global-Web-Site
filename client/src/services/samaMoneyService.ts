@@ -1,16 +1,27 @@
 /**
  * SAMA Money Payment Service
  * Handles integration with SAMA Money payment gateway
+ * Official API Documentation Implementation
  */
 
 interface SamaMoneyConfig {
   baseUrl: string;
-  merchantCode: string;
+  merchantCode: string; // cmd
   merchantName: string;
-  userId: string;
-  publicKey: string;
-  transactionKey: string;
+  userId: string; // iduser
+  publicKey: string; // cle_publique
+  transactionKey: string; // TRANSAC header
   environment: 'test' | 'production';
+}
+
+interface SamaTokenResponse {
+  status: number;
+  resultat?: {
+    cmd: string;
+    token: string;
+    dStart: string;
+    dFin: string;
+  };
 }
 
 interface SamaMoneyPaymentRequest {
@@ -31,6 +42,9 @@ interface SamaMoneyPaymentResponse {
   status?: string;
   message?: string;
   error?: string;
+  samaReference?: string;
+  amount?: string;
+  date?: string;
 }
 
 export class SamaMoneyService {
@@ -41,60 +55,88 @@ export class SamaMoneyService {
   }
 
   /**
-   * Initiate payment with SAMA Money
+   * Generate authentication token (valid for 24 hours)
+   */
+  private async generateToken(): Promise<string> {
+    try {
+      const response = await fetch(`${this.config.baseUrl}marchand/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
+        body: new URLSearchParams({
+          cmd: this.config.merchantCode,
+          cle_publique: this.config.publicKey
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Token generation failed: ${response.status}`);
+      }
+
+      const result: SamaTokenResponse = await response.json();
+      
+      if (result.status !== 1 || !result.resultat?.token) {
+        throw new Error('Invalid token response from SAMA Money');
+      }
+
+      console.log('🔑 SAMA Money token generated successfully');
+      return result.resultat.token;
+    } catch (error) {
+      console.error('SAMA Money token generation error:', error);
+      throw new Error('Failed to generate authentication token');
+    }
+  }
+
+  /**
+   * Initiate payment with SAMA Money (Official API)
    */
   async initiatePayment(request: SamaMoneyPaymentRequest): Promise<SamaMoneyPaymentResponse> {
     try {
       // Validate input parameters
       if (!request.amount || request.amount <= 0) {
-        throw new Error('Invalid payment amount');
-      }
-      
-      if (!request.customerPhone || !request.transactionReference) {
-        throw new Error('Missing required payment parameters');
+        throw new Error('Invalid payment amount (code: 1005)');
       }
 
+      if (!request.customerPhone || !this.isValidPhoneNumber(request.customerPhone)) {
+        throw new Error('Invalid customer phone number (code: 1006)');
+      }
+
+      // Format phone number for SAMA Money (must be 11 digits: 22363445566)
+      const formattedPhone = this.formatPhoneNumber(request.customerPhone);
+
+      // Generate authentication token
+      const authToken = await this.generateToken();
+
+      // Prepare payment data according to SAMA Money official API
       const paymentData = {
-        merchant_code: this.config.merchantCode,
-        merchant_name: this.config.merchantName,
-        user_id: this.config.userId,
-        amount: request.amount,
-        currency: request.currency,
-        customer_phone: this.formatPhoneNumber(request.customerPhone),
-        customer_name: request.customerName,
-        customer_email: request.customerEmail,
-        transaction_reference: request.transactionReference,
-        callback_url: request.callbackUrl,
-        return_url: request.returnUrl,
-        public_key: this.config.publicKey,
-        timestamp: new Date().toISOString()
+        cmd: this.config.merchantCode,
+        idCommande: request.transactionReference,
+        phoneClient: formattedPhone,
+        montant: request.amount.toString(),
+        description: `Payment for ${request.customerName || 'Elverra Global'}`,
+        tokenMarchand: this.config.transactionKey,
+        url: request.callbackUrl || `${window.location.origin}/api/sama-money/callback`
       };
 
-      // For demo/test environment, simulate successful response
-      if (this.config.environment === 'test') {
-        // Simulate processing delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        return {
-          success: true,
-          transactionId: `SAMA_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          paymentUrl: `${this.config.baseUrl}payment/redirect/${paymentData.transaction_reference}`,
-          status: 'initiated',
-          message: 'Payment request sent to your SAMA Money account'
-        };
-      }
+      console.log('🔄 Initiating SAMA Money payment:', {
+        merchantCode: this.config.merchantCode,
+        amount: request.amount,
+        phone: formattedPhone,
+        reference: request.transactionReference
+      });
 
-      // Production API call
-      const response = await fetch(`${this.config.baseUrl}/payment/initiate`, {
+      // Make actual API call to SAMA Money
+      const response = await fetch(`${this.config.baseUrl}marchand/pay`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Authorization': `Bearer ${this.config.publicKey}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
-          'X-Merchant-Code': this.config.merchantCode,
-          'X-User-Id': this.config.userId
+          'TRANSAC': this.config.transactionKey,
+          'AUTH': authToken
         },
-        body: JSON.stringify(paymentData)
+        body: new URLSearchParams(paymentData)
       });
 
       if (!response.ok) {
@@ -103,22 +145,44 @@ export class SamaMoneyService {
         throw new Error(`SAMA Money API error: ${response.status} - ${errorText.substring(0, 200)}`);
       }
       
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const responseText = await response.text();
-        console.error('Non-JSON response from SAMA Money:', responseText.substring(0, 500));
-        throw new Error(`Invalid response format - expected JSON but got ${contentType}. Response: ${responseText.substring(0, 100)}...`);
-      }
-
       const result = await response.json();
-      
-      return {
-        success: result.status === 'success' || result.status === 'pending',
-        transactionId: result.transaction_id || result.txnid,
-        paymentUrl: result.payment_url || result.redirect_url,
-        status: result.status,
-        message: result.message || result.description
-      };
+      console.log('✅ SAMA Money payment response:', result);
+
+      // Handle SAMA Money response format
+      if (result.status === 1) {
+        return {
+          success: true,
+          transactionId: request.transactionReference,
+          status: 'initiated',
+          message: result.msg || 'Demande de confirmation envoyée au client'
+        };
+      } else {
+        // Map SAMA Money error codes
+        const errorMessages: { [key: number]: string } = {
+          0: 'Erreur non codifiée',
+          1001: 'Vous n\'êtes pas autorisé',
+          1002: 'Le code marchand est incorrect',
+          1003: 'Les codes fournis sont incorrects',
+          1004: 'Le format du token est incorrect',
+          1005: 'Le format du montant est incorrect',
+          1006: 'Le format du numéro de téléphone du client est incorrect',
+          1007: 'La description est incorrecte',
+          1008: 'Url Callback est incorrect',
+          1009: 'Le token du partenaire a expiré',
+          1010: 'Ce numéro n\'est pas celui d\'un client SAMA Money',
+          1011: 'Ce numéro de commande existe déjà',
+          1012: 'Utilisateur n\'est pas dans le bon groupe',
+          1013: 'Solde Insuffisant',
+          1014: 'Probleme de lancement USSD',
+          1015: 'Demande non envoyé merci de recommencer'
+        };
+
+        const errorMessage = errorMessages[result.status] || `Erreur SAMA Money: ${result.status}`;
+        return {
+          success: false,
+          error: errorMessage
+        };
+      }
 
     } catch (error) {
       console.error('SAMA Money payment error:', error);
@@ -139,16 +203,21 @@ export class SamaMoneyService {
   }
 
   /**
-   * Check payment status
+   * Check payment status (Official SAMA Money API)
    */
   async checkPaymentStatus(transactionId: string): Promise<SamaMoneyPaymentResponse> {
     try {
-      const response = await fetch(`${this.config.baseUrl}payment/status/${transactionId}`, {
-        method: 'GET',
+      const response = await fetch(`${this.config.baseUrl}marchand/transaction/infos`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.config.transactionKey}`,
-          'X-Merchant-Code': this.config.merchantCode
-        }
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'TRANSAC': this.config.transactionKey
+        },
+        body: new URLSearchParams({
+          cmd: this.config.merchantCode,
+          idCommande: transactionId
+        })
       });
 
       if (!response.ok) {
@@ -157,12 +226,22 @@ export class SamaMoneyService {
 
       const result = await response.json();
       
-      return {
-        success: result.status === 'completed',
-        transactionId: result.transaction_id,
-        status: result.status,
-        message: result.message
-      };
+      if (result.status === 1) {
+        return {
+          success: true,
+          transactionId: result.idCommande,
+          status: 'completed',
+          message: `Transaction completed. SAMA Ref: ${result.numTransacSAMA}`,
+          samaReference: result.numTransacSAMA,
+          amount: result.montant,
+          date: result.date
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Transaction not found or failed'
+        };
+      }
 
     } catch (error) {
       console.error('SAMA Money status check error:', error);
@@ -174,24 +253,42 @@ export class SamaMoneyService {
   }
 
   /**
-   * Format phone number for SAMA Money (ensure proper format)
+   * Format phone number for SAMA Money (must be 11 digits: 22363445566)
    */
   private formatPhoneNumber(phone: string): string {
     // Remove any non-digit characters
-    const cleaned = phone.replace(/\D/g, '');
+    let cleaned = phone.replace(/\D/g, '');
     
-    // If it starts with 223 (Mali country code), keep as is
+    // Handle different phone number formats for Mali (+223)
     if (cleaned.startsWith('223')) {
-      return `+${cleaned}`;
+      // Already has country code, ensure it's 11 digits
+      return cleaned;
+    } else if (cleaned.startsWith('0')) {
+      // Remove leading 0 and add country code (223)
+      return '223' + cleaned.substring(1);
+    } else if (cleaned.length === 8) {
+      // Add Mali country code (223)
+      return '223' + cleaned;
+    } else if (cleaned.startsWith('+223')) {
+      // Remove + sign
+      return cleaned.substring(1);
     }
     
-    // If it's a local number, add Mali country code
-    if (cleaned.length === 8) {
-      return `+223${cleaned}`;
+    // If still not in correct format, try to fix it
+    if (cleaned.length < 11 && cleaned.length >= 8) {
+      return '223' + cleaned.substring(cleaned.length - 8);
     }
     
-    // Return as is with + prefix
-    return `+${cleaned}`;
+    return cleaned;
+  }
+
+  /**
+   * Validate phone number format for SAMA Money
+   */
+  private isValidPhoneNumber(phone: string): boolean {
+    const cleaned = phone.replace(/\D/g, '');
+    // SAMA Money expects 11 digits (223 + 8 digits) or 8 digits (will be prefixed)
+    return /^(223)?[0-9]{8}$/.test(cleaned) || /^[0-9]{8}$/.test(cleaned) || /^0[0-9]{7}$/.test(cleaned);
   }
 
   /**
