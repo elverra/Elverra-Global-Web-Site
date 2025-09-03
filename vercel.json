@@ -1,14 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["client/dist/**"]
-      }
+  "functions": {
+    "server/index.ts": {
+      "maxDuration": 30
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
@@ -21,10 +17,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "server/index.ts": {
-      "maxDuration": 30
-    }
   }
 }
