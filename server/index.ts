@@ -2,8 +2,8 @@ import dotenv from "dotenv";
 import "dotenv/config";
 
 import express, { NextFunction, type Request, Response } from "express";
-import { registerRoutes } from "./routes";
-import { log, serveStatic, setupVite } from "./vite";
+import { registerRoutes } from "./routes.js";
+import { log, serveStatic, setupVite } from "./vite.js";
 
 // Load environment variables from .env file
 dotenv.config();

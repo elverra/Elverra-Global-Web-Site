@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { SupabaseStorageService, ObjectNotFoundError as SupabaseObjectNotFoundError } from "./supabaseStorage";
-import { ObjectStorageService, ObjectNotFoundError as GCSObjectNotFoundError } from "./objectStorage";
+import { SupabaseStorageService, ObjectNotFoundError as SupabaseObjectNotFoundError } from "./supabaseStorage.js";
+import { ObjectStorageService, ObjectNotFoundError as GCSObjectNotFoundError } from "./objectStorage.js";
 
 // Unified storage interface
 export interface StorageAdapter {

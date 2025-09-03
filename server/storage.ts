@@ -1,5 +1,5 @@
 import { eq, and, desc, like } from "drizzle-orm";
-import { db } from "./db";
+import { db } from "./db.js";
 import { 
   users, userRoles, agents, jobs, jobApplications, competitions, competitionParticipants,
   products, merchants, cmsPages, loanApplications, paymentPlans, companies, affiliateWithdrawals,
@@ -8,7 +8,7 @@ import {
   type Product, type LoanApplication, type CmsPage, type Referral, type Commission, 
   type MembershipPayment, type InsertReferral, type InsertCommission, type InsertMembershipPayment,
   type AffiliateReward, type InsertAffiliateReward
-} from "@shared/schema";
+} from "../shared/schema.js";
 
 export interface IStorage {
   // User operations

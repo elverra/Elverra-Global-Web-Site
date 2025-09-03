@@ -7,7 +7,7 @@ import {
   canAccessObject,
   getObjectAclPolicy,
   setObjectAclPolicy,
-} from "./objectAcl";
+} from "./objectAcl.js";
 
 // Platform detection
 const isReplit = process.env.REPL_ID !== undefined;

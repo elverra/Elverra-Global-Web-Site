@@ -1,6 +1,6 @@
 import { eq, and, gte } from "drizzle-orm";
-import { db } from "./db";
-import { phoneOtps, users, insertPhoneOtpSchema } from "@shared/schema";
+import { db } from "./db.js";
+import { phoneOtps, users, insertPhoneOtpSchema } from "../shared/schema.js";
 
 export interface OtpVerificationResult {
   success: boolean;
@@ -141,7 +141,7 @@ export class OtpService {
         .delete(phoneOtps)
         .where(
           and(
-            gte(new Date(), phoneOtps.expiresAt),
+            gte(phoneOtps.expiresAt, new Date()),
             eq(phoneOtps.verified, false)
           )
         );
