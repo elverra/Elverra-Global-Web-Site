@@ -863,52 +863,6 @@ export function registerRoutes(app: Express): void {
           }
 
           const roles = await storage.getUserRoles(user.id);
-          const hasAdminRole = roles.includes('admin');
-          
-          res.json({ 
-            exists: true, 
-            hasAdminRole,
-            userId: user.id 
-          });
-          break;
-        }
-
-        case 'create_admin': {
-          if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password are required' });
-          }
-
-          const existingUser = await storage.getUserByEmail(email);
-          if (existingUser) {
-            return res.status(400).json({ error: 'User already exists' });
-          }
-
-          const user = await storage.createUser({
-            email,
-            password,
-            fullName: 'Admin User',
-            isEmailVerified: true
-          });
-
-          await storage.assignRole(user.id, 'admin');
-          
-          res.json({ 
-            success: true, 
-            userId: user.id,
-            email: user.email 
-          });
-          break;
-        }
-
-        case 'assign_admin_role': {
-          if (!email) {
-            return res.status(400).json({ error: 'Email is required' });
-          }
-
-          const user = await storage.getUserByEmail(email);
-          if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-          }
 
           await storage.assignRole(user.id, 'admin');
           res.json({ success: true });
@@ -1473,6 +1427,138 @@ export function registerRoutes(app: Express): void {
       res.status(500).json({
         success: false,
         error: 'Orange Money payment service temporarily unavailable',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Test SAMA Money connection
+  app.get('/api/test/sama-money', async (req, res) => {
+    try {
+      // Check if SAMA Money credentials are configured
+      const samaConfig = {
+        baseUrl: process.env.SAMA_BASE_URL || 'https://smarchandamatest.sama.money/V1/',
+        merchantCode: process.env.SAMA_MERCHANT_CODE,
+        publicKey: process.env.SAMA_PUBLIC_KEY,
+        transactionKey: process.env.SAMA_TRANSACTION_KEY,
+        userId: process.env.SAMA_USER_ID
+      };
+
+      const missingCredentials = [];
+      if (!samaConfig.merchantCode) missingCredentials.push('SAMA_MERCHANT_CODE');
+      if (!samaConfig.publicKey) missingCredentials.push('SAMA_PUBLIC_KEY');
+      if (!samaConfig.transactionKey) missingCredentials.push('SAMA_TRANSACTION_KEY');
+      if (!samaConfig.userId) missingCredentials.push('SAMA_USER_ID');
+
+      if (missingCredentials.length > 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'SAMA Money credentials not configured',
+          missingCredentials,
+          available: false
+        });
+      }
+
+      // Test API connectivity (basic ping)
+      try {
+        const testUrl = `${samaConfig.baseUrl}ping`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(testUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${samaConfig.transactionKey}`
+          },
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
+        const testResponse = {
+          status: 'success',
+          message: 'SAMA Money service is available',
+          available: true,
+          config: {
+            baseUrl: samaConfig.baseUrl,
+            merchantCode: samaConfig.merchantCode,
+            environment: 'test',
+            apiStatus: response.ok ? 'reachable' : 'unreachable'
+          }
+        };
+        
+        res.json(testResponse);
+      } catch (apiError) {
+        // API not reachable but credentials are configured
+        res.json({
+          status: 'warning',
+          message: 'SAMA Money credentials configured but API unreachable',
+          available: true, // Credentials are there
+          config: {
+            baseUrl: samaConfig.baseUrl,
+            merchantCode: samaConfig.merchantCode,
+            environment: 'test',
+            apiStatus: 'unreachable',
+            apiError: apiError instanceof Error ? apiError.message : 'Network error'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('SAMA Money test error:', error);
+      res.status(500).json({ 
+        status: 'error', 
+        message: 'SAMA Money service temporarily unavailable',
+        available: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Create admin user endpoint
+  app.post('/api/admin/create-admin', async (req, res) => {
+    try {
+      const { email, password, fullName } = req.body;
+      
+      if (!email || !password || !fullName) {
+        return res.status(400).json({ error: 'Email, password, and full name are required' });
+      }
+
+      // Check if admin already exists
+      const existingAdmin = await db.select().from(users).where(eq(users.email, email));
+      if (existingAdmin.length > 0) {
+        return res.status(409).json({ error: 'Admin user already exists' });
+      }
+
+      // Create admin user with bcrypt
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      const adminUser = await db.insert(users).values({
+        email,
+        password: hashedPassword,
+        fullName,
+        isEmailVerified: true,
+        isPhoneVerified: false
+      }).returning();
+
+      // Assign admin role using storage service
+      await storage.assignRole(adminUser[0].id, 'admin');
+
+      res.json({
+        success: true,
+        message: 'Admin user created successfully',
+        user: {
+          id: adminUser[0].id,
+          email: adminUser[0].email,
+          fullName: adminUser[0].fullName,
+          role: 'admin'
+        }
+      });
+    } catch (error) {
+      console.error('Error creating admin user:', error);
+      res.status(500).json({ 
+        error: 'Failed to create admin user',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
