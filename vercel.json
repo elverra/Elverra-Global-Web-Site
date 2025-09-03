@@ -19,5 +19,5 @@
     "NODE_ENV": "production",
     "VERCEL": "1"
   },
-  "installCommand": "pnpm install --no-frozen-lockfile"
+  "installCommand": "npm install"
 }
