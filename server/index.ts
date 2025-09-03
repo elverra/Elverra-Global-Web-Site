@@ -55,7 +55,7 @@ app.use((req, res, next) => {
 
   // For Vercel, export the app instead of starting a server
   if (process.env.VERCEL) {
-    // Export for Vercel serverless functions
+    // Export for Vercel serverless functions - no Vite/Rollup needed
     module.exports = app;
   } else {
     // Local development server

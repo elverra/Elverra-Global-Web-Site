@@ -12,12 +12,13 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/api/index.ts"
+      "dest": "/dist/public/index.html"
     }
   ],
   "env": {
     "NODE_ENV": "production",
     "VERCEL": "1"
   },
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "outputDirectory": "dist/public"
 }
