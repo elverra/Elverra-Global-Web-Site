@@ -1,7 +1,7 @@
 // Vercel serverless function entry point
 import express from 'express';
-import { registerRoutes } from '../server/routes';
-import { serveStatic } from '../server/vite';
+import { registerRoutes } from '../server/routes.js';
+import { serveStatic } from '../server/vite.js';
 
 const app = express();
 app.use(express.json());
