@@ -73,6 +73,14 @@ app.use((req, res, next) => {
     // setting up all the other routes so the catch-all route
     // doesn't interfere with the other routes
     if (app.get("env") === "development") {
+      // Add middleware to handle host header before Vite processes it
+      app.use((req, res, next) => {
+        // Override host header to avoid allowedHosts restriction
+        if (req.headers.host && req.headers.host.includes('.replit.dev')) {
+          req.headers.host = 'localhost:5000';
+        }
+        next();
+      });
       await setupVite(app, server);
     } else {
       serveStatic(app);
