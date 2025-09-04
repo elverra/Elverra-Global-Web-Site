@@ -61,7 +61,7 @@ app.use((req, res, next) => {
     // Local development server
     const server = http.createServer(app);
     const port = Number(process.env.PORT) || 5000;
-    const host = process.env.HOST || "127.0.0.1";
+    const host = process.env.HOST || "0.0.0.0";
 
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route
