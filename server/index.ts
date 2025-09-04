@@ -8,6 +8,12 @@ import { log, serveStatic, setupVite } from "./vite.js";
 // Load environment variables from .env file
 dotenv.config();
 
+// Set environment variables for Vite development server
+if (process.env.NODE_ENV === "development") {
+  process.env.VITE_HOST = "0.0.0.0";
+  process.env.VITE_ALLOWED_HOSTS = "all";
+}
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
