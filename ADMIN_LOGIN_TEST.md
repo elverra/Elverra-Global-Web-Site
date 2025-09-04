@@ -3,7 +3,7 @@
 ## Test Steps
 
 1. **Clear Browser Data** (important):
-   - Clear localStorage: Open DevTools → Application → Local Storage → Clear All
+   - Clear localStorage: Open DevTools → Application → Local Storag → Clear All
    - Or use private/incognito window
 
 2. **Go to Login Page**: 
