@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import "dotenv/config";
-
 import express, { NextFunction, type Request, Response } from "express";
+import http from 'http';
 import { registerRoutes } from "./routes.js";
 import { log, serveStatic, setupVite } from "./vite.js";
 
@@ -59,7 +59,7 @@ app.use((req, res, next) => {
     module.exports = app;
   } else {
     // Local development server
-    const server = require("http").createServer(app);
+    const server = http.createServer(app);
     const port = Number(process.env.PORT) || 5000;
     const host = process.env.HOST || "127.0.0.1";
 
