@@ -414,6 +414,17 @@ export const phoneOtps = pgTable("phone_otps", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Product reviews table
+export const productReviews = pgTable("product_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id").notNull().references(() => products.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -497,6 +508,12 @@ export const insertPhoneOtpSchema = createInsertSchema(phoneOtps).omit({
   createdAt: true,
 });
 
+export const insertProductReviewSchema = createInsertSchema(productReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Discount schemas
 export const insertDiscountSectorSchema = createInsertSchema(discountSectors).omit({
   id: true,
@@ -541,3 +558,5 @@ export type InsertDiscountUsage = z.infer<typeof insertDiscountUsageSchema>;
 export type InsertPhoneOtp = z.infer<typeof insertPhoneOtpSchema>;
 export type AffiliateReward = typeof affiliateRewards.$inferSelect;
 export type InsertAffiliateReward = z.infer<typeof insertAffiliateRewardSchema>;
+export type ProductReview = typeof productReviews.$inferSelect;
+export type InsertProductReview = z.infer<typeof insertProductReviewSchema>;

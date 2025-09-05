@@ -4,10 +4,11 @@ import {
   users, userRoles, agents, jobs, jobApplications, competitions, competitionParticipants,
   products, merchants, cmsPages, loanApplications, paymentPlans, companies, affiliateWithdrawals,
   distributors, discountUsage, competitionVotes, referrals, commissions, membershipPayments, affiliateRewards,
+  productReviews,
   type User, type InsertUser, type Agent, type Job, type JobApplication, type Competition, 
   type Product, type LoanApplication, type CmsPage, type Referral, type Commission, 
   type MembershipPayment, type InsertReferral, type InsertCommission, type InsertMembershipPayment,
-  type AffiliateReward, type InsertAffiliateReward
+  type AffiliateReward, type InsertAffiliateReward, type ProductReview, type InsertProductReview
 } from "../shared/schema.js";
 
 export interface IStorage {
@@ -77,6 +78,10 @@ export interface IStorage {
   getProducts(): Promise<Product[]>;
   createProduct(product: any): Promise<Product>;
   updateProduct(id: string, product: any): Promise<Product | undefined>;
+  
+  // Product review operations
+  createProductReview(review: InsertProductReview): Promise<ProductReview>;
+  getProductReviews(productId: string): Promise<ProductReview[]>;
   
   // Loan operations
   createLoanApplication(loan: any): Promise<LoanApplication>;
@@ -213,6 +218,16 @@ export class DatabaseStorage implements IStorage {
   async updateProduct(id: string, product: any): Promise<Product | undefined> {
     const result = await db.update(products).set(product).where(eq(products.id, id)).returning();
     return result[0];
+  }
+
+  // Product review operations
+  async createProductReview(review: InsertProductReview): Promise<ProductReview> {
+    const result = await db.insert(productReviews).values(review).returning();
+    return result[0];
+  }
+
+  async getProductReviews(productId: string): Promise<ProductReview[]> {
+    return await db.select().from(productReviews).where(eq(productReviews.productId, productId)).orderBy(desc(productReviews.createdAt));
   }
 
   // Loan operations

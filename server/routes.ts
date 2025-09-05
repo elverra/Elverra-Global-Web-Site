@@ -1043,6 +1043,47 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  // Product reviews routes
+  app.post("/api/products/reviews", async (req, res) => {
+    try {
+      const { product_id, rating, comment } = req.body;
+      
+      if (!product_id || !rating) {
+        return res.status(400).json({ error: "Product ID and rating are required" });
+      }
+
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Rating must be between 1 and 5" });
+      }
+
+      // For now, we'll use a dummy user ID since we need authentication
+      // In production, this would come from the authenticated user session
+      const userId = req.body.user_id || "af23cdf3-a02a-4c5e-85e0-5e38ae5d085b"; // Using the test user ID
+
+      const reviewData = {
+        productId: product_id,
+        userId: userId,
+        rating: rating,
+        comment: comment || null
+      };
+
+      const review = await storage.createProductReview(reviewData);
+      res.json(review);
+    } catch (error) {
+      console.error('Review creation error:', error);
+      res.status(500).json({ error: "Failed to create review" });
+    }
+  });
+
+  app.get("/api/products/:id/reviews", async (req, res) => {
+    try {
+      const reviews = await storage.getProductReviews(req.params.id);
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get reviews" });
+    }
+  });
+
   // Loan application routes
   app.get("/api/loan-applications", async (req, res) => {
     try {
