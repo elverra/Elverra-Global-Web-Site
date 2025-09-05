@@ -175,7 +175,7 @@ const Register = () => {
     <Layout>
       <PremiumBanner
         title="Join Elverra Global"
-        description="Become a member and unlock exclusive discounts, services, and opportunities across West Africa"
+        description="Become a client and unlock exclusive discounts, services, and opportunities across our network of partners"
         backgroundImage="https://images.unsplash.com/photo-1560472355-536de3962603?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
       />
 
@@ -188,7 +188,7 @@ const Register = () => {
                   Create Your Account
                 </CardTitle>
                 <CardDescription className="text-lg text-gray-600">
-                  Join thousands of members enjoying exclusive benefits
+                  Join thousands of clients enjoying exclusive benefits
                 </CardDescription>
               </CardHeader>
 
@@ -197,7 +197,7 @@ const Register = () => {
                   {/* Membership Tier Selection */}
                   <div className="space-y-4">
                     <Label className="text-lg font-medium">
-                      Choose Your Membership Tier
+                      Choose Your Client Tier
                     </Label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {Object.entries(membershipTiers).map(([key, tier]) => (

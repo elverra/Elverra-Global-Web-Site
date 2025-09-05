@@ -57,7 +57,7 @@ const AboutSection = ({ cmsContent }: AboutSectionProps) => {
                     gathering feedback and stories to improve our services and
                     better serve our community. With exciting initiatives and
                     benefits, Elverra Global aims to make a positive impact and
-                    support the growth and well-being of our members worldwide.
+                    support the growth and well-being of our clients worldwide.
                   </p>
                 </>
               )}
