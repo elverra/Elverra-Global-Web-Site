@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
-import { Search, Filter, MapPin, Phone, Mail, Eye, Plus } from 'lucide-react';
+import { Search, Filter, MapPin, Phone, Mail, Eye, Plus, Star, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import MembershipGuard from '@/components/membership/MembershipGuard';
 
@@ -28,6 +30,18 @@ interface Product {
   views: number;
   created_at: string;
   user_id: string;
+  reviews?: Review[];
+  average_rating?: number;
+}
+
+interface Review {
+  id: string;
+  product_id: string;
+  user_id: string;
+  user_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
 }
 
 interface Category {
@@ -45,6 +59,8 @@ const OnlineStore = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [priceRange, setPriceRange] = useState<string>('all');
+  const [showReviewModal, setShowReviewModal] = useState<string | null>(null);
+  const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
 
   useEffect(() => {
     fetchProducts();
@@ -53,18 +69,13 @@ const OnlineStore = () => {
 
   const fetchProducts = async () => {
     try {
-      const mockResult = { data: null, error: null }; // TODO: Replace with API call
-        
-        
-        
-        
-        
-        ;
-
-      if (error) throw error;
+      const response = await fetch('/api/products');
+      const result = await response.json();
+      
+      if (!response.ok) throw new Error(result.error || 'Failed to fetch products');
       
       // Transform the data to match our interface
-      const transformedData = (data || []).map(product => ({
+      const transformedData = (result || []).map((product: any) => ({
         ...product,
         images: Array.isArray(product.images) ? product.images as string[] : []
       }));
@@ -80,14 +91,11 @@ const OnlineStore = () => {
 
   const fetchCategories = async () => {
     try {
-      const mockResult = { data: null, error: null }; // TODO: Replace with API call
-        
-        
-        
-        ;
-
-      if (error) throw error;
-      setCategories(data || []);
+      const response = await fetch('/api/products/categories');
+      const result = await response.json();
+      
+      if (!response.ok) throw new Error(result.error || 'Failed to fetch categories');
+      setCategories(result || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -122,7 +130,68 @@ const OnlineStore = () => {
   };
 
   const handlePostProduct = () => {
-    navigate('/my-account?tab=products');
+    if (user) {
+      navigate('/my-account?tab=products');
+    } else {
+      toast.info('Please login to post products');
+      navigate('/login');
+    }
+  };
+
+  const handleReviewSubmit = async (productId: string) => {
+    if (!user) {
+      toast.info('Please login to leave a review');
+      navigate('/login');
+      return;
+    }
+
+    if (reviewData.rating === 0) {
+      toast.error('Please select a rating');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/products/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: productId,
+          rating: reviewData.rating,
+          comment: reviewData.comment
+        })
+      });
+
+      if (response.ok) {
+        toast.success('Review submitted successfully!');
+        setShowReviewModal(null);
+        setReviewData({ rating: 0, comment: '' });
+        fetchProducts(); // Refresh products to show new review
+      } else {
+        throw new Error('Failed to submit review');
+      }
+    } catch (error) {
+      toast.error('Failed to submit review');
+    }
+  };
+
+  const renderStars = (rating: number, interactive: boolean = false, onRate?: (rating: number) => void) => {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-4 h-4 ${
+              star <= rating 
+                ? 'fill-yellow-400 text-yellow-400' 
+                : 'text-gray-300'
+            } ${
+              interactive ? 'cursor-pointer hover:text-yellow-400' : ''
+            }`}
+            onClick={interactive && onRate ? () => onRate(star) : undefined}
+          />
+        ))}
+      </div>
+    );
   };
 
   if (loading) {
@@ -136,8 +205,7 @@ const OnlineStore = () => {
   }
 
   return (
-    <MembershipGuard requiredFeature="canAccessShop">
-      <Layout>
+    <Layout>
         <PremiumBanner
           title="Online Store"
           description="Buy and sell products directly with other Elverra clients"
@@ -268,6 +336,13 @@ const OnlineStore = () => {
                           <Eye className="w-4 h-4 mr-1" />
                           {product.views} views
                         </div>
+                        
+                        {product.average_rating && (
+                          <div className="flex items-center gap-2">
+                            {renderStars(product.average_rating)}
+                            <span className="text-sm text-gray-500">({product.reviews?.length || 0} reviews)</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -300,6 +375,16 @@ const OnlineStore = () => {
                             Email Seller
                           </Button>
                         )}
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setShowReviewModal(product.id)}
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Leave Review
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -309,8 +394,50 @@ const OnlineStore = () => {
           </div>
           </div>
         </div>
+        
+        {/* Review Modal */}
+        {showReviewModal && (
+          <Dialog open={!!showReviewModal} onOpenChange={(open) => !open && setShowReviewModal(null)}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Leave a Review</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Rating</label>
+                  {renderStars(reviewData.rating, true, (rating) => 
+                    setReviewData(prev => ({ ...prev, rating }))
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Comment (optional)</label>
+                  <Textarea
+                    placeholder="Share your experience with this product..."
+                    value={reviewData.comment}
+                    onChange={(e) => setReviewData(prev => ({ ...prev, comment: e.target.value }))}
+                    rows={3}
+                  />
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowReviewModal(null)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleReviewSubmit(showReviewModal)}
+                    className="flex-1"
+                  >
+                    Submit Review
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </Layout>
-    </MembershipGuard>
   );
 };
 
