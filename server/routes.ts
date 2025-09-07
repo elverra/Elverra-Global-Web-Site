@@ -1337,9 +1337,9 @@ export function registerRoutes(app: Express): void {
         merchantAccountNumber: '7701900100',
         merchantCode: 'cb6d6c61',
         merchantName: 'ELVERRA GLOBAL',
-        // Production Orange Money API endpoints
-        baseUrl: 'https://api.orange.com/orange-money-webpay/v1', // Production endpoint
-        authUrl: 'https://api.orange.com/oauth/v1/token', // Production OAuth endpoint
+        // Production Orange Money API endpoints (Official documentation)
+        baseUrl: 'https://api.orange.com/orange-money-webpay/cm/v1', // Cameroon-specific endpoint
+        authUrl: 'https://api.orange.com/oauth/v3/token', // OAuth v3 endpoint
         authHeader: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
       };
 
