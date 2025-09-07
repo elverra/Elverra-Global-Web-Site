@@ -29,15 +29,20 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    host: true,
+    port: 3000,
+    strictPort: true,
     proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:5000',
+      '^/api': {
+        target: process.env.VITE_API_URL || 'https://www.elverraglobalml.com',
         changeOrigin: true,
-        secure: false
+        secure: process.env.NODE_ENV === 'production',
+        rewrite: (path) => path.replace(/^\/api/, '')
       }
     },
     allowedHosts: [
       "13eb4202-8453-4a4e-9031-e2ba8b751ec5-00-o6czf1rr471t.spock.replit.dev",
-    ],
+      "www.elverraglobalml.com"
+    ]
   },
 });

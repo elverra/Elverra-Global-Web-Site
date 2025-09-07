@@ -141,10 +141,10 @@ const samaMoneyConfig: SamaMoneyConfig = {
 // Configuration de l'application
 export const appConfig: AppConfig = {
   // Core
-  nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
+  nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'production',
   port: process.env.PORT ? parseInt(process.env.PORT, 10) : 5000,
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
-  apiUrl: process.env.API_URL || 'http://localhost:5000',
+  frontendUrl: process.env.FRONTEND_URL || 'https://www.elverraglobalml.com',
+  apiUrl: process.env.API_URL || 'https://www.elverraglobalml.com/api',
   
   // Authentication
   auth: {
