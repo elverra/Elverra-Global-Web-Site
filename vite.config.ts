@@ -18,26 +18,23 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      "@": path.resolve(__dirname, "client/src"),
+      "@shared": path.resolve(__dirname, "shared"),
+      "@assets": path.resolve(__dirname, "attached_assets"),
     },
   },
-  root: path.resolve(import.meta.dirname, "client"),
+  root: path.resolve(__dirname, "client"),
   build: {
-    outDir: path.resolve(import.meta.dirname, "/client/dist/public"),
+    outDir: path.resolve(__dirname, "dist"), // <- met tout le build dans /dist
     emptyOutDir: true,
   },
   server: {
     proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:5000',
+      "/api": {
+        target: "http://127.0.0.1:5000",
         changeOrigin: true,
-        secure: false
-      }
+        secure: false,
+      },
     },
-    allowedHosts: [
-      "13eb4202-8453-4a4e-9031-e2ba8b751ec5-00-o6czf1rr471t.spock.replit.dev",
-    ],
   },
 });
