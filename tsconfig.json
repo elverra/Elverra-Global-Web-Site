@@ -2,9 +2,11 @@
   "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-    "noEmit": false,
     "outDir": "./dist",
     "module": "CommonJS", // Use CommonJS for Node.js compatibility
     "strict": true,
@@ -12,7 +14,6 @@
     "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": false, // Disable for compiled output
     "moduleResolution": "node", // Use node for server-side code
     "baseUrl": ".",
     "types": ["node", "vite/client"],

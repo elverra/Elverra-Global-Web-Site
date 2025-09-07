@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { sendWelcomeEmail } from "./emailService";
 import { otpService } from "./otpService";
-import projectRoutes from "./routes/projects";
+import projectRoutes from "./routes/projects.ts";
 
 // Schema imports
 import { 

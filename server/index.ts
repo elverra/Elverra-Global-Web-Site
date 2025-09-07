@@ -2,8 +2,8 @@ import dotenv from "dotenv";
 import "dotenv/config";
 import express, { NextFunction, type Request, Response } from "express";
 import cors from 'cors';
-import { registerRoutes } from "./routes";
-import paymentRoutes from "./routes/paymentRoutes";
+import { registerRoutes } from "./routes.ts"; // Add .ts extension
+import paymentRoutes from "./routes/paymentRoutes.ts"; // Add .ts extension
 
 // Load environment variables
 dotenv.config();
@@ -40,7 +40,7 @@ if (process.env.NODE_ENV === "development") {
   process.env.VITE_ALLOWED_HOSTS = "all";
 }
 
-const app = express();
+const app: express.Express = express();
 
 // Apply CORS with configuration
 app.use(cors(corsOptions));
@@ -80,8 +80,12 @@ app.use((req, res, next) => {
 });
 
 // Register routes
+console.log('Importing routes');
 registerRoutes(app);
+console.log('Routes imported');
+console.log('Importing paymentRoutes');
 app.use('/api', paymentRoutes);
+console.log('paymentRoutes imported');
 
 // Error handling
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -96,7 +100,7 @@ export default app;
 
 // For local development, start the server
 if (!process.env.VERCEL) {
-  const portsToTry = [3001, 3002, 5001, 5002, 5003];
+  const portsToTry = [3001, 3002, 3003, 3004, 3005]; // Adjusted ports
   const host = process.env.HOST || '0.0.0.0';
 
   const tryStartServer = (portIndex = 0) => {
