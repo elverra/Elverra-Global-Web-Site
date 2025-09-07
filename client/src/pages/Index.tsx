@@ -37,7 +37,7 @@ const Index = () => {
       const { data, error } = mockResult;
 
       if (error) {
-        console.error('Error fetching CMS content:', error);
+        console.error('Error fetching MS content:', error);
       } else if (data) {
         const contentMap = (data as CMSPage[]).reduce((acc, page) => {
           acc[page.slug] = page;
