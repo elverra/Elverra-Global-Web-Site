@@ -7,7 +7,7 @@
     "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:client\"",
     "dev:server": "NODE_ENV=development tsx server/index.ts",
     "dev:client": "vite",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --packages=external --format=esm --outfile=dist/server/index.js && pnpm run copy:assets",
+"build": "vite build && esbuild server/index.ts --bundle --platform=node --packages=external --format=esm --outfile=dist/server/index.js --resolve-extensions=.ts,.js && pnpm run copy:assets",
     "copy:assets": "mkdir -p dist/client/assets && cp -r attached_assets/* dist/client/assets/",
     "start": "NODE_ENV=production node dist/server/index.js",
     "check": "tsc",

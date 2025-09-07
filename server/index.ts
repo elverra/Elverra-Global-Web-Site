@@ -2,13 +2,11 @@ import dotenv from "dotenv";
 import "dotenv/config";
 import express, { NextFunction, type Request, Response } from "express";
 import cors from 'cors';
-import { registerRoutes } from "./routes.ts"; // Add .ts extension
-import paymentRoutes from "./routes/paymentRoutes.ts"; // Add .ts extension
+import { registerRoutes } from "./routes.js"; // Use .js for production
+import paymentRoutes from "./routes/paymentRoutes.js"; // Use .js for production
 
-// Load environment variables
 dotenv.config();
 
-// Validate required environment variables
 const requiredEnvVars = ['NODE_ENV', 'FRONTEND_URL', 'API_URL'];
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
@@ -17,7 +15,6 @@ if (missingVars.length > 0) {
   process.exit(1);
 }
 
-// CORS configuration
 const corsOptions = {
   origin: process.env.FRONTEND_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -25,7 +22,6 @@ const corsOptions = {
   credentials: true
 };
 
-// Debug: Log environment variables
 console.log('Environment Variables:', {
   NODE_ENV: process.env.NODE_ENV,
   ORANGE_MONEY_MERCHANT_KEY: process.env.ORANGE_MONEY_MERCHANT_KEY ? '***' : 'MISSING',
@@ -34,7 +30,6 @@ console.log('Environment Variables:', {
   ORANGE_MONEY_BASE_URL: process.env.ORANGE_MONEY_BASE_URL
 });
 
-// Set environment variables for Vite development server
 if (process.env.NODE_ENV === "development") {
   process.env.VITE_HOST = "0.0.0.0";
   process.env.VITE_ALLOWED_HOSTS = "all";
@@ -42,12 +37,8 @@ if (process.env.NODE_ENV === "development") {
 
 const app: express.Express = express();
 
-// Apply CORS with configuration
 app.use(cors(corsOptions));
-
-// Handle preflight requests
 app.options('*', cors(corsOptions));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -79,7 +70,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Register routes
 console.log('Importing routes');
 registerRoutes(app);
 console.log('Routes imported');
@@ -87,7 +77,6 @@ console.log('Importing paymentRoutes');
 app.use('/api', paymentRoutes);
 console.log('paymentRoutes imported');
 
-// Error handling
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   const status = err.status || err.statusCode || 500;
   const message = err.message || "Internal Server Error";
@@ -95,16 +84,11 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err);
 });
 
-// Export the app for Vercel
 export default app;
 
-// For local development, start the server
 if (!process.env.VERCEL) {
-  // Define ports to try, with environment variable taking precedence
   const defaultPorts = [3001, 3002, 3003, 3004, 3005, 5000, 5001, 5002, 5003, 5004, 5005];
   const host = process.env.HOST || '0.0.0.0';
-  
-  // If PORT is set, use it as the first port to try, then fall back to defaults
   const portsToTry = process.env.PORT 
     ? [parseInt(process.env.PORT, 10), ...defaultPorts]
     : defaultPorts;

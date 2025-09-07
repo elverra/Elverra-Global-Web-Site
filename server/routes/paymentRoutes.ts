@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { paymentController } from '../controllers/paymentController.ts';
-import { authMiddleware } from '../middleware/authMiddleware.ts';
+import { paymentController } from '../controllers/paymentController.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 import { z } from 'zod';
-import { validateRequest } from 'server/middleware/validateRequest.ts';
+import { validateRequest } from 'server/middleware/validateRequest.js';
 
 const router: Router = Router();
 
