@@ -1343,7 +1343,7 @@ export function registerRoutes(app: Express): void {
         authHeader: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
       };
 
-      // First, get access token - using proper Basic Auth format for production
+      // First, get access token using OAuth 2.0 client credentials flow
       const tokenResponse = await fetch(orangeConfig.authUrl, {
         method: 'POST',
         headers: {
@@ -1351,7 +1351,7 @@ export function registerRoutes(app: Express): void {
           'Accept': 'application/json',
           'Authorization': orangeConfig.authHeader
         },
-        body: 'grant_type=client_credentials'
+        body: 'grant_type=client_credentials&scope=openid'
       });
 
       if (!tokenResponse.ok) {
@@ -1367,17 +1367,20 @@ export function registerRoutes(app: Express): void {
 
       const tokenData = await tokenResponse.json();
       
-      // Create payment request
+      // Create payment request using Orange Money Web Payment API format
       const paymentRequest = {
         merchant_key: orangeConfig.merchantKey,
-        currency,
+        currency: currency,
         order_id: reference,
-        amount: amount,
+        amount: amount.toString(),
         return_url: `${req.protocol}://${req.get('host')}/payment-success`,
         cancel_url: `${req.protocol}://${req.get('host')}/payment-cancel`,
         notif_url: `${req.protocol}://${req.get('host')}/api/payments/orange-callback`,
         lang: 'fr',
-        reference: reference
+        reference: reference,
+        customer_email: email,
+        customer_phone: phone,
+        customer_name: name
       };
 
       const paymentResponse = await fetch(`${orangeConfig.baseUrl}/webpayment`, {
@@ -1653,9 +1656,10 @@ export function registerRoutes(app: Express): void {
       const transactionKey = 'cU+ZJ69Si8wkW2x59:VktuDM7@k~PaJ;d{S]F!R5gd4,5G(7%a2_785K#}kC3*[e';
       const userId = '-486247242941374572';
       
-      // SAMA Money API configuration - PRODUCTION MODE
+      // SAMA Money API configuration - Try multiple possible endpoints
       const samaConfig = {
-        baseUrl: 'https://smarchand.sama.money/V1', // Production URL
+        baseUrl: 'https://api.sama.money/v1', // Try standard API endpoint
+        fallbackUrl: 'https://merchant.sama.money/api/v1', // Alternative endpoint
         merchantCode,
         publicKey,
         transactionKey,
@@ -1678,19 +1682,22 @@ export function registerRoutes(app: Express): void {
         timestamp: new Date().toISOString()
       };
       
-      // Try to connect to SAMA Money API with timeout and fallback
+      // Try to connect to SAMA Money API with multiple endpoints
       let responseData;
+      let lastError;
       
+      // Try primary endpoint first
       try {
         const response = await Promise.race([
-          fetch(`${samaConfig.baseUrl}/payment/initiate`, {
+          fetch(`${samaConfig.baseUrl}/payments/initiate`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json; charset=utf-8',
+              'Content-Type': 'application/json',
               'Authorization': `Bearer ${samaConfig.publicKey}`,
               'Accept': 'application/json',
               'X-Merchant-Code': samaConfig.merchantCode,
-              'X-User-Id': samaConfig.userId
+              'X-User-Id': samaConfig.userId,
+              'X-Transaction-Key': samaConfig.transactionKey
             },
             body: JSON.stringify(paymentData)
           }),
@@ -1701,15 +1708,52 @@ export function registerRoutes(app: Express): void {
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('SAMA Money API error:', response.status, errorText);
-          throw new Error(`API error: ${response.status} - ${errorText}`);
+          console.error('SAMA Money primary API error:', response.status, errorText);
+          lastError = new Error(`Primary API error: ${response.status} - ${errorText}`);
+          throw lastError;
         }
         
         responseData = await response.json();
         
       } catch (fetchError: any) {
-        console.error('SAMA Money API error:', fetchError?.message);
-        throw new Error(`SAMA Money payment failed: ${fetchError?.message}`);
+        lastError = fetchError;
+        console.warn('Primary SAMA Money endpoint failed, trying fallback...');
+        
+        // Try fallback endpoint
+        try {
+          const fallbackResponse = await Promise.race([
+            fetch(`${samaConfig.fallbackUrl}/payments/create`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${samaConfig.publicKey}`,
+                'Accept': 'application/json',
+                'X-Merchant-Code': samaConfig.merchantCode,
+                'X-User-Id': samaConfig.userId,
+                'X-Transaction-Key': samaConfig.transactionKey
+              },
+              body: JSON.stringify(paymentData)
+            }),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Fallback timeout')), 5000)
+            )
+          ]) as Response;
+          
+          if (!fallbackResponse.ok) {
+            const errorText = await fallbackResponse.text();
+            console.error('SAMA Money fallback API error:', fallbackResponse.status, errorText);
+            throw new Error(`Fallback API error: ${fallbackResponse.status} - ${errorText}`);
+          }
+          
+          responseData = await fallbackResponse.json();
+          
+        } catch (fallbackError: any) {
+          console.error('Both SAMA Money endpoints failed:', {
+            primary: lastError?.message,
+            fallback: fallbackError?.message
+          });
+          throw new Error(`SAMA Money payment failed: ${fallbackError?.message}`);
+        }
       }
       
       // Store payment record in database for tracking
