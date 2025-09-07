@@ -80,11 +80,8 @@ export class OrangeMoneyService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.warn('OAuth token request failed, using demo mode:', response.status, errorText);
-        // Return a demo token for testing
-        this.accessToken = 'demo_token_' + Date.now();
-        this.tokenExpiry = Date.now() + (3600 * 1000); // 1 hour
-        return this.accessToken;
+        console.error('OAuth token request failed:', response.status, errorText);
+        throw new Error(`OAuth token request failed: ${response.status} - ${errorText}`);
       }
 
       const tokenData: OAuthTokenResponse = await response.json();
@@ -95,11 +92,8 @@ export class OrangeMoneyService {
       
       return this.accessToken;
     } catch (error) {
-      console.warn('Error getting OAuth token, using demo mode:', error);
-      // Fallback to demo mode
-      this.accessToken = 'demo_token_' + Date.now();
-      this.tokenExpiry = Date.now() + (3600 * 1000);
-      return this.accessToken;
+      console.error('Error getting OAuth token:', error);
+      throw new Error(`Failed to get OAuth token: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -117,44 +111,10 @@ export class OrangeMoneyService {
         throw new Error('Missing required payment parameters');
       }
 
-      // For demo/test environment, simulate successful response
-      if (this.config.environment === 'test') {
-        // Simulate processing delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Simulate 95% success rate
-        const isSuccess = Math.random() > 0.05;
-        
-        if (!isSuccess) {
-          return {
-            success: false,
-            error: 'Payment failed - insufficient balance or invalid phone number'
-          };
-        }
-        
-        return {
-          success: true,
-          transactionId: `OM_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          paymentUrl: `https://webpay.orange.com/payment/${request.transactionReference}`,
-          status: 'pending',
-          message: 'Payment request sent to your Orange Money account. Please check your phone to authorize the transaction.'
-        };
-      }
+      // Production only - no test mode fallbacks
 
       // Production flow - get access token first
-      let accessToken: string;
-      try {
-        accessToken = await this.getAccessToken();
-      } catch (tokenError) {
-        console.warn('Failed to get OAuth token, using demo mode:', tokenError);
-        // Fallback to demo mode if OAuth fails
-        return {
-          success: true,
-          transactionId: `OM_DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          status: 'pending',
-          message: 'Demo payment initiated - Orange Money service temporarily unavailable'
-        };
-      }
+      const accessToken = await this.getAccessToken();
       
       const paymentData = {
         merchant: {
