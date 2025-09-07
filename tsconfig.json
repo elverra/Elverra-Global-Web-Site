@@ -4,15 +4,16 @@
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-    "noEmit": true,
-    "module": "ESNext",
+    "noEmit": false,
+    "outDir": "./dist",
+    "module": "CommonJS", // Use CommonJS for Node.js compatibility
     "strict": true,
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
-    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false, // Disable for compiled output
+    "moduleResolution": "node", // Use node for server-side code
     "baseUrl": ".",
     "types": ["node", "vite/client"],
     "paths": {
