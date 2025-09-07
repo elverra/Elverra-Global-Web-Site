@@ -100,29 +100,40 @@ export default app;
 
 // For local development, start the server
 if (!process.env.VERCEL) {
-  const portsToTry = [3001, 3002, 3003, 3004, 3005]; // Adjusted ports
+  // Define ports to try, with environment variable taking precedence
+  const defaultPorts = [3001, 3002, 3003, 3004, 3005, 5000, 5001, 5002, 5003, 5004, 5005];
   const host = process.env.HOST || '0.0.0.0';
+  
+  // If PORT is set, use it as the first port to try, then fall back to defaults
+  const portsToTry = process.env.PORT 
+    ? [parseInt(process.env.PORT, 10), ...defaultPorts]
+    : defaultPorts;
+  let currentPortIndex = 0;
 
-  const tryStartServer = (portIndex = 0) => {
-    if (portIndex >= portsToTry.length) {
-      console.error('All ports are in use.');
+  const tryStartServer = () => {
+    if (currentPortIndex >= portsToTry.length) {
+      console.error('❌ All ports are in use. Please free up a port or try again later.');
+      console.log('\nTried the following ports:', portsToTry.join(', '));
       process.exit(1);
     }
 
-    const port = process.env.PORT ? parseInt(process.env.PORT, 10) : portsToTry[portIndex];
+    const port = portsToTry[currentPortIndex];
+    console.log(`\n🔍 Attempting to start server on port ${port}...`);
 
     const server = app.listen(port, host, () => {
-      console.log(`Server is running on http://${host}:${port}`);
-      console.log(`API base URL: http://${host}:${port}/api`);
+      console.log(`\n✅ Server is running on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
+      console.log(`🌐 Network URL: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
+      console.log(`🚀 API base URL: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}/api`);
     });
 
     server.on('error', (error: NodeJS.ErrnoException) => {
       if (error.code === 'EADDRINUSE') {
-        console.log(`Port ${port} is in use, trying next port...`);
-        server.close();
-        tryStartServer(portIndex + 1);
+        console.log(`⚠️  Port ${port} is in use, trying next port...`);
+        currentPortIndex++;
+        tryStartServer();
       } else {
-        console.error('Server error:', error);
+        console.error('❌ Server error:', error.message);
+        console.log('\n💡 Tip: Check if another process is using the port or try a different port range.');
         process.exit(1);
       }
     });
