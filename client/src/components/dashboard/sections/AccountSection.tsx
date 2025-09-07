@@ -833,7 +833,7 @@ const AccountSection = () => {
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CFA">CFA Franc (XOF)</SelectItem>
+                      <SelectItem value="CFA">CFA Franc (OUV)</SelectItem>
                       <SelectItem value="USD">US Dollar (USD)</SelectItem>
                       <SelectItem value="EUR">Euro (EUR)</SelectItem>
                     </SelectContent>

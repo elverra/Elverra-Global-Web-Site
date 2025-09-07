@@ -33,7 +33,7 @@ import { useEffect } from "react";
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string>(
-    "/lovable-uploads/elverra-global-logo-new.jpeg",
+    "/lovable-uploads/logo.png",
   );
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
@@ -80,7 +80,7 @@ const Header = () => {
               alt="Elverra Global"
               className="h-10 w-auto object-contain"
               onError={() =>
-                setLogoUrl("/lovable-uploads/elverra-global-logo-new.jpeg")
+                setLogoUrl("/lovable-uploads/logo.png")
               }
             />
           </Link>

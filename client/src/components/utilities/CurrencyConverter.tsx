@@ -18,12 +18,12 @@ interface ExchangeRate {
 
 const CurrencyConverter = () => {
   const [amount, setAmount] = useState<string>("1000");
-  const [fromCurrency, setFromCurrency] = useState<string>("XOF");
+  const [fromCurrency, setFromCurrency] = useState<string>("OUV");
   const [toCurrency, setToCurrency] = useState<string>("USD");
   const [convertedAmount, setConvertedAmount] = useState<string>("");
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate>({
     // Default rates (static for demo purposes)
-    XOF: 1,
+    OUV: 1,
     USD: 0.0016,
     EUR: 0.0015,
     GBP: 0.0013,
@@ -47,9 +47,9 @@ const CurrencyConverter = () => {
     const fromRate = exchangeRates[fromCurrency] || 1;
     const toRate = exchangeRates[toCurrency] || 1;
     
-    // Convert to base currency (XOF), then to target currency
-    const valueInXOF = numericAmount / fromRate;
-    const result = valueInXOF * toRate;
+    // Convert to base currency (OUV), then to target currency
+    const valueInOUV = numericAmount / fromRate;
+    const result = valueInOUV * toRate;
     
     setConvertedAmount(result.toFixed(2));
   };
@@ -59,7 +59,7 @@ const CurrencyConverter = () => {
   };
 
   const currencies = [
-    { code: "XOF", name: "CFA Franc (XOF)" },
+    { code: "OUV", name: "CFA Franc (OUV)" },
     { code: "USD", name: "US Dollar (USD)" },
     { code: "EUR", name: "Euro (EUR)" },
     { code: "GBP", name: "British Pound (GBP)" },

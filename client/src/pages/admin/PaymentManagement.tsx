@@ -19,7 +19,7 @@ const PaymentManagement = () => {
       user: "John Doe",
       email: "john@example.com",
       amount: 4999,
-      currency: "XOF",
+      currency: "OUV",
       status: "completed",
       type: "membership",
       date: "2024-01-15",
@@ -30,7 +30,7 @@ const PaymentManagement = () => {
       user: "Jane Smith",
       email: "jane@example.com",
       amount: 2500,
-      currency: "XOF",
+      currency: "OUV",
       status: "pending",
       type: "tokens",
       date: "2024-01-14",
@@ -41,7 +41,7 @@ const PaymentManagement = () => {
       user: "Bob Johnson",
       email: "bob@example.com",
       amount: 9999,
-      currency: "XOF",
+      currency: "OUV",
       status: "failed",
       type: "membership",
       date: "2024-01-13",
@@ -52,7 +52,7 @@ const PaymentManagement = () => {
   const stats = [
     {
       title: "Total Revenue",
-      value: "2,487,500 XOF",
+      value: "2,487,500 OUV",
       icon: DollarSign,
       change: "+12.5%"
     },
@@ -236,12 +236,12 @@ const PaymentManagement = () => {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="currency">Default Currency</Label>
-                    <Select defaultValue="xof">
+                    <Select defaultValue="OUV">
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="xof">West African CFA Franc (XOF)</SelectItem>
+                        <SelectItem value="OUV">West African CFA Franc (OUV)</SelectItem>
                         <SelectItem value="usd">US Dollar (USD)</SelectItem>
                         <SelectItem value="eur">Euro (EUR)</SelectItem>
                       </SelectContent>

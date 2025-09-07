@@ -1,3 +1,4 @@
+// emailService.ts
 import { MailService } from '@sendgrid/mail';
 
 // Check if SendGrid API key is available
@@ -25,7 +26,7 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
       to: params.to,
       subject: params.subject,
       text: params.text,
-      html: params.html
+      html: params.html,
     });
     return false;
   }
@@ -35,12 +36,12 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
       to: params.to,
       from: params.from || 'noreply@elverra.com',
       subject: params.subject,
-      ...(params.text && { text: params.text }),
-      ...(params.html && { html: params.html }),
+      text: params.text || '',
+      html: params.html || '',
     };
-    
+
     await mailService.send(emailData);
-    
+
     console.log(`📧 Email sent successfully to ${params.to}`);
     return true;
   } catch (error) {
@@ -49,7 +50,11 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
   }
 }
 
-export async function sendWelcomeEmail(userEmail: string, fullName: string): Promise<boolean> {
+export async function sendWelcomeEmail(
+  userEmail: string,
+  fullName: string,
+  paymentRequired: boolean = false
+): Promise<boolean> {
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -73,51 +78,32 @@ export async function sendWelcomeEmail(userEmail: string, fullName: string): Pro
           <h1>Welcome to Elverra Global!</h1>
           <p>Thank you for joining our exclusive community</p>
         </div>
-        
         <div class="content">
           <h2>Hello ${fullName || 'Valued Member'},</h2>
-          
           <p>We're thrilled to welcome you to Elverra Global! Your account has been successfully created, and you now have access to our comprehensive range of services and benefits.</p>
-          
           <div class="benefits">
             <h3>What's Available to You:</h3>
-            <div class="benefit-item">
-              <span class="check">✓</span>
-              <span><strong>ZENIKA Card Benefits:</strong> Exclusive discounts and privileges across our client network</span>
-            </div>
-            <div class="benefit-item">
-              <span class="check">✓</span>
-              <span><strong>Job Center Access:</strong> Browse and apply for opportunities</span>
-            </div>
-            <div class="benefit-item">
-              <span class="check">✓</span>
-              <span><strong>Online Store:</strong> Shop with low hosting fees</span>
-            </div>
-            <div class="benefit-item">
-              <span class="check">✓</span>
-              <span><strong>Free Online Library:</strong> Educational resources at your fingertips</span>
-            </div>
-            <div class="benefit-item">
-              <span class="check">✓</span>
-              <span><strong>"Ô Secours" Services:</strong> Emergency assistance when you need it</span>
-            </div>
+            <div class="benefit-item"><span class="check">✓</span> ZENIKA Card Benefits: Exclusive discounts and privileges across our client network</div>
+            <div class="benefit-item"><span class="check">✓</span> Job Center Access: Browse and apply for opportunities</div>
+            <div class="benefit-item"><span class="check">✓</span> Online Store: Shop with low hosting fees</div>
+            <div class="benefit-item"><span class="check">✓</span> Free Online Library: Educational resources at your fingertips</div>
+            <div class="benefit-item"><span class="check">✓</span> "Ô Secours" Services: Emergency assistance when you need it</div>
           </div>
-          
+          ${
+            paymentRequired
+              ? `
+          <p>To complete your registration and access all features, please complete your membership payment.</p>
+          <a href="${process.env.FRONTEND_URL || 'https://elverraglobal.com'}/membership/payment" class="button">Complete Payment</a>
+          `
+              : `
           <p>Ready to explore all that Elverra Global has to offer? Sign in to your account and start enjoying your member benefits.</p>
-          
-          <div style="text-align: center;">
-            <a href="${process.env.FRONTEND_URL || 'https://elverra.com'}/login" class="button">Sign In to Your Account</a>
-          </div>
-          
-          <p>If you have any questions or need assistance, our support team is here to help. Contact us at support@elverra.com.</p>
-          
-          <p>Welcome aboard!</p>
-          <p><strong>The Elverra Global Team</strong></p>
+          <a href="${process.env.FRONTEND_URL || 'https://elverraglobal.com'}/dashboard" class="button">Go to Dashboard</a>
+          `
+          }
         </div>
-        
         <div class="footer">
           <p>© ${new Date().getFullYear()} Elverra Global. All rights reserved.</p>
-          <p>This email was sent to ${userEmail}. If you didn't create an account with us, please ignore this email.</p>
+          <p>If you did not sign up for this account, please contact us immediately at support@elverra.com.</p>
         </div>
       </body>
     </html>
@@ -132,14 +118,22 @@ export async function sendWelcomeEmail(userEmail: string, fullName: string): Pro
     
     What's Available to You:
     ✓ ZENIKA Card Benefits: Exclusive discounts and privileges across our client network
-    ✓ Job Center Access: Browse and apply for opportunities  
+    ✓ Job Center Access: Browse and apply for opportunities
     ✓ Online Store: Shop with low hosting fees
     ✓ Free Online Library: Educational resources at your fingertips
     ✓ "Ô Secours" Services: Emergency assistance when you need it
     
+    ${
+      paymentRequired
+        ? `
+    To complete your registration and access all features, please complete your membership payment by clicking the link below:
+    ${process.env.FRONTEND_URL || 'https://elverraglobal.com'}/membership/payment
+    `
+        : `
     Ready to explore all that Elverra Global has to offer? Sign in to your account and start enjoying your member benefits.
-    
-    Sign in at: ${process.env.FRONTEND_URL || 'https://elverra.com'}/login
+    Sign in at: ${process.env.FRONTEND_URL || 'https://elverraglobal.com'}/dashboard
+    `
+    }
     
     If you have any questions or need assistance, our support team is here to help. Contact us at support@elverra.com.
     
@@ -154,6 +148,6 @@ export async function sendWelcomeEmail(userEmail: string, fullName: string): Pro
     to: userEmail,
     subject: 'Welcome to Elverra Global - Your Account is Ready!',
     text: textContent,
-    html: htmlContent
+    html: htmlContent,
   });
 }

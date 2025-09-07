@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 
 const Footer = () => {
   const [logoUrl, setLogoUrl] = useState<string>(
-    "/lovable-uploads/elverra-global-logo-new.jpeg",
+    "/lovable-uploads/logo.png",
   );
 
   useEffect(() => {
@@ -38,7 +38,7 @@ const Footer = () => {
 
         if (logoFile) {
           const mockUrlResult = {
-            data: { publicUrl: "/lovable-uploads/elverra-global-logo.png" },
+            data: { publicUrl: "/lovable-uploads/logo.png" },
           }; // TODO: Replace with API call
           const { data: urlData } = mockUrlResult;
 
@@ -66,7 +66,7 @@ const Footer = () => {
                 alt="Elverra Global"
                 className="h-8 w-auto object-contain"
                 onError={() =>
-                  setLogoUrl("/lovable-uploads/elverra-global-logo-new.jpeg")
+                  setLogoUrl("/lovable-uploads/logo.png")
                 }
               />
             </div>

@@ -377,6 +377,10 @@ const routes = [
     element: <ResetPassword />,
   },
   {
+    path: '/membership/payment',
+    element: <MembershipPayment />,
+  },
+  {
     path: '/thank-you',
     element: <ThankYou />,
   },

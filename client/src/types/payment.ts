@@ -52,15 +52,18 @@ export interface PaymentService {
 
 export interface PaymentRequest {
   serviceId: string;
-  gatewayId: string;
   amount: number;
-  currency: string;
-  customerInfo: {
-    name: string;
-    email: string;
-    phone: string;
+  currency?: string;
+  description?: string;
+  customerInfo?: {
+    name?: string;
+    email?: string;
+    phone?: string;
   };
   metadata?: Record<string, any>;
+  paymentMethod?: string;
+  returnUrl?: string;
+  cancelUrl?: string;
 }
 
 export interface PaymentResponse {

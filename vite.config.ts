@@ -29,7 +29,13 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    // 👉 ajoute ton host Replit ici
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false
+      }
+    },
     allowedHosts: [
       "13eb4202-8453-4a4e-9031-e2ba8b751ec5-00-o6czf1rr471t.spock.replit.dev",
     ],
