@@ -7,13 +7,17 @@
     "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:client\"",
     "dev:server": "NODE_ENV=development tsx server/index.ts",
     "dev:client": "vite",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "cd client && pnpm run build && cd .. && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
+  },
+  "resolutions": {
+    "@radix-ui/react-visually-hidden": "1.1.3",
+    "object-keys": "1.1.1"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.1",

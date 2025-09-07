@@ -1,10 +1,15 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 30
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/**/*",
+      "use": "@vercel/static"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
@@ -12,13 +17,15 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/public/index.html"
+      "dest": "/client/dist/index.html"
     }
   ],
   "env": {
     "NODE_ENV": "production",
     "VERCEL": "1"
   },
-  "installCommand": "npm install",
-  "outputDirectory": "dist/public"
+  "buildCommand": "./vercel-build.sh",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "framework": "vite",
+  "outputDirectory": "dist"
 }
