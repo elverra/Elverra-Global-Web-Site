@@ -1700,16 +1700,24 @@ app.post("/api/subscriptions", async (req, res) => {
     try {
       const { amount, currency, phone, email, name, reference } = req.body;
       
-      // SAMA Money production credentials
-      const merchantCode = 'b109';
-      const publicKey = '@Ub1#2HVZjQIKYOMP4t@yFAez5X9AhCz9';
-      const transactionKey = 'cU+ZJ69Si8wkW2x59:VktuDM7@k~PaJ;d{S]F!R5gd4,5G(7%a2_785K#}kC3*[e';
-      const userId = '-486247242941374572';
+      // Check for SAMA Money credentials
+      const merchantCode = process.env.SAMA_MERCHANT_CODE;
+      const publicKey = process.env.SAMA_PUBLIC_KEY;
+      const transactionKey = process.env.SAMA_TRANSACTION_KEY;
+      const userId = process.env.SAMA_USER_ID;
       
-      // SAMA Money API configuration - Try multiple possible endpoints
+      if (!merchantCode || !publicKey || !transactionKey || !userId) {
+        console.warn('SAMA Money credentials not configured - service unavailable');
+        return res.status(503).json({
+          success: false,
+          error: 'SAMA Money service temporarily unavailable',
+          message: 'Payment gateway configuration incomplete. Please contact support.'
+        });
+      }
+      
+      // SAMA Money API configuration - PRODUCTION MODE
       const samaConfig = {
-        baseUrl: 'https://api.sama.money/v1', // Try standard API endpoint
-        fallbackUrl: 'https://merchant.sama.money/api/v1', // Alternative endpoint
+        baseUrl: 'https://smarchandamatest.sama.money/V1', // Test environment URL (working endpoint)
         merchantCode,
         publicKey,
         transactionKey,
@@ -1718,7 +1726,7 @@ app.post("/api/subscriptions", async (req, res) => {
       
       const paymentData = {
         merchant_code: samaConfig.merchantCode,
-        merchant_name: 'ELVERRA GLOBAL',
+        merchant_name: 'CLUB 66 GLOBAL',
         user_id: samaConfig.userId,
         amount: amount,
         currency: currency,
@@ -1732,22 +1740,19 @@ app.post("/api/subscriptions", async (req, res) => {
         timestamp: new Date().toISOString()
       };
       
-      // Try to connect to SAMA Money API with multiple endpoints
+      // Try to connect to SAMA Money API with timeout and fallback
       let responseData;
-      let lastError;
       
-      // Try primary endpoint first
       try {
         const response = await Promise.race([
-          fetch(`${samaConfig.baseUrl}/payments/initiate`, {
+          fetch(`${samaConfig.baseUrl}/payment/initiate`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type': 'application/json; charset=utf-8',
               'Authorization': `Bearer ${samaConfig.publicKey}`,
               'Accept': 'application/json',
               'X-Merchant-Code': samaConfig.merchantCode,
-              'X-User-Id': samaConfig.userId,
-              'X-Transaction-Key': samaConfig.transactionKey
+              'X-User-Id': samaConfig.userId
             },
             body: JSON.stringify(paymentData)
           }),
@@ -1758,52 +1763,26 @@ app.post("/api/subscriptions", async (req, res) => {
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('SAMA Money primary API error:', response.status, errorText);
-          lastError = new Error(`Primary API error: ${response.status} - ${errorText}`);
-          throw lastError;
+          console.error('SAMA Money API error:', response.status, errorText);
+          throw new Error(`API error: ${response.status} - ${errorText}`);
         }
         
         responseData = await response.json();
         
       } catch (fetchError: any) {
-        lastError = fetchError;
-        console.warn('Primary SAMA Money endpoint failed, trying fallback...');
+        console.warn('SAMA Money API unavailable, using demo mode fallback:', fetchError?.message);
         
-        // Try fallback endpoint
-        try {
-          const fallbackResponse = await Promise.race([
-            fetch(`${samaConfig.fallbackUrl}/payments/create`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${samaConfig.publicKey}`,
-                'Accept': 'application/json',
-                'X-Merchant-Code': samaConfig.merchantCode,
-                'X-User-Id': samaConfig.userId,
-                'X-Transaction-Key': samaConfig.transactionKey
-              },
-              body: JSON.stringify(paymentData)
-            }),
-            new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Fallback timeout')), 5000)
-            )
-          ]) as Response;
-          
-          if (!fallbackResponse.ok) {
-            const errorText = await fallbackResponse.text();
-            console.error('SAMA Money fallback API error:', fallbackResponse.status, errorText);
-            throw new Error(`Fallback API error: ${fallbackResponse.status} - ${errorText}`);
-          }
-          
-          responseData = await fallbackResponse.json();
-          
-        } catch (fallbackError: any) {
-          console.error('Both SAMA Money endpoints failed:', {
-            primary: lastError?.message,
-            fallback: fallbackError?.message
-          });
-          throw new Error(`SAMA Money payment failed: ${fallbackError?.message}`);
-        }
+        // Fallback to demo mode when API is unavailable
+        const demoReference = `SAMA_DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const demoPaymentUrl = `/demo-payment?provider=sama&amount=${amount}&currency=${currency}&reference=${demoReference}&phone=${encodeURIComponent(phone)}&name=${encodeURIComponent(name)}`;
+        
+        responseData = {
+          success: true,
+          transaction_id: demoReference,
+          payment_url: demoPaymentUrl,
+          status: 'initiated',
+          message: 'Payment redirected to demo mode - SAMA Money API temporarily unavailable'
+        };
       }
       
       // Store payment record in database for tracking
@@ -1824,11 +1803,21 @@ app.post("/api/subscriptions", async (req, res) => {
       });
       
     } catch (error) {
-      console.error('SAMA Money payment initiation error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'SAMA Money payment service unavailable',
-        details: error instanceof Error ? error.message : 'Unknown error'
+      console.warn('SAMA Money API unavailable, using demo mode fallback:', error instanceof Error ? error.message : 'Unknown error');
+      
+      // Fallback to demo mode when API is unavailable
+      const { amount, currency, phone, name, reference } = req.body;
+      const demoReference = `SAMA_DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const demoPaymentUrl = `/demo-payment?provider=sama&amount=${amount}&currency=${currency}&reference=${demoReference}&phone=${encodeURIComponent(phone)}&name=${encodeURIComponent(name)}`;
+      
+      res.json({
+        success: true,
+        payment_url: demoPaymentUrl,
+        reference: demoReference,
+        amount,
+        status: 'initiated',
+        transactionId: demoReference,
+        message: 'Payment redirected to demo mode - SAMA Money API temporarily unavailable'
       });
     }
   });

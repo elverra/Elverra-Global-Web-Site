@@ -2,12 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import rewriteAll from "vite-plugin-rewrite-all";
 
 export default defineConfig({
   plugins: [
     react(),
-    rewriteAll(),  // Add this plugin
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
@@ -26,40 +24,20 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
-  base: '/',
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true,
+  },
   server: {
-    host: true,
-    port: 3000,
-    strictPort: true,
     proxy: {
-      '^/api': {
-        target: process.env.VITE_API_URL || 'https://www.elverraglobalml.com',
+      '/api': {
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
-        secure: process.env.NODE_ENV === 'production',
-        rewrite: (path) => path.replace(/^\/api/, '')
+        secure: false
       }
     },
-    hmr: {
-      protocol: 'wss',
-      host: 'localhost'
-    }
+    allowedHosts: [
+      "13eb4202-8453-4a4e-9031-e2ba8b751ec5-00-o6czf1rr471t.spock.replit.dev",
+    ],
   },
-  preview: {
-    port: 3000,
-    strictPort: true
-  },
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist"),
-    emptyOutDir: true,
-    target: 'esnext',
-    sourcemap: process.env.NODE_ENV !== 'production',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom']
-        }
-      }
-    }
-  },
- 
 });
