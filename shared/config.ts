@@ -144,7 +144,7 @@ export const appConfig: AppConfig = {
   nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
   port: process.env.PORT ? parseInt(process.env.PORT, 10) : 5000,
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
-  apiUrl: process.env.API_URL || 'http://localhost:5000/api/',
+  apiUrl: process.env.API_URL || 'http://localhost:5000',
   
   // Authentication
   auth: {
