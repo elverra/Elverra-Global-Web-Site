@@ -1,16 +1,27 @@
 #!/bin/bash
 set -e
 
-# Install dependencies
+echo "--- Installing dependencies ---"
 pnpm install --frozen-lockfile
 
-# Build the client
-cd client
-pnpm install
-pnpm run build
-cd ..
+echo "--- Building client ---"
+NODE_ENV=production pnpm vite build
 
-# Build the server
-pnpm run build
+echo "--- Building server ---"
+pnpm esbuild server/index.ts \
+  --bundle \
+  --platform=node \
+  --packages=external \
+  --format=esm \
+  --outfile=dist/server/index.js
 
-echo "Build completed successfully"
+# Copy shared files
+mkdir -p dist/shared
+cp -r shared/* dist/shared/
+
+# Copy migrations
+mkdir -p dist/migrations
+cp -r migrations/* dist/migrations/
+
+echo "--- Build complete ---"
+echo "Vercel build completed successfully"
