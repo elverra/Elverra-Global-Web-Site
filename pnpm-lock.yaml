@@ -336,6 +336,9 @@ importers:
       typescript:
         specifier: 5.6.3
         version: 5.6.3
+      vite-plugin-rewrite-all:
+        specifier: ^1.0.2
+        version: 1.0.2(vite@5.4.19(@types/node@20.16.11)(lightningcss@1.30.1))
     optionalDependencies:
       bufferutil:
         specifier: ^4.0.8
@@ -2441,6 +2444,10 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  connect-history-api-fallback@1.6.0:
+    resolution: {integrity: sha512-e54B99q/OUoH64zYYRf3HBP5z24G38h5D3qXu23JGRoigpX5Ss4r9ZnDk3g0Z8uQC2x2lPaJ+UlWBc1ZWBWdLg==}
+    engines: {node: '>=0.8'}
+
   connect-pg-simple@10.0.0:
     resolution: {integrity: sha512-pBGVazlqiMrackzCr0eKhn4LO5trJXsOX0nQoey9wCOayh80MYtThCbq8eoLsjpiWgiok/h+1/uti9/2/Una8A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=22.0.0}
@@ -4360,6 +4367,13 @@ packages:
 
   victory-vendor@36.9.2:
     resolution: {integrity: sha512-PnpQQMuxlwYdocC8fIJqVXvkeViHYzotI+NJrCuav0ZYFoq912ZHBk3mCeuj+5/VpodOjPe1z0Fk2ihgzlXqjQ==}
+
+  vite-plugin-rewrite-all@1.0.2:
+    resolution: {integrity: sha512-NpiFyHi9w8iHm3kZ28ma/IU16LFCkNJNqTvGy6cjoit2EMBi7dgFWFZFYcwZjUrc+pOMup//rsQTRVILvF2efQ==}
+    engines: {node: '>=12.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+    peerDependencies:
+      vite: ^2.0.0 || ^3.0.0 || ^4.0.0
 
   vite@5.4.19:
     resolution: {integrity: sha512-qO3aKv3HoQC8QKiNSTuUM1l9o/XX3+c+VTgLHbJWHZGeTPVAg2XwazI9UWzoxjIJCGCV2zU60uqMzjeLZuULqA==}
@@ -6505,6 +6519,8 @@ snapshots:
       tree-kill: 1.2.2
       yargs: 17.7.2
 
+  connect-history-api-fallback@1.6.0: {}
+
   connect-pg-simple@10.0.0:
     dependencies:
       pg: 8.16.3
@@ -8539,6 +8555,11 @@ snapshots:
       d3-shape: 3.2.0
       d3-time: 3.1.0
       d3-timer: 3.0.1
+
+  vite-plugin-rewrite-all@1.0.2(vite@5.4.19(@types/node@20.16.11)(lightningcss@1.30.1)):
+    dependencies:
+      connect-history-api-fallback: 1.6.0
+      vite: 5.4.19(@types/node@20.16.11)(lightningcss@1.30.1)
 
   vite@5.4.19(@types/node@20.16.11)(lightningcss@1.30.1):
     dependencies:
