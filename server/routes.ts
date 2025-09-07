@@ -1323,31 +1323,23 @@ export function registerRoutes(app: Express): void {
     try {
       const { amount, currency, phone, email, name, reference } = req.body;
       
-      // Validate required environment variables
-      const clientId = process.env.ORANGE_CLIENT_ID;
-      const clientSecret = process.env.ORANGE_CLIENT_SECRET;
-      const merchantKey = process.env.ORANGE_MERCHANT_KEY;
+      // Production Orange Money configuration with real credentials
+      const clientId = '9wEq2T01mDG1guXINVTKsc3jxFUOyd3A';
+      const clientSecret = '9bIBLY9vEZxFBW7wzDYSxBoiN3UFGLGRAUCSOoDeyWGw';
+      const merchantKey = 'cb6d6c61';
       
-      if (!clientId || !clientSecret || !merchantKey) {
-        console.error('Missing Orange Money credentials');
-        return res.status(500).json({ 
-          success: false, 
-          error: 'Orange Money service configuration incomplete' 
-        });
-      }
-      
-      // Orange Money API configuration - PRODUCTION MODE with fallback
+      // Orange Money API configuration - PRODUCTION MODE
       const orangeConfig = {
         clientId,
         clientSecret,
         merchantKey,
         merchantLogin: 'MerchantWP00100',
         merchantAccountNumber: '7701900100',
-        merchantCode: '101021',
+        merchantCode: 'cb6d6c61',
         merchantName: 'ELVERRA GLOBAL',
-        // Updated Orange Money API endpoints
-        baseUrl: 'https://api.orange.com/orange-money-webpay/cm/v1', // Cameroon-specific endpoint
-        authUrl: 'https://api.orange.com/oauth/v3/token', // Updated OAuth v3 endpoint
+        // Production Orange Money API endpoints
+        baseUrl: 'https://api.orange.com/orange-money-webpay/v1', // Production endpoint
+        authUrl: 'https://api.orange.com/oauth/v1/token', // Production OAuth endpoint
         authHeader: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
       };
 
@@ -1365,24 +1357,6 @@ export function registerRoutes(app: Express): void {
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
         console.error('Failed to get Orange Money token:', tokenResponse.status, errorText);
-        
-        // Check if this is a production credential issue
-        if (tokenResponse.status === 401 || tokenResponse.status === 404 || tokenResponse.status === 403) {
-          console.warn('Orange Money production credentials issue. Using demo mode.');
-          
-          // Fallback to demo mode for testing
-          const demoPaymentUrl = `/payment-success?reference=${reference}&amount=${amount}&method=orange_money&mode=demo`;
-          
-          return res.json({
-            success: true,
-            payment_url: demoPaymentUrl,
-            reference: reference,
-            mode: 'demo',
-            message: 'Demo mode: Orange Money credentials need activation. Contact Orange operator for production access.',
-            amount: amount,
-            currency: currency
-          });
-        }
         
         return res.status(500).json({
           success: false,
@@ -1419,23 +1393,6 @@ export function registerRoutes(app: Express): void {
       if (!paymentResponse.ok) {
         const errorText = await paymentResponse.text();
         console.error('Failed to create Orange Money payment:', paymentResponse.status, errorText);
-        
-        // If payment creation fails, also fall back to demo mode
-        if (paymentResponse.status === 403 || paymentResponse.status === 401) {
-          console.warn('Orange Money payment creation failed. Using demo mode.');
-          
-          const demoPaymentUrl = `/payment-success?reference=${reference}&amount=${amount}&method=orange_money&mode=demo`;
-          
-          return res.json({
-            success: true,
-            payment_url: demoPaymentUrl,
-            reference: reference,
-            mode: 'demo',
-            message: 'Demo mode: Orange Money service temporarily unavailable.',
-            amount: amount,
-            currency: currency
-          });
-        }
         
         return res.status(500).json({
           success: false,
@@ -1690,24 +1647,15 @@ export function registerRoutes(app: Express): void {
     try {
       const { amount, currency, phone, email, name, reference } = req.body;
       
-      // Check for SAMA Money credentials
-      const merchantCode = process.env.SAMA_MERCHANT_CODE;
-      const publicKey = process.env.SAMA_PUBLIC_KEY;
-      const transactionKey = process.env.SAMA_TRANSACTION_KEY;
-      const userId = process.env.SAMA_USER_ID;
-      
-      if (!merchantCode || !publicKey || !transactionKey || !userId) {
-        console.warn('SAMA Money credentials not configured - service unavailable');
-        return res.status(503).json({
-          success: false,
-          error: 'SAMA Money service temporarily unavailable',
-          message: 'Payment gateway configuration incomplete. Please contact support.'
-        });
-      }
+      // SAMA Money production credentials
+      const merchantCode = 'b109';
+      const publicKey = '@Ub1#2HVZjQIKYOMP4t@yFAez5X9AhCz9';
+      const transactionKey = 'cU+ZJ69Si8wkW2x59:VktuDM7@k~PaJ;d{S]F!R5gd4,5G(7%a2_785K#}kC3*[e';
+      const userId = '-486247242941374572';
       
       // SAMA Money API configuration - PRODUCTION MODE
       const samaConfig = {
-        baseUrl: 'https://smarchandamatest.sama.money/V1', // Test environment URL (working endpoint)
+        baseUrl: 'https://smarchand.sama.money/V1', // Production URL
         merchantCode,
         publicKey,
         transactionKey,
@@ -1716,7 +1664,7 @@ export function registerRoutes(app: Express): void {
       
       const paymentData = {
         merchant_code: samaConfig.merchantCode,
-        merchant_name: 'CLUB 66 GLOBAL',
+        merchant_name: 'ELVERRA GLOBAL',
         user_id: samaConfig.userId,
         amount: amount,
         currency: currency,
@@ -1760,19 +1708,8 @@ export function registerRoutes(app: Express): void {
         responseData = await response.json();
         
       } catch (fetchError: any) {
-        console.warn('SAMA Money API unavailable, using demo mode fallback:', fetchError?.message);
-        
-        // Fallback to demo mode when API is unavailable
-        const demoReference = `SAMA_DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const demoPaymentUrl = `/demo-payment?provider=sama&amount=${amount}&currency=${currency}&reference=${demoReference}&phone=${encodeURIComponent(phone)}&name=${encodeURIComponent(name)}`;
-        
-        responseData = {
-          success: true,
-          transaction_id: demoReference,
-          payment_url: demoPaymentUrl,
-          status: 'initiated',
-          message: 'Payment redirected to demo mode - SAMA Money API temporarily unavailable'
-        };
+        console.error('SAMA Money API error:', fetchError?.message);
+        throw new Error(`SAMA Money payment failed: ${fetchError?.message}`);
       }
       
       // Store payment record in database for tracking
@@ -1793,21 +1730,11 @@ export function registerRoutes(app: Express): void {
       });
       
     } catch (error) {
-      console.warn('SAMA Money API unavailable, using demo mode fallback:', error instanceof Error ? error.message : 'Unknown error');
-      
-      // Fallback to demo mode when API is unavailable
-      const { amount, currency, phone, name, reference } = req.body;
-      const demoReference = `SAMA_DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const demoPaymentUrl = `/demo-payment?provider=sama&amount=${amount}&currency=${currency}&reference=${demoReference}&phone=${encodeURIComponent(phone)}&name=${encodeURIComponent(name)}`;
-      
-      res.json({
-        success: true,
-        payment_url: demoPaymentUrl,
-        reference: demoReference,
-        amount,
-        status: 'initiated',
-        transactionId: demoReference,
-        message: 'Payment redirected to demo mode - SAMA Money API temporarily unavailable'
+      console.error('SAMA Money payment initiation error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'SAMA Money payment service unavailable',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
