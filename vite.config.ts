@@ -24,10 +24,7 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-  },
+  base: '/',
   server: {
     host: true,
     port: 3000,
@@ -40,9 +37,26 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     },
-    allowedHosts: [
-      "13eb4202-8453-4a4e-9031-e2ba8b751ec5-00-o6czf1rr471t.spock.replit.dev",
-      "www.elverraglobalml.com"
-    ]
+    hmr: {
+      protocol: 'wss',
+      host: 'localhost'
+    }
+  },
+  preview: {
+    port: 3000,
+    strictPort: true
+  },
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist"),
+    emptyOutDir: true,
+    target: 'esnext',
+    sourcemap: process.env.NODE_ENV !== 'production',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom']
+        }
+      }
+    }
   },
 });
