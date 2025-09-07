@@ -1,15 +1,19 @@
 {
   "version": 2,
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "nodejs18.x",
-      "maxDuration": 30
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "dist/public/**",
+      "use": "@vercel/static"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.ts"
+      "dest": "/api"
     },
     {
       "src": "/(.*)",
@@ -19,6 +23,11 @@
   "env": {
     "NODE_ENV": "production",
     "VERCEL": "1"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
   },
   "installCommand": "pnpm install --frozen-lockfile --prod=false",
   "outputDirectory": "dist/public"
