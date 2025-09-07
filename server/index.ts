@@ -2,9 +2,10 @@ import dotenv from "dotenv";
 import "dotenv/config";
 import express, { NextFunction, type Request, Response } from "express";
 import http from 'http';
-import { registerRoutes } from "./routes.js";
-import paymentRoutes from "./routes/paymentRoutes";
+import { registerRoutes } from "./routes.ts";
+
 import { log, serveStatic, setupVite } from "./vite.js";
+import paymentRoutes from "./routes/paymentRoutes.ts";
 
 // Load environment variables from .env file
 dotenv.config();
