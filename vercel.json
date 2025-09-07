@@ -19,6 +19,6 @@
     "NODE_ENV": "production",
     "VERCEL": "1"
   },
-  "installCommand": "npm install",
+  "installCommand": "pnpm install",
   "outputDirectory": "dist/public"
 }
