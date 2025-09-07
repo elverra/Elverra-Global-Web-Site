@@ -138,10 +138,10 @@ const Register = () => {
     },
     onSuccess: (data) => {
       console.log("🎉 Registration completed successfully!");
-      toast.success("Registration successful! Welcome to Elverra Global!");
+      toast.success("Registration successful! Please complete your membership payment.");
 
-      // Navigate to thank you page
-      navigate("/registration/thank-you");
+      // Redirect to payment page with the selected tier and new registration flag
+      navigate(`/membership/payment?plan=${formData.tier}&new=true`);
     },
     onError: (error: any) => {
       console.error("❌ Registration error:", error);

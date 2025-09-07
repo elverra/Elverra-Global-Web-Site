@@ -3,10 +3,20 @@ import "dotenv/config";
 import express, { NextFunction, type Request, Response } from "express";
 import http from 'http';
 import { registerRoutes } from "./routes.js";
+import paymentRoutes from "./routes/paymentRoutes";
 import { log, serveStatic, setupVite } from "./vite.js";
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Debug: Log environment variables
+console.log('Environment Variables:', {
+  NODE_ENV: process.env.NODE_ENV,
+  ORANGE_MONEY_MERCHANT_KEY: process.env.ORANGE_MONEY_MERCHANT_KEY ? '***' : 'MISSING',
+  ORANGE_MONEY_CLIENT_ID: process.env.ORANGE_MONEY_CLIENT_ID ? '***' : 'MISSING',
+  ORANGE_MONEY_CLIENT_SECRET: process.env.ORANGE_MONEY_CLIENT_SECRET ? '***' : 'MISSING',
+  ORANGE_MONEY_BASE_URL: process.env.ORANGE_MONEY_BASE_URL
+});
 
 // Set environment variables for Vite development server
 if (process.env.NODE_ENV === "development") {
@@ -49,7 +59,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Enregistrer les routes existantes
   registerRoutes(app);
+  
+  // Enregistrer les routes de paiement
+  app.use('/api', paymentRoutes);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -65,29 +79,48 @@ app.use((req, res, next) => {
     module.exports = app;
   } else {
     // Local development server
-    const server = http.createServer(app);
-    const port = Number(process.env.PORT) || 5000;
+    const portsToTry = [5002, 5003, 5004, 5005];
     const host = process.env.HOST || "127.0.0.1";
-
-    // importantly only setup vite in development and after
-    // setting up all the other routes so the catch-all route
-    // doesn't interfere with the other routes
-    if (app.get("env") === "development") {
-      // Add middleware to handle host header before Vite processes it
-      app.use((req, res, next) => {
-        // Override host header to avoid allowedHosts restriction
-        if (req.headers.host && req.headers.host.includes('.replit.dev')) {
-          req.headers.host = 'localhost:5000';
+    
+    const startServer = async (portIndex = 0) => {
+      if (portIndex >= portsToTry.length) {
+        console.error('All ports are in use. Please free up a port or try again later.');
+        process.exit(1);
+      }
+      
+      const port = process.env.PORT ? Number(process.env.PORT) : portsToTry[portIndex];
+      const server = http.createServer(app);
+      
+      // Setup Vite in development
+      if (app.get("env") === "development") {
+        // Add middleware to handle host header before Vite processes it
+        app.use((req, res, next) => {
+          // Override host header to avoid allowedHosts restriction
+          if (req.headers.host && req.headers.host.includes('.replit.dev')) {
+            req.headers.host = `localhost:${port}`;
+          }
+          next();
+        });
+        await setupVite(app, server);
+      } else {
+        serveStatic(app);
+      }
+      
+      server.on('error', (e: NodeJS.ErrnoException) => {
+        if (e.code === 'EADDRINUSE') {
+          console.log(`Port ${port} is in use, trying next port...`);
+          startServer(portIndex + 1);
+          return;
         }
-        next();
+        console.error('Server error:', e);
+        process.exit(1);
       });
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
-
-    server.listen(port, host, () => {
-      log(`🚀 Server running on http://${host}:${port}`);
-    });
+      
+      server.listen(port, host, () => {
+        console.log(`🚀 Server running on http://${host}:${port}`);
+      });
+    };
+    
+    startServer();
   }
 })();

@@ -12,8 +12,8 @@ const DEFAULT_GATEWAYS: PaymentGateway[] = [
     config: {
       baseUrl: 'https://api.orange.com/orange-money-webpay/v1', // Production URL
       merchantName: 'ELVERRA GLOBAL',
-      environment: 'production',
-      supportedCurrencies: ['XOF', 'CFA']
+      environment: 'production', // Using provided production credentials
+      supportedCurrencies: ['OUV', 'CFA']
     },
     fees: { percentage: 1.5, fixed: 0 },
     icon: '🍊',
@@ -27,12 +27,66 @@ const DEFAULT_GATEWAYS: PaymentGateway[] = [
     config: {
       baseUrl: 'https://smarchand.sama.money/V1/', // Production URL
       merchantName: 'CLUB 66 GLOBAL',
-      environment: 'production',
-      supportedCurrencies: ['XOF', 'CFA']
+      environment: 'test', // Test mode
+      supportedCurrencies: ['OUV', 'CFA']
     },
     fees: { percentage: 1.2, fixed: 0 },
     icon: '💰',
     description: 'Pay with SAMA Money digital wallet'
+  },
+  {
+    id: 'wave_money',
+    name: 'Wave Money',
+    type: 'mobile_money',
+    isActive: true, // Enable for production
+    config: {
+      baseUrl: 'https://api.wave.com/v1',
+      supportedCurrencies: ['OUV', 'CFA'],
+      merchantId: ''
+    },
+    fees: { percentage: 1.0, fixed: 0 },
+    icon: '🌊',
+    description: 'Pay with Wave mobile money'
+  },
+  {
+    id: 'moov_money',
+    name: 'Moov Money',
+    type: 'mobile_money',
+    isActive: true, // Enable for production
+    config: {
+      baseUrl: 'https://api.moov-africa.com/v1',
+      supportedCurrencies: ['OUV', 'CFA'],
+      merchantId: ''
+    },
+    fees: { percentage: 1.8, fixed: 0 },
+    icon: '📲',
+    description: 'Pay with Moov Money'
+  },
+  {
+    id: 'bank_transfer',
+    name: 'Bank Transfer',
+    type: 'bank_transfer',
+    isActive: true, // Enable for production
+    config: {
+      supportedCurrencies: ['OUV', 'CFA', 'USD', 'EUR']
+    },
+    fees: { percentage: 0.5, fixed: 500 },
+    icon: '🏦',
+    description: 'Direct bank transfer'
+  },
+  {
+    id: 'stripe',
+    name: 'Credit/Debit Card',
+    type: 'card',
+    isActive: true, // Enable Stripe for production
+    config: {
+      baseUrl: 'https://api.stripe.com/v1', // Production URL
+      supportedCurrencies: ['USD', 'EUR', 'OUV'],
+      apiKey: import.meta.env.VITE_STRIPE_PUBLIC_KEY || ''
+    },
+    fees: { percentage: 2.9, fixed: 30 },
+    icon: '💳',
+    description: 'Pay with credit or debit card'
   }
 ];
 

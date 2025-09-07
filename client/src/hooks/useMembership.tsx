@@ -177,6 +177,7 @@ export const useMembership = () => {
     loading,
     error,
     fetchMembership,
+    refetch: fetchMembership, // Alias for fetchMembership for consistency with React Query
     getMembershipAccess,
     requiresMembership,
     getMembershipTierName,

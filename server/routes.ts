@@ -1,13 +1,42 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage.js";
-import projectRoutes from "./routes/projects.js";
-import { insertUserSchema, insertJobSchema, insertJobApplicationSchema, insertProductSchema, insertLoanApplicationSchema, users } from "../shared/schema.js";
+import { hashPassword, comparePasswords } from "./utils/passwordUtils";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { db } from "./db.js";
-import { sendWelcomeEmail } from "./emailService.js";
-import { otpService } from "./otpService.js";
+
+// Internal imports
+import { storage } from "./storage";
+import { db } from "./db";
+import { sendWelcomeEmail } from "./emailService";
+import { otpService } from "./otpService";
+import projectRoutes from "./routes/projects";
+
+// Schema imports
+import { 
+  subscriptions, 
+  paymentAttempts, 
+  insertUserSchema, 
+  insertJobSchema, 
+  insertJobApplicationSchema, 
+  insertProductSchema, 
+  insertLoanApplicationSchema, 
+  users 
+} from "../shared/schema";
+import { orangeMoneyService } from "./services/payment/orangeMoneyService";
+import { v4 as uuidv4 } from 'uuid';
+
+// Schema for Orange Money payment request validation
+const orangeMoneyPaymentSchema = z.object({
+  userId: z.string().min(1, "User ID is required").optional(),
+  amount: z.number().positive("Amount must be positive"),
+  phone: z.string().min(1, "Phone number is required"),
+  email: z.string().email().optional(),
+  name: z.string().optional(),
+  reference: z.string().min(1, "Reference is required"),
+  currency: z.literal("OUV").optional(),
+  subscriptionId: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+});
 
 export function registerRoutes(app: Express): void {
   // Mount project routes
@@ -44,7 +73,51 @@ export function registerRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to fetch discount sectors" });
     }
   });
+// Dans votre fichier de routes
+app.post("/api/subscriptions", async (req, res) => {
+  try {
+    const { userId, plan, status = 'pending' } = req.body;
+    
+    if (!userId || !plan) {
+      return res.status(400).json({ error: "User ID and plan are required" });
+    }
 
+    // Vérifiez que l'utilisateur existe
+    const userExists = await db.select().from(users).where(eq(users.id, userId));
+    if (userExists.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const validPlans = ['monthly', 'quarterly', 'yearly', 'lifetime'];
+    if (!validPlans.includes(plan)) {
+      return res.status(400).json({ error: "Invalid plan type" });
+    }
+
+    const subscriptionData = {
+      id: uuidv4(),
+      userId,
+      plan,
+      status,
+      startDate: new Date(),
+      isRecurring: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    console.log('Creating subscription:', subscriptionData);
+
+    const [subscription] = await db
+      .insert(subscriptions)
+      .values(subscriptionData)
+      .returning();
+
+    console.log('Subscription created successfully:', subscription);
+    res.json(subscription);
+  } catch (error) {
+    console.error('Error creating subscription:', error);
+    res.status(500).json({ error: "Failed to create subscription" });
+  }
+});
   // Featured discounts endpoint - now uses actual featured merchants from backend
   app.get("/api/discounts/featured", async (req, res) => {
     try {
@@ -660,14 +733,14 @@ export function registerRoutes(app: Express): void {
         ...userDataRaw,
         isMerchant: is_merchant || false,
         merchantApprovalStatus: is_merchant ? 'pending' : 'approved'
-      });
-      
+      }) as { email: string; [key: string]: any }; // Add type assertion
+  
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
-      
+  
       // Handle referral code if provided
       let referrerId = null;
       if (referral_code) {
@@ -677,12 +750,18 @@ export function registerRoutes(app: Express): void {
           userData.referredBy = referrerId;
         }
       }
+  
+      // Hacher le mot de passe avant de créer l'utilisateur
+      const hashedPassword = await hashPassword(userData.password);
       
-      const user = await storage.createUser(userData);
-      
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+  
       // Generate referral code for new user
       await storage.generateReferralCode(user.id);
-      
+  
       // Create referral record if referred by someone
       let referralRecord = null;
       if (referrerId) {
@@ -693,30 +772,25 @@ export function registerRoutes(app: Express): void {
           referralType: is_merchant ? 'merchant' : 'member',
           status: 'active'
         });
-
+  
         // Process affiliate reward (1000 CFs OR 10% of registration fee)
-        // For now, defaulting to credit points since we don't have registration fees implemented
         try {
           await storage.processReferralReward(referralRecord.id, 0); // 0 = credit points reward
           console.log(`✅ Affiliate reward processed for referrer ${referrerId}`);
         } catch (rewardError) {
           console.error(`Failed to process affiliate reward:`, rewardError);
-          // Don't fail registration if reward processing fails
         }
       }
-      
-      // Send welcome email if user has an email address
-      if (user.email && user.email.includes('@')) {
-        try {
-          await sendWelcomeEmail(user.email, user.fullName || '');
-          console.log(`📧 Welcome email sent to ${user.email}`);
-        } catch (emailError) {
-          console.warn(`Failed to send welcome email to ${user.email}:`, emailError);
-          // Don't fail registration if email sending fails
+  
+      // Return user data without sending welcome email
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          paymentRequired: true
         }
-      }
-      
-      res.json({ user: { id: user.id, email: user.email, fullName: user.fullName } });
+      });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : "Registration failed" });
     }
@@ -741,8 +815,11 @@ export function registerRoutes(app: Express): void {
       
       console.log('User found, checking password...');
       
-      if (user.password !== password) {
-        console.log('Password mismatch for:', email);
+      // Vérifier le mot de passe haché
+      const isPasswordValid = await comparePasswords(password, user.password);
+      
+      if (!isPasswordValid) {
+        console.log('Invalid password for:', email);
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
@@ -1317,118 +1394,79 @@ export function registerRoutes(app: Express): void {
       </html>
     `);
   });
-
+  
   // Payment gateway endpoints
   app.post("/api/payments/initiate-orange-money", async (req, res) => {
     try {
-      const { amount, currency, phone, email, name, reference } = req.body;
+      console.log('Received payment request:', req.body);
       
-      // Production Orange Money configuration with real credentials
-      const clientId = '9wEq2T01mDG1guXINVTKsc3jxFUOyd3A';
-      const clientSecret = '9bIBLY9vEZxFBW7wzDYSxBoiN3UFGLGRAUCSOoDeyWGw';
-      const merchantKey = 'cb6d6c61';
+      // Validate request body
+      const validatedData = orangeMoneyPaymentSchema.parse(req.body);
+
+      // Use a default userId if not provided
+      const userId = validatedData.userId || `temp_${Date.now()}`;
       
-      // Orange Money API configuration - PRODUCTION MODE
-      const orangeConfig = {
-        clientId,
-        clientSecret,
-        merchantKey,
-        merchantLogin: 'MerchantWP00100',
-        merchantAccountNumber: '7701900100',
-        merchantCode: 'cb6d6c61',
-        merchantName: 'ELVERRA GLOBAL',
-        // Production Orange Money API endpoints (Official documentation)
-        baseUrl: 'https://api.orange.com/orange-money-webpay/cm/v1', // Cameroon-specific endpoint
-        authUrl: 'https://api.orange.com/oauth/v3/token', // OAuth v3 endpoint
-        authHeader: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+      // Prepare payment parameters
+      const paymentParams = {
+        userId,
+        amount: validatedData.amount,
+        phoneNumber: validatedData.phone,
+        description: validatedData.name
+          ? `Payment for ${validatedData.name} (${validatedData.reference})`
+          : `Membership payment (${validatedData.reference})`,
+        subscriptionId: validatedData.subscriptionId,
+        metadata: {
+          ...validatedData.metadata,
+          email: validatedData.email,
+          name: validatedData.name,
+          reference: validatedData.reference,
+          // Add a flag if this is a temporary user
+          isTemporaryUser: !validatedData.userId,
+        },
       };
 
-      // First, get access token using OAuth 2.0 client credentials flow
-      const tokenResponse = await fetch(orangeConfig.authUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'Authorization': orangeConfig.authHeader
-        },
-        body: 'grant_type=client_credentials&scope=openid'
-      });
+      // Initiate payment using OrangeMoneyService
+      const paymentResponse = await orangeMoneyService.initiatePayment(paymentParams);
 
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error('Failed to get Orange Money token:', tokenResponse.status, errorText);
-        
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to authenticate with Orange Money service',
-          details: errorText
+      // If in demo mode (e.g., due to credential issues), return demo response
+      if (
+        paymentResponse._rawResponse &&
+        paymentResponse._rawResponse.message?.includes("Demo mode")
+      ) {
+        return res.json({
+          success: true,
+          payment_url: `/payment-success?reference=${paymentResponse.orderId}&amount=${paymentResponse.amount}&method=orange_money&mode=demo`,
+          reference: paymentResponse.orderId,
+          mode: "demo",
+          message:
+            "Demo mode: Orange Money credentials need activation. Contact Orange operator for production access.",
+          amount: paymentResponse.amount,
+          currency: "OUV",
         });
       }
 
-      const tokenData = await tokenResponse.json();
-      
-      // Create payment request using Orange Money Web Payment API format
-      const paymentRequest = {
-        merchant_key: orangeConfig.merchantKey,
-        currency: currency,
-        order_id: reference,
-        amount: amount.toString(),
-        return_url: `${req.protocol}://${req.get('host')}/payment-success`,
-        cancel_url: `${req.protocol}://${req.get('host')}/payment-cancel`,
-        notif_url: `${req.protocol}://${req.get('host')}/api/payments/orange-callback`,
-        lang: 'fr',
-        reference: reference,
-        customer_email: email,
-        customer_phone: phone,
-        customer_name: name
-      };
-
-      const paymentResponse = await fetch(`${orangeConfig.baseUrl}/webpayment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokenData.access_token}`,
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(paymentRequest)
-      });
-
-      if (!paymentResponse.ok) {
-        const errorText = await paymentResponse.text();
-        console.error('Failed to create Orange Money payment:', paymentResponse.status, errorText);
-        
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to create Orange Money payment',
-          details: errorText
-        });
-      }
-
-      const paymentData = await paymentResponse.json();
-      
-      // Store payment record in database for tracking
-      try {
-        // For now, we'll skip database storage until the payment tables are set up
-        console.log('Payment initiated:', { reference, amount, currency, gateway: 'orange_money' });
-      } catch (dbError) {
-        console.warn('Failed to store payment record:', dbError);
-      }
-      
       res.json({
         success: true,
-        payment_url: paymentData.payment_url,
-        reference: paymentData.payment_token || reference,
-        amount,
-        status: 'initiated',
-        transactionId: paymentData.payment_token
+        payment_url: paymentResponse.paymentUrl,
+        reference: paymentResponse.orderId,
+        amount: paymentResponse.amount,
+        status: paymentResponse.status,
+        transactionId: paymentResponse._rawResponse?.pay_token || paymentResponse.orderId,
       });
-      
     } catch (error) {
-      console.error('Orange Money payment initiation error:', error);
+      console.error("Orange Money payment initiation error:", error);
+      let errorMessage = "Orange Money payment service temporarily unavailable";
+      let details = error instanceof Error ? error.message : "Unknown error";
+
+      if (error instanceof z.ZodError) {
+        errorMessage = "Invalid request data";
+        details = error.errors.map((e) => e.message).join(", ");
+      }
+
       res.status(500).json({
         success: false,
-        error: 'Orange Money payment service temporarily unavailable',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage,
+        details,
       });
     }
   });
@@ -1621,26 +1659,38 @@ export function registerRoutes(app: Express): void {
     `;
     res.send(html);
   });
-
   app.post("/api/payments/verify", async (req, res) => {
     try {
-      const { reference } = req.body;
-      
-      // This is where you would verify the payment with Orange Money API
-      // For now, we'll simulate successful verification
-      const verificationData = {
+      const { paymentId } = req.body; // Use paymentId instead of reference for clarity
+  
+      if (!paymentId) {
+        return res.status(400).json({ success: false, error: "Payment ID is required" });
+      }
+  
+      // Query payment_attempts table
+      const [paymentAttempt] = await db
+        .select()
+        .from(paymentAttempts)
+        .where(eq(paymentAttempts.id, paymentId))
+        .limit(1);
+  
+      if (!paymentAttempt) {
+        return res.status(404).json({ success: false, error: "Payment not found" });
+      }
+  
+      res.json({
         success: true,
-        status: 'completed',
-        reference,
-        verified: true
-      };
-      
-      res.json(verificationData);
+        status: paymentAttempt.status,
+        reference: paymentAttempt.transactionId, // Changed from paymentReference to transactionId
+        paymentId: paymentAttempt.id,
+        verified: paymentAttempt.status === "completed",
+      });
     } catch (error) {
-      console.error('Payment verification error:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to verify payment' 
+      console.error("Payment verification error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to verify payment",
+        details: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
@@ -1795,20 +1845,159 @@ export function registerRoutes(app: Express): void {
   // Payment callback endpoints
   app.post("/api/payments/orange-callback", async (req, res) => {
     try {
-      console.log('Orange Money callback received:', req.body);
-      // Process Orange Money callback and update payment status
-      // TODO: Verify payment signature and update database
-      res.json({ success: true, message: 'Callback processed' });
+      console.log("Orange Money callback received:", req.body);
+      const { pay_token, status, order_id } = req.body; // Use pay_token and order_id as per logs
+  
+      if (!pay_token || !order_id) {
+        return res.status(400).json({ success: false, error: "Pay token and order ID are required" });
+      }
+  
+      // Find payment attempt by paymentReference (order_id) or externalTransactionId (pay_token)
+      const [existingPayment] = await db
+        .select()
+        .from(paymentAttempts)
+        .where(eq(paymentAttempts.transactionId, order_id))
+        .limit(1);
+  
+      if (!existingPayment) {
+        console.warn(`Payment attempt not found for order_id: ${order_id}, pay_token: ${pay_token}`);
+        return res.status(404).json({ success: false, error: "Payment not found" });
+      }
+  
+      // Map Orange Money status to internal status
+      const newStatus = status.toLowerCase() === "success" ? "completed" : status.toLowerCase();
+  
+      // Update payment attempt
+      const [payment] = await db
+        .update(paymentAttempts)
+        .set({
+          status: newStatus,
+          transactionId: pay_token,
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentAttempts.id, existingPayment.id))
+        .returning();
+  
+      if (!payment) {
+        console.warn(`Failed to update payment attempt: ${existingPayment.id}`);
+        return res.status(500).json({ success: false, error: "Failed to update payment" });
+      }
+  
+      // Update subscription if payment is successful
+      if (newStatus === "completed") {
+        const metadata = existingPayment.metadata as Record<string, any> | null;
+        const subscriptionId = metadata?.subscriptionId;
+        const userId = metadata?.userId || existingPayment.userId;
+  
+        if (subscriptionId && typeof subscriptionId === "string") {
+          try {
+            await db
+              .update(subscriptions)
+              .set({
+                status: "active",
+                updatedAt: new Date(),
+              })
+              .where(eq(subscriptions.id, subscriptionId));
+            console.log(`Subscription ${subscriptionId} updated to active`);
+          } catch (updateError) {
+            console.error("Error updating subscription status:", updateError);
+          }
+        }
+  
+        // Send welcome email
+        if (userId) {
+          const user = await storage.getUser(userId);
+          if (user?.email && user.email.includes("@")) {
+            try {
+              await sendWelcomeEmail(user.email, user.fullName || "");
+              console.log(`📧 Welcome email sent to ${user.email}`);
+            } catch (emailError) {
+              console.warn(`Failed to send welcome email to ${user.email}:`, emailError);
+            }
+          }
+        }
+  
+        // Redirect to success page
+        res.redirect(`/payment-success?reference=${order_id}&amount=${existingPayment.amount}&method=orange_money`);
+      } else {
+        res.redirect(`/payment-cancel?reference=${order_id}`);
+      }
     } catch (error) {
-      console.error('Orange callback error:', error);
-      res.status(500).json({ error: 'Callback processing failed' });
+      console.error("Orange callback error:", error);
+      res.status(500).json({ error: "Callback processing failed" });
     }
   });
 
   app.post("/api/payments/sama-callback", async (req, res) => {
     try {
       console.log('SAMA Money callback received:', req.body);
-      // Process SAMA Money callback and update payment status
+      const { reference, status, transaction_id: transactionId } = req.body;
+  
+      if (!reference) {
+        return res.status(400).json({ success: false, error: 'Reference is required' });
+      }
+  
+      // Retrieve the payment attempt
+      const [existingPayment] = await db
+        .select()
+        .from(paymentAttempts)
+        .where(eq(paymentAttempts.id, reference));
+  
+      if (!existingPayment) {
+        console.warn(`Payment attempt not found: ${reference}`);
+        return res.status(404).json({ success: false, error: 'Payment not found' });
+      }
+  
+      // Update payment status
+      const [payment] = await db
+        .update(paymentAttempts)
+        .set({
+          status: status === 'SUCCESS' ? 'completed' : 'failed',
+          transactionId: transactionId || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentAttempts.id, reference))
+        .returning();
+  
+      if (!payment) {
+        console.warn(`Failed to update payment attempt: ${reference}`);
+        return res.status(500).json({ success: false, error: 'Failed to update payment' });
+      }
+  
+      // If payment is successful, update subscription and send welcome email
+      if (status === 'SUCCESS') {
+        const metadata = existingPayment.metadata as Record<string, any> | null;
+        const subscriptionId = metadata?.subscriptionId;
+        const userId = metadata?.userId || existingPayment.userId;
+  
+        if (subscriptionId && typeof subscriptionId === 'string') {
+          try {
+            await db
+              .update(subscriptions)
+              .set({
+                status: 'active',
+                updatedAt: new Date(),
+              })
+              .where(eq(subscriptions.id, subscriptionId));
+          } catch (updateError) {
+            console.error('Error updating subscription status:', updateError);
+          }
+        }
+  
+        // Send welcome email
+        if (userId) {
+          const user = await storage.getUser(userId);
+          if (user?.email && user.email.includes('@')) {
+            try {
+              await sendWelcomeEmail(user.email, user.fullName || '');
+              console.log(`📧 Welcome email sent to ${user.email}`);
+            } catch (emailError) {
+              console.warn(`Failed to send welcome email to ${user.email}:`, emailError);
+            }
+          }
+        }
+      }
+  
       res.json({ success: true, message: 'Callback processed' });
     } catch (error) {
       console.error('SAMA callback error:', error);
@@ -1820,7 +2009,7 @@ export function registerRoutes(app: Express): void {
   app.get("/api/files/logo", (req, res) => {
     // Return the new logo URL
     res.json({
-      url: "/lovable-uploads/elverra-global-logo-new.jpeg",
+      url: "/lovable-uploads/logo.png",
       name: "Elverra Global Logo",
       success: true
     });
@@ -2032,13 +2221,19 @@ export function registerRoutes(app: Express): void {
         status: 'completed'
       });
 
+      // Get user to get referral code
+      const user = await storage.getUserById(userId);
+      
       // Process referral commission if applicable
-      await storage.processReferralCommission({
-        userId,
-        amount,
-        paymentType,
-        paymentReference
-      });
+      if (user?.referralCode) {
+        await storage.processReferralCommission({
+          userId,
+          amount,
+          paymentType,
+          paymentReference,
+          referralCode: user.referralCode
+        });
+      }
 
       res.json({ success: true, paymentId: membershipPayment.id });
     } catch (error) {

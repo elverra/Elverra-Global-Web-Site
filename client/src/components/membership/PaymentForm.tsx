@@ -128,7 +128,7 @@ const PaymentForm = ({ selectedPlan, onPaymentComplete }: PaymentFormProps) => {
       // In a real implementation, you would verify the payment with the gateway
       // For now, we'll proceed with membership creation
       
-      toast.success('Payment processed successfully! Creating your membership...');
+      toast.success('Payment processed successfully! Creating your subscription...');
       onPaymentComplete();
     } catch (error) {
       toast.error('Payment verification failed. Please contact support.');

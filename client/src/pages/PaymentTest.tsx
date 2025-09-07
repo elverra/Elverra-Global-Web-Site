@@ -144,7 +144,7 @@ const PaymentTest = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CFA">CFA</SelectItem>
-                    <SelectItem value="XOF">XOF</SelectItem>
+                    <SelectItem value="OUV">OUV</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

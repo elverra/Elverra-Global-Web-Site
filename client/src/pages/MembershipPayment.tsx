@@ -3,7 +3,7 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/layout/Layout';
 import MembershipTiers from '@/components/membership/MembershipTiers';
-import UnifiedPaymentWindow from '@/components/payment/UnifiedPaymentWindow'; // ✅ Added import
+import UnifiedPaymentWindow from '@/components/payment/UnifiedPaymentWindow';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,66 +13,55 @@ const MembershipPayment = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const planFromUrl = searchParams.get('plan');
+  const paymentStatus = searchParams.get('payment');
   const { user } = useAuth();
-  const { membership, loading: membershipLoading } = useMembership();
+  const { membership, loading: membershipLoading, refetch: refetchMembership } = useMembership();
   const [selectedTier, setSelectedTier] = useState<string>('');
   const [showPayment, setShowPayment] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
 
   const plans = {
-    essential: { name: 'Essential', price: '10,000', monthly: '1,000' },
-    premium: { name: 'Premium', price: '10,000', monthly: '2,000' },
-    elite: { name: 'Elite', price: '10,000', monthly: '5,000' },
+    essential: { name: 'Essential', price: '11,000', monthly: '1,000' },
+    premium: { name: 'Premium', price: '12,000', monthly: '2,000' },
+    elite: { name: 'Elite', price: '15,000', monthly: '5,000' },
   };
 
-  // If user already has active membership, redirect to dashboard
   useEffect(() => {
     if (user && !membershipLoading && membership?.is_active) {
       navigate('/dashboard');
     }
   }, [user, membership, membershipLoading, navigate]);
 
-  // Auto-select plan from URL if provided
+  useEffect(() => {
+    if (paymentStatus === 'success') {
+      setPaymentComplete(true);
+      toast.success('Payment successful! Your membership is being activated.');
+      refetchMembership();
+    } else if (paymentStatus === 'cancelled') {
+      toast.error('Payment was cancelled. Please try again.');
+    }
+
+    const isNewRegistration = searchParams.get('new') === 'true';
+    if (isNewRegistration) {
+      toast.success('Please complete your membership payment to activate your account');
+    }
+  }, [searchParams, paymentStatus, refetchMembership]);
+
   useEffect(() => {
     if (planFromUrl && plans[planFromUrl as keyof typeof plans]) {
       setSelectedTier(planFromUrl);
       setShowPayment(true);
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('new');
+      navigate({ search: newSearchParams.toString() }, { replace: true });
     }
-  }, [planFromUrl]);
+  }, [planFromUrl, searchParams, navigate]);
 
   const handleSelectTier = (tier: string) => setSelectedTier(tier);
   const handleProceedToPayment = () => setShowPayment(true);
-
-  const handlePaymentComplete = async () => {
-    if (!user || !selectedTier) {
-      toast.error('Please log in and select a membership tier');
-      navigate('/login');
-      return;
-    }
-    try {
-      const expiryDate = new Date();
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-
-      const response = await fetch('/api/memberships', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.id,
-          tier: selectedTier,
-          physical_card_requested: false,
-          expiry_date: expiryDate.toISOString(),
-          is_active: true
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create membership');
-      }
-      setPaymentComplete(true);
-    } catch (error) {
-      console.error('Error creating membership:', error);
-      toast.error('Payment successful but membership creation failed. Please contact support.');
-    }
+  const handlePaymentComplete = () => {
+    setPaymentComplete(true);
+    refetchMembership();
   };
 
   if (paymentComplete) {
@@ -137,13 +126,10 @@ const MembershipPayment = () => {
 
           {!showPayment ? (
             <div className="space-y-8">
-              <MembershipTiers 
-                selectedTier={selectedTier} 
-                onSelectTier={handleSelectTier}
-              />
+              <MembershipTiers selectedTier={selectedTier} onSelectTier={handleSelectTier} />
               {selectedTier && (
                 <div className="text-center">
-                  <Button 
+                  <Button
                     onClick={handleProceedToPayment}
                     size="lg"
                     className="bg-club66-purple hover:bg-club66-darkpurple"
@@ -155,10 +141,7 @@ const MembershipPayment = () => {
             </div>
           ) : (
             <div className="flex justify-center">
-              <UnifiedPaymentWindow 
-                plan={selectedTier} 
-                onSuccess={handlePaymentComplete}
-              />
+              <UnifiedPaymentWindow plan={selectedTier} onSuccess={handlePaymentComplete} onClose={() => setShowPayment(false)} />
             </div>
           )}
         </div>
