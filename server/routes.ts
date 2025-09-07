@@ -40,12 +40,12 @@ const orangeMoneyPaymentSchema = z.object({
 
 export function registerRoutes(app: Express): void {
   // Mount project routes
-  app.use('/api/projects', projectRoutes);
+  app.use('/projects', projectRoutes);
   
   // Discount sectors endpoint - now uses admin-managed sectors
-  app.get("/api/discounts/sectors", async (req, res) => {
+  app.get("/discounts/sectors", async (req, res) => {
     try {
-      // Get sectors from admin data (same structure as /api/admin/sectors)
+      // Get sectors from admin data (same structure as admin/sectors)
       const sectors = [
         { id: "1", name: "Food & Drink", description: "Restaurants, cafes, and food delivery", is_active: true },
         { id: "2", name: "Technology", description: "Electronics, gadgets, and tech services", is_active: true },
@@ -74,7 +74,7 @@ export function registerRoutes(app: Express): void {
     }
   });
 // Dans votre fichier de routes
-app.post("/api/subscriptions", async (req, res) => {
+app.post("subscriptions", async (req, res) => {
   try {
     const { userId, plan, status = 'pending' } = req.body;
     
@@ -119,7 +119,7 @@ app.post("/api/subscriptions", async (req, res) => {
   }
 });
   // Featured discounts endpoint - now uses actual featured merchants from backend
-  app.get("/api/discounts/featured", async (req, res) => {
+  app.get("discounts/featured", async (req, res) => {
     try {
       // Get the same merchants data as admin and discounts endpoints
       const merchants = getMerchants();
@@ -315,7 +315,7 @@ app.post("/api/subscriptions", async (req, res) => {
   };
 
   // All discounts endpoint - now generates from admin-managed merchants
-  app.get("/api/discounts", async (req, res) => {
+  app.get("discounts", async (req, res) => {
     try {
       const { sector, location, search } = req.query;
       
@@ -379,7 +379,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Admin sectors endpoint (matches frontend expectations)
-  app.get("/api/admin/sectors", async (req, res) => {
+  app.get("admin/sectors", async (req, res) => {
     try {
       // Return sectors with correct property names to match frontend expectations
       const sectors = [
@@ -400,7 +400,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/admin/sectors", async (req, res) => {
+  app.post("admin/sectors", async (req, res) => {
     try {
       const { name, description, is_active } = req.body;
       
@@ -422,7 +422,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/admin/sectors/:id", async (req, res) => {
+  app.put("admin/sectors/:id", async (req, res) => {
     try {
       const { id } = req.params;
       const { name, description, is_active } = req.body;
@@ -441,7 +441,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.delete("/api/admin/sectors/:id", async (req, res) => {
+  app.delete("admin/sectors/:id", async (req, res) => {
     try {
       // For demo purposes, always succeed
       res.json({ success: true, message: "Sector deleted successfully" });
@@ -450,7 +450,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/admin/discounts", async (req, res) => {
+  app.get("admin/discounts", async (req, res) => {
     try {
       // Return the same discount data but with admin fields
       const discounts = [
@@ -506,7 +506,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/admin/discounts", async (req, res) => {
+  app.post("admin/discounts", async (req, res) => {
     try {
       const {
         title,
@@ -557,7 +557,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/admin/discounts/:id", async (req, res) => {
+  app.put("admin/discounts/:id", async (req, res) => {
     try {
       const { id } = req.params;
       const updateData = req.body;
@@ -575,7 +575,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.delete("/api/admin/discounts/:id", async (req, res) => {
+  app.delete("admin/discounts/:id", async (req, res) => {
     try {
       // For demo purposes, always succeed
       res.json({ success: true, message: "Discount deleted successfully" });
@@ -585,7 +585,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Admin merchants endpoint for discount management
-  app.get("/api/admin/merchants", async (req, res) => {
+  app.get("admin/merchants", async (req, res) => {
     try {
       // Use centralized data and convert to admin format
       const merchants = getMerchants().map(merchant => ({
@@ -612,7 +612,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Create merchant endpoint
-  app.post("/api/admin/merchants", async (req, res) => {
+  app.post("admin/merchants", async (req, res) => {
     try {
       const {
         name,
@@ -678,7 +678,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Update merchant endpoint  
-  app.put("/api/admin/merchants/:id", async (req, res) => {
+  app.put("admin/merchants/:id", async (req, res) => {
     try {
       const { id } = req.params;
       const {
@@ -716,7 +716,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Delete merchant endpoint
-  app.delete("/api/admin/merchants/:id", async (req, res) => {
+  app.delete("admin/merchants/:id", async (req, res) => {
     try {
       // For demo purposes, always succeed
       res.json({ success: true, message: "Merchant deleted successfully" });
@@ -726,7 +726,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
   
   // Authentication routes
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("auth/register", async (req, res) => {
     try {
       const { referral_code, is_merchant, ...userDataRaw } = req.body;
       const userData = insertUserSchema.parse({
@@ -796,7 +796,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
       
@@ -833,7 +833,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Phone OTP authentication routes
-  app.post("/api/auth/send-otp", async (req, res) => {
+  app.post("auth/send-otp", async (req, res) => {
     try {
       const { phone } = req.body;
       
@@ -853,7 +853,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/auth/verify-otp", async (req, res) => {
+  app.post("auth/verify-otp", async (req, res) => {
     try {
       const { phone, otp } = req.body;
       
@@ -886,7 +886,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // User management routes
-  app.get("/api/users/:id", async (req, res) => {
+  app.get("users/:id", async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) {
@@ -902,7 +902,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/users/:id/roles", async (req, res) => {
+  app.get("users/:id/roles", async (req, res) => {
     try {
       const roles = await storage.getUserRoles(req.params.id);
       res.json(roles);
@@ -911,7 +911,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/users/:id", async (req, res) => {
+  app.put("users/:id", async (req, res) => {
     try {
       const user = await storage.updateUser(req.params.id, req.body);
       if (!user) {
@@ -924,7 +924,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Admin operations (replacing Supabase Edge Function)
-  app.post("/api/admin/operations", async (req, res) => {
+  app.post("admin/operations", async (req, res) => {
     try {
       const { operation, email, password } = req.body;
 
@@ -955,7 +955,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Database export endpoint (admin only)
-  app.post("/api/export-database", async (req, res) => {
+  app.post("export-database", async (req, res) => {
     try {
       const { userId, userEmail } = req.body;
       
@@ -995,7 +995,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Job routes
-  app.get("/api/jobs", async (req, res) => {
+  app.get("jobs", async (req, res) => {
     try {
       const jobs = await storage.getJobs();
       res.json(jobs);
@@ -1004,7 +1004,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/jobs/:id", async (req, res) => {
+  app.get("jobs/:id", async (req, res) => {
     try {
       const job = await storage.getJob(req.params.id);
       if (!job) {
@@ -1016,7 +1016,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/jobs", async (req, res) => {
+  app.post("jobs", async (req, res) => {
     try {
       const jobData = insertJobSchema.parse(req.body);
       const job = await storage.createJob(jobData);
@@ -1027,7 +1027,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Job applications
-  app.get("/api/job-applications", async (req, res) => {
+  app.get("job-applications", async (req, res) => {
     try {
       const jobId = req.query.jobId as string;
       const applications = await storage.getJobApplications(jobId);
@@ -1037,7 +1037,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/job-applications", async (req, res) => {
+  app.post("job-applications", async (req, res) => {
     try {
       const applicationData = insertJobApplicationSchema.parse(req.body);
       const application = await storage.createJobApplication(applicationData);
@@ -1047,7 +1047,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/job-applications/:id/status", async (req, res) => {
+  app.put("job-applications/:id/status", async (req, res) => {
     try {
       const { status } = req.body;
       await storage.updateJobApplicationStatus(req.params.id, status);
@@ -1058,7 +1058,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Competition routes
-  app.get("/api/competitions", async (req, res) => {
+  app.get("competitions", async (req, res) => {
     try {
       const competitions = await storage.getCompetitions();
       res.json(competitions);
@@ -1067,7 +1067,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/competitions/:id", async (req, res) => {
+  app.get("competitions/:id", async (req, res) => {
     try {
       const competition = await storage.getCompetition(req.params.id);
       if (!competition) {
@@ -1079,7 +1079,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/competitions", async (req, res) => {
+  app.post("competitions", async (req, res) => {
     try {
       const competition = await storage.createCompetition(req.body);
       res.json(competition);
@@ -1089,7 +1089,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Product routes
-  app.get("/api/products", async (req, res) => {
+  app.get("products", async (req, res) => {
     try {
       const products = await storage.getProducts();
       res.json(products);
@@ -1098,7 +1098,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/products", async (req, res) => {
+  app.post("products", async (req, res) => {
     try {
       const productData = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(productData);
@@ -1108,7 +1108,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/products/:id", async (req, res) => {
+  app.put("products/:id", async (req, res) => {
     try {
       const product = await storage.updateProduct(req.params.id, req.body);
       if (!product) {
@@ -1121,7 +1121,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Product reviews routes
-  app.post("/api/products/reviews", async (req, res) => {
+  app.post("products/reviews", async (req, res) => {
     try {
       const { product_id, rating, comment } = req.body;
       
@@ -1152,7 +1152,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/products/:id/reviews", async (req, res) => {
+  app.get("products/:id/reviews", async (req, res) => {
     try {
       const reviews = await storage.getProductReviews(req.params.id);
       res.json(reviews);
@@ -1162,7 +1162,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Loan application routes
-  app.get("/api/loan-applications", async (req, res) => {
+  app.get("loan-applications", async (req, res) => {
     try {
       const userId = req.query.userId as string;
       const loans = await storage.getLoanApplications(userId);
@@ -1172,7 +1172,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/loan-applications", async (req, res) => {
+  app.post("loan-applications", async (req, res) => {
     try {
       const loanData = insertLoanApplicationSchema.parse(req.body);
       const loan = await storage.createLoanApplication(loanData);
@@ -1182,7 +1182,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/loan-applications/:id", async (req, res) => {
+  app.put("loan-applications/:id", async (req, res) => {
     try {
       const loan = await storage.updateLoanApplication(req.params.id, req.body);
       if (!loan) {
@@ -1195,7 +1195,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // CMS routes
-  app.get("/api/cms-pages", async (req, res) => {
+  app.get("cms-pages", async (req, res) => {
     try {
       const pages = await storage.getCmsPages();
       res.json(pages);
@@ -1204,7 +1204,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/cms-pages/:slug", async (req, res) => {
+  app.get("cms-pages/:slug", async (req, res) => {
     try {
       const page = await storage.getCmsPage(req.params.slug);
       if (!page) {
@@ -1216,7 +1216,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/cms-pages", async (req, res) => {
+  app.post("cms-pages", async (req, res) => {
     try {
       const page = await storage.createCmsPage(req.body);
       res.json(page);
@@ -1225,7 +1225,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/cms-pages/:id", async (req, res) => {
+  app.put("cms-pages/:id", async (req, res) => {
     try {
       const page = await storage.updateCmsPage(req.params.id, req.body);
       if (!page) {
@@ -1238,7 +1238,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Increment view count for CMS pages (non-critical feature)
-  app.post("/api/cms-pages/:id/views", async (req, res) => {
+  app.post("cms-pages/:id/views", async (req, res) => {
     try {
       // This is just a placeholder for view count tracking
       // In a real implementation, this would update the page view count
@@ -1249,7 +1249,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Agent/affiliate routes
-  app.get("/api/agents/:userId", async (req, res) => {
+  app.get("agents/:userId", async (req, res) => {
     try {
       const agent = await storage.getAgent(req.params.userId);
       if (!agent) {
@@ -1261,7 +1261,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/agents", async (req, res) => {
+  app.post("agents", async (req, res) => {
     try {
       const agent = await storage.createAgent(req.body);
       res.json(agent);
@@ -1270,7 +1270,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/agents/:id/commissions", async (req, res) => {
+  app.put("agents/:id/commissions", async (req, res) => {
     try {
       await storage.updateAgentCommissions(req.params.id, req.body);
       res.json({ success: true });
@@ -1280,7 +1280,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Affiliate rewards endpoints
-  app.get("/api/affiliate-rewards/:referrerId", async (req, res) => {
+  app.get("affiliate-rewards/:referrerId", async (req, res) => {
     try {
       const rewards = await storage.getAffiliateRewardsByReferrer(req.params.referrerId);
       res.json(rewards);
@@ -1290,7 +1290,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/affiliate-dashboard/:userId", async (req, res) => {
+  app.get("affiliate-dashboard/:userId", async (req, res) => {
     try {
       const userId = req.params.userId;
       
@@ -1396,7 +1396,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
   
   // Payment gateway endpoints
-  app.post("/api/payments/initiate-orange-money", async (req, res) => {
+  app.post("payments/initiate-orange-money", async (req, res) => {
     try {
       console.log('Received payment request:', req.body);
       
@@ -1472,7 +1472,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Test SAMA Money connection
-  app.get('/api/test/sama-money', async (req, res) => {
+  app.get('test/sama-money', async (req, res) => {
     try {
       // Check if SAMA Money credentials are configured
       const samaConfig = {
@@ -1555,7 +1555,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Create admin user endpoint
-  app.post('/api/admin/create-admin', async (req, res) => {
+  app.post('admin/create-admin', async (req, res) => {
     try {
       const { email, password, fullName } = req.body;
       
@@ -1659,7 +1659,7 @@ app.post("/api/subscriptions", async (req, res) => {
     `;
     res.send(html);
   });
-  app.post("/api/payments/verify", async (req, res) => {
+  app.post("payments/verify", async (req, res) => {
     try {
       const { paymentId } = req.body; // Use paymentId instead of reference for clarity
   
@@ -1696,7 +1696,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // SAMA Money payment gateway endpoint
-  app.post("/api/payments/initiate-sama-money", async (req, res) => {
+  app.post("payments/initiate-sama-money", async (req, res) => {
     try {
       const { amount, currency, phone, email, name, reference } = req.body;
       
@@ -1709,7 +1709,7 @@ app.post("/api/subscriptions", async (req, res) => {
       // SAMA Money API configuration - Try multiple possible endpoints
       const samaConfig = {
         baseUrl: 'https://api.sama.money/v1', // Try standard API endpoint
-        fallbackUrl: 'https://merchant.sama.money/api/v1', // Alternative endpoint
+        fallbackUrl: 'https://merchant.sama.moneyv1', // Alternative endpoint
         merchantCode,
         publicKey,
         transactionKey,
@@ -1726,7 +1726,7 @@ app.post("/api/subscriptions", async (req, res) => {
         customer_name: name,
         customer_email: email,
         transaction_reference: reference,
-        callback_url: `${req.protocol}://${req.get('host')}/api/payments/sama-callback`,
+        callback_url: `${req.protocol}://${req.get('host')}payments/sama-callback`,
         return_url: `${req.protocol}://${req.get('host')}/payment-success`,
         public_key: samaConfig.publicKey,
         timestamp: new Date().toISOString()
@@ -1843,7 +1843,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Payment callback endpoints
-  app.post("/api/payments/orange-callback", async (req, res) => {
+  app.post("payments/orange-callback", async (req, res) => {
     try {
       console.log("Orange Money callback received:", req.body);
       const { pay_token, status, order_id } = req.body; // Use pay_token and order_id as per logs
@@ -1928,7 +1928,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/payments/sama-callback", async (req, res) => {
+  app.post("payments/sama-callback", async (req, res) => {
     try {
       console.log('SAMA Money callback received:', req.body);
       const { reference, status, transaction_id: transactionId } = req.body;
@@ -2006,7 +2006,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Files/assets route
-  app.get("/api/files/logo", (req, res) => {
+  app.get("files/logo", (req, res) => {
     // Return the new logo URL
     res.json({
       url: "/lovable-uploads/logo.png",
@@ -2016,7 +2016,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Profile routes
-  app.get("/api/users/:id/profile", async (req, res) => {
+  app.get("users/:id/profile", async (req, res) => {
     try {
       const profile = await storage.getUserProfile(req.params.id);
       if (!profile) {
@@ -2028,7 +2028,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.put("/api/users/:id/profile", async (req, res) => {
+  app.put("users/:id/profile", async (req, res) => {
     try {
       const profile = await storage.updateUserProfile(req.params.id, req.body);
       res.json(profile);
@@ -2038,7 +2038,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // User applications
-  app.get("/api/users/:id/applications", async (req, res) => {
+  app.get("users/:id/applications", async (req, res) => {
     try {
       const applications = await storage.getUserApplications(req.params.id);
       res.json(applications || []);
@@ -2048,7 +2048,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // User bookmarks
-  app.get("/api/users/:id/bookmarks", async (req, res) => {
+  app.get("users/:id/bookmarks", async (req, res) => {
     try {
       const bookmarks = await storage.getUserBookmarks(req.params.id);
       res.json(bookmarks || []);
@@ -2058,7 +2058,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Product categories endpoint
-  app.get("/api/products/categories", async (req, res) => {
+  app.get("products/categories", async (req, res) => {
     try {
       const categories = [
         { id: '1', name: 'Electronics', description: 'Electronic devices and gadgets' },
@@ -2079,7 +2079,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Membership routes
-  app.get("/api/memberships/:userId", async (req, res) => {
+  app.get("memberships/:userId", async (req, res) => {
     try {
       // Check if user has premium membership in database
       const user = await storage.getUser(req.params.userId);
@@ -2104,7 +2104,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/memberships", async (req, res) => {
+  app.post("memberships", async (req, res) => {
     try {
       const { user_id, tier, paymentReference } = req.body;
       
@@ -2131,7 +2131,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Agents route (replacing Supabase Edge Function)
-  app.get("/api/agents/:userId", async (req, res) => {
+  app.get("agents/:userId", async (req, res) => {
     try {
       const agent = await storage.getAgent(req.params.userId);
       if (!agent) {
@@ -2144,7 +2144,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Affiliate and Referral Routes
-  app.get("/api/affiliate/referrals/:userId", async (req, res) => {
+  app.get("affiliate/referrals/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
       const referrals = await storage.getReferralsByReferrer(userId);
@@ -2154,7 +2154,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/affiliate/commissions/:userId", async (req, res) => {
+  app.get("affiliate/commissions/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
       const commissions = await storage.getCommissionsByReferrer(userId);
@@ -2164,7 +2164,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/affiliate/generate-code/:userId", async (req, res) => {
+  app.post("affiliate/generate-code/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
       const referralCode = await storage.generateReferralCode(userId);
@@ -2175,7 +2175,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Merchant Approval Routes
-  app.get("/api/admin/merchant-applications", async (req, res) => {
+  app.get("admin/merchant-applications", async (req, res) => {
     try {
       const applications = await storage.getMerchantApplications();
       res.json(applications);
@@ -2184,7 +2184,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/admin/approve-merchant/:userId", async (req, res) => {
+  app.post("admin/approve-merchant/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
       const { approvedBy } = req.body;
@@ -2195,7 +2195,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post("/api/admin/reject-merchant/:userId", async (req, res) => {
+  app.post("admin/reject-merchant/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
       const { reason } = req.body;
@@ -2207,7 +2207,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Membership Payment Processing with Commission Tracking
-  app.post("/api/membership-payment", async (req, res) => {
+  app.post("membership-payment", async (req, res) => {
     try {
       const { userId, amount, tier, paymentReference, paymentType = 'initial' } = req.body;
       
@@ -2242,7 +2242,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Object storage upload endpoint for merchant logos
-  app.post("/api/objects/upload", async (req, res) => {
+  app.post("objects/upload", async (req, res) => {
     try {
       const { ObjectStorageService } = await import("./objectStorage");
       const objectStorageService = new ObjectStorageService();
@@ -2255,7 +2255,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Update merchant endpoint (handles logo uploads and rating updates)
-  app.put("/api/admin/merchants/:id", async (req, res) => {
+  app.put("admin/merchants/:id", async (req, res) => {
     try {
       const { id } = req.params;
       const updateData = req.body;
@@ -2309,7 +2309,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Admin Payment Gateway Management API
-  app.post('/api/admin/payment-gateways', async (req, res) => {
+  app.post('admin/payment-gateways', async (req, res) => {
     try {
       const { name, type, description } = req.body;
       
@@ -2348,7 +2348,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.delete('/api/admin/payment-gateways/:id', async (req, res) => {
+  app.delete('admin/payment-gateways/:id', async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -2372,7 +2372,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.post('/api/admin/payment-gateways/:id/test', async (req, res) => {
+  app.post('admin/payment-gateways/:id/test', async (req, res) => {
     try {
       const { id } = req.params;
       const { amount, currency } = req.body;
@@ -2437,7 +2437,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Gateway configuration management
-  app.put('/api/admin/payment-gateways/:id/config', async (req, res) => {
+  app.put('admin/payment-gateways/:id/config', async (req, res) => {
     try {
       const { id } = req.params;
       const { config } = req.body;
@@ -2459,7 +2459,7 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   // Gateway logs endpoint
-  app.get('/api/admin/payment-gateways/:id/logs', async (req, res) => {
+  app.get('admin/payment-gateways/:id/logs', async (req, res) => {
     try {
       const { id } = req.params;
       const { limit = 50, offset = 0 } = req.query;
