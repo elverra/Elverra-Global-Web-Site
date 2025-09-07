@@ -60,7 +60,7 @@ router.post(
 );
 
 // Callback pour Orange Money (pas d'authentification requise)
-router.post('/orange-callback', paymentController.handleOrangeMoneyCallback);
+router.post('/payments/orange/callback', paymentController.handleOrangeMoneyCallback);
 
 // Webhook (pas d'authentification requise)
 router.post('/webhook', paymentController.handleWebhook);

@@ -1,24 +1,40 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 30
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "server/**/*",
+          "shared/**/*",
+          "api/**/*"
+        ]
+      }
+    },
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.ts"
+      "dest": "/api"
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/public/index.html"
+      "dest": "/client/dist/$1"
     }
   ],
   "env": {
     "NODE_ENV": "production",
     "VERCEL": "1"
   },
+  "buildCommand": "pnpm run vercel-build",
   "installCommand": "pnpm install",
   "outputDirectory": "dist/public"
 }
