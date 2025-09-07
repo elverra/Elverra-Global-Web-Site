@@ -83,19 +83,20 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
-  // Enregistrer les routes existantes
+// Fonction pour démarrer le serveur
+const startServer = () => {
+  // Enregistrer les routes de base
   registerRoutes(app);
   
-  // Enregistrer les routes de paiement
+  // Enregistrer les routes de paiement avec le préfixe /api
   app.use('/api', paymentRoutes);
 
+  // Gestion des erreurs
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     res.status(status).json({ message });
-    throw err;
+    console.error('Error:', err);
   });
 
   // For Vercel, export the app instead of starting a server
@@ -103,49 +104,38 @@ app.use((req, res, next) => {
     // Export for Vercel serverless functions - no Vite/Rollup needed
     module.exports = app;
   } else {
-    // Local development server
-    const portsToTry = [5002, 5003, 5004, 5005];
-    const host = process.env.HOST || "127.0.0.1";
-    
-    const startServer = async (portIndex = 0) => {
+    // Local development server with port fallback - using higher ports to avoid conflicts
+    const portsToTry = [3001, 3002, 5001, 5002, 5003];
+    const host = process.env.HOST || '0.0.0.0';
+  
+    const tryStartServer = (portIndex = 0) => {
       if (portIndex >= portsToTry.length) {
         console.error('All ports are in use. Please free up a port or try again later.');
         process.exit(1);
       }
       
-      const port = process.env.PORT ? Number(process.env.PORT) : portsToTry[portIndex];
-      const server = http.createServer(app);
+      const port = process.env.PORT ? parseInt(process.env.PORT, 10) : portsToTry[portIndex];
       
-      // Setup Vite in development
-      if (app.get("env") === "development") {
-        // Add middleware to handle host header before Vite processes it
-        app.use((req, res, next) => {
-          // Override host header to avoid allowedHosts restriction
-          if (req.headers.host && req.headers.host.includes('.replit.dev')) {
-            req.headers.host = `localhost:${port}`;
-          }
-          next();
-        });
-        await setupVite(app, server);
-      } else {
-        serveStatic(app);
-      }
-      
-      server.on('error', (e: NodeJS.ErrnoException) => {
-        if (e.code === 'EADDRINUSE') {
-          console.log(`Port ${port} is in use, trying next port...`);
-          startServer(portIndex + 1);
-          return;
-        }
-        console.error('Server error:', e);
-        process.exit(1);
+      const server = app.listen(port, host, () => {
+        console.log(`Server is running on http://${host}:${port}`);
+        console.log(`API base URL: http://${host}:${port}/api`);
       });
       
-      server.listen(port, host, () => {
-        console.log(`🚀 Server running on http://${host}:${port}`);
+      server.on('error', (error: NodeJS.ErrnoException) => {
+        if (error.code === 'EADDRINUSE') {
+          console.log(`Port ${port} is already in use, trying next port...`);
+          server.close();
+          tryStartServer(portIndex + 1);
+        } else {
+          console.error('Server error:', error);
+          process.exit(1);
+        }
       });
     };
     
-    startServer();
+    tryStartServer();
   }
-})();
+};
+
+// Démarrer le serveur
+startServer();
