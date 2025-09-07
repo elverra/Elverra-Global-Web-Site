@@ -2,13 +2,30 @@ import dotenv from "dotenv";
 import "dotenv/config";
 import express, { NextFunction, type Request, Response } from "express";
 import http from 'http';
-import { registerRoutes } from "./routes.ts";
-
-import { log, serveStatic, setupVite } from "./vite.js";
-import paymentRoutes from "./routes/paymentRoutes.ts";
+import cors from 'cors';
+import { registerRoutes } from "./routes";
+import { log, serveStatic, setupVite } from "./vite";
+import paymentRoutes from "./routes/paymentRoutes";
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Validate required environment variables
+const requiredEnvVars = ['NODE_ENV', 'FRONTEND_URL', 'API_URL'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  process.exit(1);
+}
+
+// CORS configuration
+const corsOptions = {
+  origin: process.env.FRONTEND_URL,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
 
 // Debug: Log environment variables
 console.log('Environment Variables:', {
@@ -26,6 +43,13 @@ if (process.env.NODE_ENV === "development") {
 }
 
 const app = express();
+
+// Apply CORS with configuration
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
