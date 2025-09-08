@@ -2,21 +2,25 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.ts",
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": { 
+        "distDir": "dist",
+        "env": {
+          "NODE_ENV": "production"
+        }
+      }
+    },
+    {
+      "src": "api/**/*.ts",
       "use": "@vercel/node",
       "config": {
         "includeFiles": [
           "server/**/*",
           "shared/**/*",
-          "api/**/*"
+          "migrations/**/*",
+          "vercel.json"
         ]
-      }
-    },
-    {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
       }
     }
   ],
@@ -35,6 +39,13 @@
     "VERCEL": "1"
   },
   "buildCommand": "pnpm run vercel-build",
-  "installCommand": "pnpm install",
-  "outputDirectory": "dist/public"
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "dist/public",
+  "regions": ["iad1"],
+  "framework": "vite",
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
 }

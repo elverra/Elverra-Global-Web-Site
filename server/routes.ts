@@ -2494,3 +2494,5 @@ app.post("/api/subscriptions", async (req, res) => {
 
   // No need to return server for Vercel serverless
 }
+
+export default { registerRoutes };
