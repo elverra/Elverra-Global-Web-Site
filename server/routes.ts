@@ -4,11 +4,11 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 
 // Internal imports
-import { storage } from "./storage";
-import { db } from "./db";
-import { sendWelcomeEmail } from "./emailService";
-import { otpService } from "./otpService";
-import projectRoutes from "./routes/projects";
+import { storage } from "./storage.js";
+import { db } from "./db.js";
+import { sendWelcomeEmail } from "./emailService.js";
+import { otpService } from "./otpService.js";
+import projectRoutes from "./routes/projects.js";
 
 // Schema imports
 import { 
@@ -20,8 +20,8 @@ import {
   insertProductSchema, 
   insertLoanApplicationSchema, 
   users 
-} from "../shared/schema";
-import { orangeMoneyService } from "./services/payment/orangeMoneyService";
+} from "../shared/schema.js";
+import { orangeMoneyService } from "./services/payment/orangeMoneyService.js";
 import { v4 as uuidv4 } from 'uuid';
 import { comparePasswords, hashPassword } from "./utils/passwordUtils.js";
 
