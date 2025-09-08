@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from "@/components/layout/Layout";
 import PremiumBanner from "@/components/layout/PremiumBanner";
 import {
@@ -18,30 +18,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import React from "react";
 import { Check, Star, Heart, Crown } from "lucide-react";
 
 const MembershipSelection = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [selectedCard, setSelectedCard] = useState<"child" | "adult" | null>(null);
   const [selectedTier, setSelectedTier] = useState<"essential" | "premium" | "elite">("essential");
   const [selectedDuration, setSelectedDuration] = useState<"1" | "3" | "6" | "12">("1");
 
+  // Handle URL parameters for preselection
+  useEffect(() => {
+    const preselect = searchParams.get('preselect');
+    const tier = searchParams.get('tier');
+    
+    if (preselect === 'child') {
+      setSelectedCard('child');
+    } else if (preselect === 'adult') {
+      setSelectedCard('adult');
+      if (tier && ['essential', 'premium', 'elite'].includes(tier)) {
+        setSelectedTier(tier as "essential" | "premium" | "elite");
+      }
+    }
+  }, [searchParams]);
+
   const childCard = {
-    name: "Carte Enfant ZENIKA",
-    description: "Carte spéciale pour les enfants de 6 à 17 ans",
+    name: "Carte Enfant ELVERRA",
+    description: "Carte unique pour les enfants de 6 à 17 ans",
     icon: Heart,
     color: "bg-pink-500",
     benefits: [
-      "Réductions spéciales dans les magasins de jouets",
+      "Réductions de 10% dans les magasins de jouets",
       "Accès prioritaire aux événements familiaux",
-      "Programmes éducatifs gratuits",
+      "Programmes éducatifs complets",
       "Assistance parentale 24/7",
       "Carte physique personnalisée incluse",
-      "Pas de frais mensuels"
+      "Activités exclusives enfants",
+      "Support communautaire"
     ],
     pricing: {
-      registration: 5000,
-      monthly: 0
+      registration: 500,
+      monthly: 500
     }
   };
 
@@ -119,7 +137,7 @@ const MembershipSelection = () => {
     };
   };
 
-  const handleProceedToPayment = () => {
+  const handleContinue = () => {
     if (selectedCard === "child") {
       navigate(`/membership/payment?type=child&duration=${selectedDuration}`);
     } else if (selectedCard === "adult") {
@@ -155,29 +173,31 @@ const MembershipSelection = () => {
                   }`}
                   onClick={() => setSelectedCard("child")}
                 >
-                  <CardHeader className="text-center">
-                    <div className={`mx-auto w-16 h-16 ${childCard.color} rounded-full flex items-center justify-center mb-4`}>
-                      <childCard.icon className="w-8 h-8 text-white" />
+                  <div className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`p-2 rounded-full ${childCard.color}`}>
+                        {React.createElement(childCard.icon, { className: "h-6 w-6 text-white" })}
+                      </div>
+                      <h3 className="text-xl font-semibold">{childCard.name}</h3>
                     </div>
-                    <CardTitle className="text-2xl">{childCard.name}</CardTitle>
-                    <CardDescription>{childCard.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3 mb-6">
-                      {childCard.benefits.map((benefit, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <Check className="w-4 h-4 text-pink-500 flex-shrink-0" />
-                          <span className="text-sm">{benefit}</span>
+                    <p className="text-gray-600 mb-4">{childCard.description}</p>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-gray-800">Avantages inclus:</h4>
+                      {childCard.benefits.map((benefit: string, index: number) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-500" />
+                          <span className="text-sm text-gray-600">{benefit}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-pink-600">
-                        CFA {childCard.pricing.registration.toLocaleString()}
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">Frais d'inscription</p>
+                        <p className="text-2xl font-bold text-gray-900">{childCard.pricing.registration} CFA</p>
+                        <p className="text-sm text-gray-600 mt-1">+ {childCard.pricing.monthly} CFA/mois</p>
                       </div>
-                      <div className="text-sm text-gray-600">Paiement unique</div>
                     </div>
-                  </CardContent>
+                  </div>
                 </Card>
 
                 {/* Adult Card */}
@@ -250,6 +270,7 @@ const MembershipSelection = () => {
               </div>
             )}
 
+
             {/* Selected Card Details */}
             {selectedCard && (
               <div className="mb-12">
@@ -270,8 +291,22 @@ const MembershipSelection = () => {
                             </div>
                           </div>
                           <div>
-                            <div className="text-lg font-semibold">Frais mensuels</div>
-                            <div className="text-2xl font-bold text-green-600">Gratuit</div>
+                            <div className="text-lg font-semibold">
+                              Mensuel ({durationOptions[selectedDuration].label})
+                            </div>
+                            <div className="text-2xl font-bold text-green-600">CFA {childCard.pricing.monthly.toLocaleString()}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="border-t pt-4">
+                          <div className="text-center">
+                            <div className="text-lg font-semibold">Total à payer</div>
+                            <div className="text-3xl font-bold text-purple-600">
+                              CFA {(childCard.pricing.registration + (childCard.pricing.monthly * parseInt(selectedDuration))).toLocaleString()}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Inscription + {selectedDuration} mois d'abonnement
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -312,7 +347,7 @@ const MembershipSelection = () => {
                     
                     <div className="mt-6">
                       <Button
-                        onClick={handleProceedToPayment}
+                        onClick={handleContinue}
                         className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 text-lg"
                       >
                         Procéder au Paiement

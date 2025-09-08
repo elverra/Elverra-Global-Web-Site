@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 // Internal imports
 import { storage } from "./storage.js";
@@ -13,13 +13,20 @@ import projectRoutes from "./routes/projects.js";
 // Schema imports
 import { 
   subscriptions, 
+  payments,
   paymentAttempts, 
   insertUserSchema, 
   insertJobSchema, 
   insertJobApplicationSchema, 
   insertProductSchema, 
   insertLoanApplicationSchema, 
-  users 
+  users,
+  secoursSubscriptions,
+  secoursTransactions,
+  secoursRescueRequests,
+  insertSecoursSubscriptionSchema,
+  insertSecoursTransactionSchema,
+  insertSecoursRescueRequestSchema
 } from "../shared/schema.js";
 import { orangeMoneyService } from "./services/payment/orangeMoneyService.js";
 import { v4 as uuidv4 } from 'uuid';
@@ -41,6 +48,220 @@ const orangeMoneyPaymentSchema = z.object({
 export function registerRoutes(app: Express): void {
   // Mount project routes
   app.use('/api/projects', projectRoutes);
+
+  // Ô Secours Token System Routes
+  
+  // Get user's secours subscriptions
+  app.get("/api/secours/subscriptions", async (req, res) => {
+    try {
+      const { userId } = req.query;
+      
+      let subscriptions;
+      
+      if (userId) {
+        subscriptions = await db.select().from(secoursSubscriptions)
+          .where(eq(secoursSubscriptions.userId, userId as string));
+      } else {
+        subscriptions = await db.select().from(secoursSubscriptions);
+      }
+      
+      // Transform to match frontend expectations
+      const transformedSubscriptions = subscriptions.map(sub => ({
+        id: sub.id,
+        subscription_type: sub.subscriptionType,
+        token_balance: sub.tokenBalance,
+        is_active: sub.isActive,
+        subscription_date: sub.subscriptionDate?.toISOString(),
+        last_rescue_claim_date: sub.lastRescueClaimDate?.toISOString()
+      }));
+      
+      res.json(transformedSubscriptions);
+    } catch (error) {
+      console.error('Error fetching secours subscriptions:', error);
+      res.status(500).json({ error: "Failed to fetch subscriptions" });
+    }
+  });
+
+  // Get token value for subscription type
+  app.get("/api/secours/token-value/:subscriptionType", async (req, res) => {
+    try {
+      const { subscriptionType } = req.params;
+      const tokenValues: Record<string, number> = {
+        motors: 250,
+        telephone: 250,
+        auto: 750,
+        cata_catanis: 500,
+        school_fees: 500
+      };
+      
+      const tokenValue = tokenValues[subscriptionType] || 250;
+      res.json({ token_value: tokenValue });
+    } catch (error) {
+      console.error('Error getting token value:', error);
+      res.status(500).json({ error: "Failed to get token value" });
+    }
+  });
+
+  // Create token transaction (purchase or usage)
+  app.post("/api/secours/transactions", async (req, res) => {
+    try {
+      const validatedData = insertSecoursTransactionSchema.parse({
+        subscriptionId: req.body.subscription_id,
+        transactionType: req.body.transaction_type,
+        tokenAmount: parseInt(req.body.token_amount),
+        tokenValueFcfa: parseFloat(req.body.token_value_fcfa),
+        paymentMethod: req.body.payment_method,
+        transactionReference: req.body.transaction_reference,
+        status: req.body.status || 'completed'
+      });
+
+      const [transaction] = await db
+        .insert(secoursTransactions)
+        .values({
+          ...validatedData,
+          tokenValueFcfa: validatedData.tokenValueFcfa.toString()
+        })
+        .returning();
+
+      // Update token balance if it's a purchase
+      if (validatedData.transactionType === 'purchase') {
+        await db
+          .update(secoursSubscriptions)
+          .set({ 
+            tokenBalance: sql`${secoursSubscriptions.tokenBalance} + ${validatedData.tokenAmount}`,
+            updatedAt: new Date()
+          })
+          .where(eq(secoursSubscriptions.id, validatedData.subscriptionId));
+      }
+
+      // Transform response to match frontend expectations
+      const transformedTransaction = {
+        id: transaction.id,
+        subscription_id: transaction.subscriptionId,
+        transaction_type: transaction.transactionType,
+        token_amount: transaction.tokenAmount,
+        token_value_fcfa: parseFloat(transaction.tokenValueFcfa),
+        payment_method: transaction.paymentMethod,
+        transaction_reference: transaction.transactionReference,
+        created_at: transaction.createdAt?.toISOString(),
+        status: transaction.status
+      };
+
+      console.log('Token transaction created:', transformedTransaction);
+      res.json(transformedTransaction);
+    } catch (error) {
+      console.error('Error creating token transaction:', error);
+      res.status(500).json({ error: "Failed to create transaction" });
+    }
+  });
+
+  // Get token transactions for a subscription
+  app.get("/api/secours/transactions/:subscriptionId", async (req, res) => {
+    try {
+      const { subscriptionId } = req.params;
+      const { limit = 10 } = req.query;
+      
+      const transactions = await db
+        .select()
+        .from(secoursTransactions)
+        .where(eq(secoursTransactions.subscriptionId, subscriptionId))
+        .orderBy(desc(secoursTransactions.createdAt))
+        .limit(parseInt(limit as string));
+      
+      // Transform to match frontend expectations
+      const transformedTransactions = transactions.map(tx => ({
+        id: tx.id,
+        subscription_id: tx.subscriptionId,
+        transaction_type: tx.transactionType,
+        token_amount: tx.tokenAmount,
+        token_value_fcfa: parseFloat(tx.tokenValueFcfa),
+        payment_method: tx.paymentMethod,
+        transaction_reference: tx.transactionReference,
+        created_at: tx.createdAt?.toISOString()
+      }));
+      
+      res.json(transformedTransactions);
+    } catch (error) {
+      console.error('Error fetching token transactions:', error);
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
+
+  // Initiate token purchase with Orange Money
+  app.post("/api/secours/purchase-tokens", async (req, res) => {
+    try {
+      const {
+        userId,
+        subscriptionId,
+        tokenAmount,
+        phoneNumber,
+        subscriptionType
+      } = req.body;
+
+      if (!userId || !subscriptionId || !tokenAmount || !phoneNumber || !subscriptionType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Get token value
+      const tokenValues: Record<string, number> = {
+        motors: 250,
+        telephone: 250,
+        auto: 750,
+        cata_catanis: 500,
+        school_fees: 500
+      };
+      
+      const tokenValue = tokenValues[subscriptionType] || 250;
+      const totalAmount = parseInt(tokenAmount) * tokenValue;
+
+      // Prepare payment parameters for Orange Money
+      const paymentParams = {
+        userId,
+        amount: totalAmount,
+        phoneNumber,
+        description: `Achat de ${tokenAmount} tokens pour ${subscriptionType.replace('_', ' ')}`,
+        subscriptionId,
+        metadata: {
+          tokenAmount: parseInt(tokenAmount),
+          tokenValue,
+          subscriptionType,
+          transactionType: 'token_purchase'
+        }
+      };
+
+      console.log('Initiating token purchase payment:', paymentParams);
+
+      // Use existing Orange Money service
+      const paymentResponse = await orangeMoneyService.initiatePayment(paymentParams);
+
+      // Create pending transaction record
+      await db.insert(secoursTransactions).values({
+        subscriptionId,
+        transactionType: 'purchase',
+        tokenAmount: parseInt(tokenAmount),
+        tokenValueFcfa: totalAmount.toString(),
+        paymentMethod: 'orange_money',
+        transactionReference: paymentResponse.orderId || `TXN_${Date.now()}`,
+        status: 'pending'
+      });
+
+      res.json({
+        success: true,
+        paymentUrl: paymentResponse.paymentUrl,
+        paymentId: paymentResponse.paymentId,
+        amount: totalAmount,
+        tokenAmount: parseInt(tokenAmount),
+        tokenValue,
+        orderId: paymentResponse.orderId
+      });
+    } catch (error) {
+      console.error('Error initiating token purchase:', error);
+      res.status(500).json({ 
+        error: "Failed to initiate token purchase",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
   
   // Discount sectors endpoint - now uses admin-managed sectors
   app.get("/api/discounts/sectors", async (req, res) => {
@@ -73,7 +294,53 @@ export function registerRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to fetch discount sectors" });
     }
   });
-// Dans votre fichier de routes
+// Create Ô Secours subscription
+app.post("/api/secours/subscriptions", async (req, res) => {
+  try {
+    const validatedData = insertSecoursSubscriptionSchema.parse(req.body);
+    
+    // Check if user exists
+    const userExists = await db.select().from(users).where(eq(users.id, validatedData.userId));
+    if (userExists.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if subscription already exists for this user and type
+    const existingSubscription = await db
+      .select()
+      .from(secoursSubscriptions)
+      .where(
+        sql`${secoursSubscriptions.userId} = ${validatedData.userId} AND ${secoursSubscriptions.subscriptionType} = ${validatedData.subscriptionType}`
+      );
+
+    if (existingSubscription.length > 0) {
+      return res.status(400).json({ error: "Subscription already exists for this service type" });
+    }
+
+    const [subscription] = await db
+      .insert(secoursSubscriptions)
+      .values(validatedData)
+      .returning();
+
+    // Transform response
+    const transformedSubscription = {
+      id: subscription.id,
+      subscription_type: subscription.subscriptionType,
+      token_balance: subscription.tokenBalance,
+      is_active: subscription.isActive,
+      subscription_date: subscription.subscriptionDate?.toISOString(),
+      last_rescue_claim_date: subscription.lastRescueClaimDate?.toISOString()
+    };
+
+    console.log('Secours subscription created:', transformedSubscription);
+    res.json(transformedSubscription);
+  } catch (error) {
+    console.error('Error creating secours subscription:', error);
+    res.status(500).json({ error: "Failed to create subscription" });
+  }
+});
+
+// Regular subscriptions endpoint
 app.post("/api/subscriptions", async (req, res) => {
   try {
     const { userId, plan, status = 'pending' } = req.body;
@@ -88,7 +355,7 @@ app.post("/api/subscriptions", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const validPlans = ['monthly', 'quarterly', 'yearly', 'lifetime'];
+    const validPlans = ['monthly', 'quarterly', 'yearly', 'lifetime', 'one_time', 'semi_annual'];
     if (!validPlans.includes(plan)) {
       return res.status(400).json({ error: "Invalid plan type" });
     }
@@ -1668,24 +1935,77 @@ app.post("/api/subscriptions", async (req, res) => {
         return res.status(400).json({ success: false, error: "Payment ID is required" });
       }
   
-      // Query payment_attempts table
-      const [paymentAttempt] = await db
-        .select()
-        .from(paymentAttempts)
-        .where(eq(paymentAttempts.id, paymentId))
-        .limit(1);
-  
-      if (!paymentAttempt) {
-        return res.status(404).json({ success: false, error: "Payment not found" });
+      // First try to find in payments table (main payment records)
+      let payment;
+      try {
+        [payment] = await db
+          .select()
+          .from(payments)
+          .where(eq(payments.id, paymentId))
+          .limit(1);
+      } catch (error) {
+        console.error('Error querying payments table:', error);
+      }
+
+      // If not found in payments, try paymentAttempts table
+      let paymentAttempt;
+      if (!payment) {
+        try {
+          [paymentAttempt] = await db
+            .select()
+            .from(paymentAttempts)
+            .where(eq(paymentAttempts.id, paymentId))
+            .limit(1);
+        } catch (uuidError) {
+          // If UUID fails, try to find by transactionId (order reference)
+          try {
+            [paymentAttempt] = await db
+              .select()
+              .from(paymentAttempts)
+              .where(eq(paymentAttempts.transactionId, paymentId))
+              .limit(1);
+          } catch (error) {
+            console.error('Error querying paymentAttempts by transactionId:', error);
+          }
+        }
       }
   
-      res.json({
-        success: true,
-        status: paymentAttempt.status,
-        reference: paymentAttempt.transactionId, // Changed from paymentReference to transactionId
-        paymentId: paymentAttempt.id,
-        verified: paymentAttempt.status === "completed",
-      });
+      if (!payment && !paymentAttempt) {
+        console.log(`Payment verification failed: No payment found for ID ${paymentId}`);
+        return res.status(404).json({ success: false, error: "Payment not found" });
+      }
+
+      // Handle payment from payments table
+      if (payment) {
+        console.log(`Payment verification successful for ID ${paymentId} from payments table:`, {
+          status: payment.status
+        });
+        
+        res.json({
+          success: true,
+          status: payment.status,
+          reference: payment.paymentReference || null,
+          paymentId: payment.id,
+          verified: payment.status === "completed",
+        });
+        return;
+      }
+
+      // Handle payment from paymentAttempts table
+      if (paymentAttempt) {
+        console.log(`Payment verification successful for ID ${paymentId} from paymentAttempts table:`, {
+          status: paymentAttempt.status
+        });
+        
+        res.json({
+          success: true,
+          status: paymentAttempt.status,
+          reference: paymentAttempt.transactionId || null,
+          paymentId: paymentAttempt.id,
+          verified: paymentAttempt.status === "completed",
+        });
+        return;
+      }
     } catch (error) {
       console.error("Payment verification error:", error);
       res.status(500).json({
@@ -1856,7 +2176,8 @@ app.post("/api/subscriptions", async (req, res) => {
   });
 
   app.get("/payment-cancel", (req, res) => {
-    res.redirect('/#/membership-payment?payment=cancelled');
+    const { reference, method } = req.query;
+    res.redirect(`/#/payment-status?status=cancelled&reference=${reference}&method=${method}`);
   });
 
   // Payment callback endpoints
@@ -1866,114 +2187,98 @@ app.post("/api/subscriptions", async (req, res) => {
       const { pay_token, status, order_id, amount, currency } = req.body;
   
       if (!pay_token || !order_id) {
-        return res.status(400).json({ success: false, error: "Pay token and order ID are required" });
+        return res.status(400).json({ error: "Missing required callback parameters" });
       }
   
-      // Find payment attempt by paymentReference (order_id) or externalTransactionId (pay_token)
-      const [existingPayment] = await db
-        .select()
-        .from(paymentAttempts)
-        .where(eq(paymentAttempts.transactionId, order_id))
+      // Check if this is a token transaction first
+      const tokenTransaction = await db.select()
+        .from(secoursTransactions)
+        .where(eq(secoursTransactions.transactionReference, order_id))
+        .limit(1);
+
+      if (tokenTransaction.length > 0) {
+        // Handle token transaction callback
+        const transaction = tokenTransaction[0];
+        let newStatus = 'pending';
+        
+        // Map Orange Money status to our status
+        if (status === 'SUCCESS' || status === 'SUCCESSFUL') {
+          newStatus = 'completed';
+        } else if (status === 'FAILED' || status === 'CANCELLED') {
+          newStatus = 'failed';
+        }
+
+        // Update transaction status
+        await db.update(secoursTransactions)
+          .set({ 
+            status: newStatus,
+            updatedAt: new Date()
+          })
+          .where(eq(secoursTransactions.id, transaction.id));
+
+        // If successful, the trigger will automatically update token balance
+        if (newStatus === 'completed') {
+          res.redirect(`/#/secours/my-account?payment=success&reference=${order_id}&type=tokens`);
+        } else if (newStatus === 'failed') {
+          res.redirect(`/#/secours/my-account?payment=failed&reference=${order_id}&type=tokens`);
+        } else {
+          res.redirect(`/#/secours/my-account?payment=pending&reference=${order_id}&type=tokens`);
+        }
+        return;
+      }
+
+      // Find the regular payment record
+      const paymentRecord = await db.select()
+        .from(payments)
+        .where(eq(payments.paymentReference, order_id))
         .limit(1);
   
-      if (!existingPayment) {
-        console.warn(`Payment attempt not found for order_id: ${order_id}, pay_token: ${pay_token}`);
-        return res.status(404).json({ success: false, error: "Payment not found" });
+      if (paymentRecord.length === 0) {
+        console.log("Payment record not found for order_id:", order_id);
+        return res.status(404).json({ error: "Payment record not found" });
       }
   
-      // Map Orange Money status to internal status with more detailed handling
-      let newStatus: "pending" | "completed" | "failed" | "cancelled";
-      switch (status.toLowerCase()) {
-        case "success":
-        case "completed":
-        case "paid":
-          newStatus = "completed";
-          break;
-        case "failed":
-        case "error":
-        case "declined":
-          newStatus = "failed";
-          break;
-        case "cancelled":
-        case "canceled":
-        case "aborted":
-          newStatus = "cancelled";
-          break;
-        default:
-          newStatus = "pending";
+      const payment = paymentRecord[0];
+      let newStatus: 'pending' | 'completed' | 'failed' | 'refunded' | 'cancelled' | 'expired' = 'pending';
+      
+      // Map Orange Money status to our status
+      if (status === 'SUCCESS' || status === 'SUCCESSFUL') {
+        newStatus = 'completed';
+      } else if (status === 'FAILED' || status === 'CANCELLED') {
+        newStatus = 'failed';
       }
   
-      // Update payment attempt with detailed information
-      const [payment] = await db
-        .update(paymentAttempts)
-        .set({
+      // Update payment status
+      await db.update(payments)
+        .set({ 
           status: newStatus,
-          transactionId: pay_token,
-          updatedAt: new Date(),
-          metadata: {
-            ...(existingPayment.metadata as Record<string, any> || {}),
-            orangeMoneyStatus: status,
-            orangeMoneyResponse: {
-              pay_token,
-              order_id,
-              amount,
-              currency,
-              timestamp: new Date().toISOString()
-            }
-          }
+          updatedAt: new Date()
         })
-        .where(eq(paymentAttempts.id, existingPayment.id))
-        .returning();
+        .where(eq(payments.id, payment.id));
   
-      if (!payment) {
-        console.warn(`Failed to update payment attempt: ${existingPayment.id}`);
-        return res.status(500).json({ success: false, error: "Failed to update payment" });
-      }
+      // If payment successful, update subscription
+      if (newStatus === 'completed' && payment.subscriptionId) {
+        const subscriptionRecord = await db.select()
+          .from(subscriptions)
+          .where(eq(subscriptions.id, payment.subscriptionId))
+          .limit(1);
   
-      // Handle different payment statuses
-      if (newStatus === "completed") {
-        const metadata = existingPayment.metadata as Record<string, any> | null;
-        const subscriptionId = metadata?.subscriptionId;
-        const userId = metadata?.userId || existingPayment.userId;
-  
-        if (subscriptionId && typeof subscriptionId === "string") {
-          try {
-            await db
-              .update(subscriptions)
-              .set({
-                status: "active",
-                updatedAt: new Date(),
-              })
-              .where(eq(subscriptions.id, subscriptionId));
-            console.log(`✅ Subscription ${subscriptionId} activated successfully`);
-          } catch (updateError) {
-            console.error("Error updating subscription status:", updateError);
-          }
-        }
-  
-        // Send welcome email
-        if (userId) {
-          const user = await storage.getUser(userId);
-          if (user?.email && user.email.includes("@")) {
-            try {
-              await sendWelcomeEmail(user.email, user.fullName || "");
-              console.log(`📧 Welcome email sent to ${user.email}`);
-            } catch (emailError) {
-              console.warn(`Failed to send welcome email to ${user.email}:`, emailError);
-            }
-          }
+        if (subscriptionRecord.length > 0) {
+          await db.update(subscriptions)
+            .set({ 
+              status: 'active',
+              updatedAt: new Date()
+            })
+            .where(eq(subscriptions.id, payment.subscriptionId));
         }
   
         // Redirect to success page
-        res.redirect(`/payment-success?reference=${order_id}&amount=${existingPayment.amount}&method=orange_money&status=success`);
-      } else if (newStatus === "failed") {
-        console.log(`❌ Payment failed for order_id: ${order_id}`);
-        res.redirect(`/payment-failed?reference=${order_id}&reason=payment_failed&method=orange_money`);
-      } else if (newStatus === "cancelled") {
-        console.log(`🚫 Payment cancelled for order_id: ${order_id}`);
-        res.redirect(`/payment-cancelled?reference=${order_id}&method=orange_money`);
+        res.redirect(`/payment-success?reference=${order_id}&method=orange_money`);
+      } else if (newStatus === 'failed') {
+        // Redirect to failure page
+        res.redirect(`/payment-failed?reference=${order_id}&method=orange_money`);
       } else {
-        console.log(`⏳ Payment pending for order_id: ${order_id}`);
+        // Still pending
         res.redirect(`/payment-pending?reference=${order_id}&method=orange_money`);
       }
     } catch (error) {

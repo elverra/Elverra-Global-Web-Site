@@ -43,8 +43,8 @@ const Login = () => {
     if (membership && membership.is_active) {
       return <Navigate to="/dashboard" replace />;
     }
-    // If user is logged in but no active membership, go to membership payment
-    return <Navigate to="/membership-payment" replace />;
+    // If user is logged in but no active membership, go to membership selection
+    return <Navigate to="/membership/selection" replace />;
   }
 
   return (

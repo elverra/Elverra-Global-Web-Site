@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Share2, QrCode } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import QRCodeGenerator from '@/components/utilities/QRCodeGenerator';
 
 interface MemberDigitalCardProps {
   memberName: string;
   memberID: string;
   expiryDate: string;
-  membershipTier: 'Essential' | 'Premium' | 'Elite';
+  membershipTier: 'Essential' | 'Premium' | 'Elite' | 'Child';
   profileImage?: string;
   address?: string;
+  city?: string;
+  serialNumber?: string;
   isPaymentComplete?: boolean;
+  subscriptionStatus?: 'active' | 'expired' | 'pending';
 }
 
 const MemberDigitalCard = ({ 
@@ -21,16 +24,29 @@ const MemberDigitalCard = ({
   membershipTier,
   profileImage,
   address,
-  isPaymentComplete = true
+  city,
+  serialNumber,
+  isPaymentComplete = true,
+  subscriptionStatus = 'active'
 }: MemberDigitalCardProps) => {
   const [showQR, setShowQR] = useState(false);
   
-  // Create QR data for the card
+  // Generate serial number if not provided
+  const cardSerialNumber = serialNumber || `ELV-${membershipTier.toUpperCase()}-${Date.now().toString().slice(-6)}`;
+  
+  // Create comprehensive QR data for the card
   const qrData = JSON.stringify({
     memberID,
     name: memberName,
     tier: membershipTier,
-    expiry: expiryDate
+    expiry: expiryDate,
+    serialNumber: cardSerialNumber,
+    city: city || 'N/A',
+    address: address || 'N/A',
+    subscriptionStatus,
+    isActive: subscriptionStatus === 'active',
+    issueDate: new Date().toISOString().split('T')[0],
+    cardType: membershipTier === 'Child' ? 'child' : 'adult'
   });
 
   // Don't show card if payment is not complete
@@ -80,6 +96,12 @@ const MemberDigitalCard = ({
           background: 'bg-gradient-to-br from-yellow-400 to-yellow-600',
           statusColor: 'text-gray-900',
           border: 'border-yellow-400'
+        };
+      case 'Child':
+        return {
+          background: 'bg-gradient-to-br from-pink-400 to-purple-500',
+          statusColor: 'text-white',
+          border: 'border-pink-400'
         };
       default:
         return {
@@ -172,18 +194,26 @@ const MemberDigitalCard = ({
             <div className="mb-3">
               <h3 className="text-lg font-semibold">{memberName}</h3>
               <p className="text-sm opacity-90">Status: {membershipTier}</p>
+              {city && (
+                <p className="text-sm opacity-90">{city}</p>
+              )}
               {address && (
                 <p className="text-sm opacity-90">{address}</p>
               )}
+              <p className="text-xs opacity-75">Serial: {cardSerialNumber}</p>
             </div>
             
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs opacity-90">ID: {memberID}</p>
+                <p className="text-xs opacity-75">
+                  {subscriptionStatus === 'active' ? '✅ Active' : 
+                   subscriptionStatus === 'expired' ? '❌ Expired' : '⏳ Pending'}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-bold">
-                  {new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toLocaleDateString('en-US', { month: '2-digit', year: '2-digit' })}
+                  {new Date(expiryDate).toLocaleDateString('en-US', { month: '2-digit', year: '2-digit' })}
                 </span>
                 {/* QR Code */}
                 <div className="w-8 h-8 bg-white rounded border border-black flex items-center justify-center">

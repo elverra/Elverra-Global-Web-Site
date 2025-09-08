@@ -10,14 +10,25 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import type { SecoursSubscription, SecoursRescueRequest } from '@shared/schema';
 
 const RescueRequest = () => {
   const queryClient = useQueryClient();
   const [selectedSubscription, setSelectedSubscription] = useState('');
   const [description, setDescription] = useState('');
 
+  // Check if user has child membership - restrict access to rescue requests
+  const { data: membership } = useQuery({
+    queryKey: ['user-membership'],
+    queryFn: async () => {
+      const response = await fetch('/api/membership/user');
+      if (!response.ok) throw new Error('Failed to fetch membership');
+      return response.json();
+    }
+  });
+
   // Fetch user's subscriptions
-  const { data: subscriptions, isLoading } = useQuery({
+  const { data: subscriptions, isLoading } = useQuery<SecoursSubscription[]>({
     queryKey: ['secours-subscriptions'],
     queryFn: async () => {
       const response = await fetch('/api/secours/user-subscriptions');
@@ -27,7 +38,7 @@ const RescueRequest = () => {
   });
 
   // Fetch rescue requests
-  const { data: rescueRequests } = useQuery({
+  const { data: rescueRequests } = useQuery<(SecoursRescueRequest & { secours_subscriptions?: SecoursSubscription })[]>({
     queryKey: ['rescue-requests'],
     queryFn: async () => {
       const response = await fetch('/api/secours/rescue-requests');
@@ -42,7 +53,7 @@ const RescueRequest = () => {
       description: string;
     }) => {
       // Get subscription details
-      const mockResult = { data: { subscription_date: new Date().toISOString(), subscription_type: 'basic', token_balance: 100 }, error: null }; // TODO: Replace with API call
+      const mockResult = { data: { subscription_date: new Date().toISOString(), subscriptionType: 'basic', token_balance: 100, lastRescueClaimDate: null }, error: null }; // TODO: Replace with API call
       const { data: subscription, error: subError } = mockResult;
 
       if (subError) throw subError;
@@ -77,8 +88,8 @@ const RescueRequest = () => {
       let rescueMultiplier = 1.5; // 150% default
       
       // Check if no rescue claims in the last year for 200% bonus
-      if (subscription.last_rescue_claim_date) {
-        const lastClaim = new Date(subscription.last_rescue_claim_date);
+      if (subscription.lastRescueClaimDate) {
+        const lastClaim = new Date(subscription.lastRescueClaimDate);
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
         
@@ -164,6 +175,27 @@ const RescueRequest = () => {
     return <div className="text-center">Loading subscriptions...</div>;
   }
 
+  // Check if user has child membership - restrict access to rescue requests
+  if (membership?.tier === 'child') {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto" />
+            <h3 className="text-lg font-semibold text-gray-900">Service Non Disponible</h3>
+            <p className="text-gray-600">
+              Les demandes de secours Ô Secours ne sont pas disponibles pour les détenteurs de carte enfant. 
+              Ce service est réservé aux cartes adultes (Essential, Premium, Elite).
+            </p>
+            <p className="text-sm text-gray-500">
+              Pour accéder à ce service, vous devez avoir une carte adulte Elverra.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!subscriptions || subscriptions.length === 0) {
     return (
       <Card className="max-w-2xl mx-auto">
@@ -209,7 +241,7 @@ const RescueRequest = () => {
                   <SelectValue placeholder="Choose the service you need" />
                 </SelectTrigger>
                 <SelectContent>
-                  {subscriptions.map((sub) => {
+                  {subscriptions.map((sub: SecoursSubscription) => {
                     const eligibility = getEligibilityStatus(sub);
                     return (
                       <SelectItem 
@@ -217,7 +249,7 @@ const RescueRequest = () => {
                         value={sub.id}
                         disabled={!eligibility.eligible}
                       >
-                        {sub.subscription_type.replace('_', ' ').toUpperCase()}
+                        {sub.subscriptionType.replace('_', ' ').toUpperCase()}
                         {!eligibility.eligible && ' (Not Eligible)'}
                       </SelectItem>
                     );
@@ -246,15 +278,15 @@ const RescueRequest = () => {
                     );
                   }
 
-                  const tokenValue = selectedSub?.subscription_type === 'auto' ? 750 : 
-                                  selectedSub?.subscription_type === 'cata_catanis' || selectedSub?.subscription_type === 'school_fees' ? 500 : 250;
-                  const rescueValue = selectedSub ? Math.floor(selectedSub.token_balance * tokenValue * 1.5) : 0;
+                  const tokenValue = selectedSub?.subscriptionType === 'auto' ? 750 : 
+                                  selectedSub?.subscriptionType === 'cata_catanis' || selectedSub?.subscriptionType === 'school_fees' ? 500 : 250;
+                  const rescueValue = selectedSub ? Math.floor((selectedSub.tokenBalance || 0) * tokenValue * 1.5) : 0;
 
                   return (
                     <div className="p-3 bg-green-50 rounded-lg space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Current Balance:</span>
-                        <span className="font-medium">{selectedSub?.token_balance} tokens</span>
+                        <span className="font-medium">{selectedSub?.tokenBalance} tokens</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Estimated Rescue Value:</span>
@@ -305,10 +337,10 @@ const RescueRequest = () => {
                   <div key={request.id} className="p-3 border rounded-lg space-y-2">
                     <div className="flex items-center justify-between">
                       <Badge variant="outline" className="capitalize">
-                        {request.secours_subscriptions?.subscription_type?.replace('_', ' ')}
+                        {request.secours_subscriptions?.subscriptionType?.replace('_', ' ')}
                       </Badge>
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(request.status)}
+                        {getStatusIcon(request.status || 'pending')}
                         <Badge variant={
                           request.status === 'completed' ? 'default' :
                           request.status === 'approved' ? 'secondary' :
@@ -319,18 +351,18 @@ const RescueRequest = () => {
                       </div>
                     </div>
                     <div className="text-sm text-gray-600">
-                      {request.request_description}
+                      {request.requestDescription}
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Rescue Value:</span>
-                      <span className="font-medium">{request.rescue_value_fcfa.toLocaleString()} FCFA</span>
+                      <span className="font-medium">{Number(request.rescueValueFcfa).toLocaleString()} FCFA</span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      {new Date(request.request_date).toLocaleDateString()}
+                      {request.requestDate ? new Date(request.requestDate).toLocaleDateString() : 'N/A'}
                     </div>
-                    {request.admin_notes && (
+                    {request.adminNotes && (
                       <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                        Admin Note: {request.admin_notes}
+                        Admin Note: {request.adminNotes}
                       </div>
                     )}
                   </div>

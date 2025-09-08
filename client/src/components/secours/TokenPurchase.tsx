@@ -9,12 +9,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Coins, CreditCard, Smartphone } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const TokenPurchase = () => {
   const queryClient = useQueryClient();
   const [selectedSubscription, setSelectedSubscription] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
+
+  // Check if user has child membership - restrict access to token purchase
+  const { data: membership } = useQuery({
+    queryKey: ['user-membership'],
+    queryFn: async () => {
+      const response = await fetch('/api/membership/user');
+      if (!response.ok) throw new Error('Failed to fetch membership');
+      return response.json();
+    }
+  });
 
   // Fetch user's subscriptions
   const { data: subscriptions, isLoading } = useQuery({
@@ -44,24 +55,57 @@ const TokenPurchase = () => {
       subscriptionId: string;
       tokenAmount: number;
       paymentMethod: string;
+      phoneNumber?: string;
     }) => {
       // Get subscription details to calculate token value
-      const subResponse = await fetch(`/api/secours/subscriptions/${purchaseData.subscriptionId}`);
-      if (!subResponse.ok) throw new Error('Failed to get subscription details');
-      const subscription = await subResponse.json();
+      const subscriptions = await fetch('/api/secours/subscriptions');
+      if (!subscriptions.ok) throw new Error('Failed to get subscriptions');
+      const subscriptionsData = await subscriptions.json();
+      
+      const subscription = subscriptionsData.find((sub: any) => sub.id === purchaseData.subscriptionId);
+      if (!subscription) throw new Error('Subscription not found');
 
       // Get token value using the database function
       const tokenResponse = await fetch(`/api/secours/token-value/${subscription.subscription_type}`);
       if (!tokenResponse.ok) throw new Error('Failed to get token value');
       const tokenValueData = await tokenResponse.json();
 
-      const tokenValue = tokenValueData.token_value || 10; // Default token value
+      const tokenValue = tokenValueData.token_value || 250;
       const totalValue = purchaseData.tokenAmount * tokenValue;
 
-      // Simulate payment processing (in real implementation, integrate with actual payment gateway)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // For Orange Money payment, initiate the payment process
+      if (purchaseData.paymentMethod === 'mobile_money') {
+        if (!purchaseData.phoneNumber) {
+          throw new Error('Phone number is required for mobile money payment');
+        }
 
-      // Create transaction record (this will automatically update token balance via trigger)
+        const paymentResponse = await fetch('/api/secours/purchase-tokens', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: 'temp_user_' + Date.now(), // Replace with actual user ID
+            subscriptionId: purchaseData.subscriptionId,
+            tokenAmount: purchaseData.tokenAmount,
+            phoneNumber: purchaseData.phoneNumber,
+            subscriptionType: subscription.subscription_type
+          })
+        });
+
+        if (!paymentResponse.ok) {
+          const errorData = await paymentResponse.json();
+          throw new Error(errorData.error || 'Failed to initiate payment');
+        }
+
+        const paymentData = await paymentResponse.json();
+        
+        // Redirect to Orange Money payment page
+        if (paymentData.paymentUrl) {
+          window.location.href = paymentData.paymentUrl;
+          return paymentData;
+        }
+      }
+
+      // For other payment methods, create transaction record directly
       const transactionResponse = await fetch('/api/secours/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,10 +154,21 @@ const TokenPurchase = () => {
       return;
     }
 
+    // For mobile money, we need phone number
+    let phoneNumber = '';
+    if (paymentMethod === 'mobile_money') {
+      phoneNumber = prompt('Veuillez entrer votre numéro de téléphone Orange Money:');
+      if (!phoneNumber) {
+        toast.error('Numéro de téléphone requis pour Orange Money');
+        return;
+      }
+    }
+
     purchaseTokensMutation.mutate({
       subscriptionId: selectedSubscription,
       tokenAmount: tokens,
-      paymentMethod
+      paymentMethod,
+      phoneNumber
     });
   };
 
@@ -146,6 +201,27 @@ const TokenPurchase = () => {
 
   if (isLoading) {
     return <div className="text-center">Loading subscriptions...</div>;
+  }
+
+  // Check if user has child membership - restrict access to token purchase
+  if (membership?.tier === 'child') {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <Coins className="h-12 w-12 text-gray-400 mx-auto" />
+            <h3 className="text-lg font-semibold text-gray-900">Service Non Disponible</h3>
+            <p className="text-gray-600">
+              L'achat de tokens Ô Secours n'est pas disponible pour les détenteurs de carte enfant. 
+              Ce service est réservé aux cartes adultes (Essential, Premium, Elite).
+            </p>
+            <p className="text-sm text-gray-500">
+              Pour accéder à ce service, vous devez avoir une carte adulte Elverra.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!subscriptions || subscriptions.length === 0) {

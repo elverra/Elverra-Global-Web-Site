@@ -31,10 +31,14 @@ const MembershipPlans = ({ cmsContent }: MembershipPlansProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleSelectPlan = (planName: string) => {
+  const handleSelectPlan = (planName: string, isChild: boolean = false) => {
     if (user) {
-      // User is logged in, go directly to payment with plan selected
-      navigate(`/membership-payment?plan=${planName.toLowerCase()}`);
+      // User is logged in, go to membership selection page
+      if (isChild) {
+        navigate(`/membership/selection?preselect=child`);
+      } else {
+        navigate(`/membership/selection?preselect=adult&tier=${planName.toLowerCase()}`);
+      }
     } else {
       // User not logged in, redirect to register with plan info
       navigate(`/register?plan=${planName.toLowerCase()}`);
@@ -42,6 +46,25 @@ const MembershipPlans = ({ cmsContent }: MembershipPlansProps) => {
   };
 
   const plans = [
+    {
+      name: "Carte Enfant",
+      price: "5,000",
+      monthly: "500",
+      discount: "10%",
+      color: "bg-pink-100",
+      textColor: "text-pink-900",
+      buttonVariant: "outline",
+      isChild: true,
+      features: [
+        "Réductions de 10% dans les magasins de jouets",
+        "Accès prioritaire aux événements familiaux",
+        "Programmes éducatifs complets",
+        "Assistance parentale 24/7",
+        "Carte physique personnalisée incluse",
+        "Activités exclusives enfants",
+        "Support communautaire",
+      ],
+    },
     {
       name: "Essential",
       price: "10,000",
@@ -163,8 +186,8 @@ const MembershipPlans = ({ cmsContent }: MembershipPlansProps) => {
               </CardContent>
               <CardFooter>
                 <Button
-                  onClick={() => handleSelectPlan(plan.name)}
-                  className={`w-full ${plan.buttonVariant === "default" ? "bg-purple-600 hover:bg-purple-700" : ""}`}
+                  onClick={() => handleSelectPlan(plan.name, plan.isChild)}
+                  className={`w-full ${plan.buttonVariant === "default" ? "bg-purple-600 hover:bg-purple-700" : plan.isChild ? "bg-pink-600 hover:bg-pink-700 text-white" : ""}`}
                   variant={
                     plan.buttonVariant === "default"
                       ? "default"

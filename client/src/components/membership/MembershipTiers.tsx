@@ -15,6 +15,25 @@ const MembershipTiers = ({ selectedTier, onSelectTier, compact = false }: Member
 
   const tiers = [
     {
+      id: 'child',
+      name: 'Carte Enfant',
+      price: '5,000',
+      monthly: '500',
+      discount: '10%',
+      color: 'bg-pink-100',
+      textColor: 'text-pink-900',
+      isChild: true,
+      features: [
+        'Réductions de 10% dans les magasins de jouets',
+        'Accès prioritaire aux événements familiaux',
+        'Programmes éducatifs complets',
+        'Assistance parentale 24/7',
+        'Carte physique personnalisée incluse',
+        'Activités exclusives enfants',
+        'Support communautaire',
+      ],
+    },
+    {
       id: 'essential',
       name: 'Essential',
       price: '10,000',

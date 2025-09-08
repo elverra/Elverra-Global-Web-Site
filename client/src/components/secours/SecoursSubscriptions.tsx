@@ -152,6 +152,26 @@ const SecoursSubscriptions = () => {
     );
   }
 
+  // Check if user has child membership - restrict access to Ô Secours
+  if (membership?.tier === 'child') {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Service Non Disponible</h3>
+            <p className="text-gray-600">
+              Le service Ô Secours n'est pas disponible pour les détenteurs de carte enfant. 
+              Ce service est réservé aux cartes adultes (Essential, Premium, Elite).
+            </p>
+            <p className="text-sm text-gray-500">
+              Pour accéder à ce service, vous devez avoir une carte adulte Elverra.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">

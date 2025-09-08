@@ -95,7 +95,7 @@ const AccountSection = () => {
     alert('Notification preferences updated successfully!');
   };
 
-  const handleLanguageChange = (newLanguage: string) => {
+  const handleLanguageChange = (newLanguage: 'en' | 'fr') => {
     setRegionSettings({ ...regionSettings, language: newLanguage });
     setLanguage(newLanguage);
     alert('Language updated successfully!');
@@ -539,10 +539,13 @@ const AccountSection = () => {
                   memberName={profile?.full_name || user?.email?.split('@')[0] || 'Member'}
                   memberID={user?.id?.slice(-8) || 'N/A'}
                   expiryDate={membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString() : 'N/A'}
-                  membershipTier={membership?.tier ? (membership.tier.charAt(0).toUpperCase() + membership.tier.slice(1)) as 'Essential' | 'Premium' | 'Elite' : 'Essential'}
+                  membershipTier={membership?.tier ? (membership.tier.charAt(0).toUpperCase() + membership.tier.slice(1)) as 'Essential' | 'Premium' | 'Elite' | 'Child' : 'Essential'}
                   profileImage={profile?.profile_image_url}
                   address={profile?.address}
+                  city={profile?.city}
+                  serialNumber={membership?.member_id}
                   isPaymentComplete={membership?.is_active || false}
+                  subscriptionStatus={membership?.is_active ? 'active' : 'expired'}
                 />
               </div>
 

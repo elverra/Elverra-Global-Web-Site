@@ -9,13 +9,16 @@ import { useNavigate } from 'react-router-dom';
 
 interface PaymentProps {
   plan: string;
+  cardType?: string | null;
   onSuccess?: () => void;
   isOpen?: boolean;
   onClose?: () => void;
   preSelectedService?: string;
+  subscriptionPlan?: string;
+  amount: number;
 }
 
-export default function UnifiedPaymentWindow({ plan, onSuccess, isOpen = true, onClose, preSelectedService }: PaymentProps) {
+export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen = true, onClose, preSelectedService, subscriptionPlan = 'monthly', amount }: PaymentProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedGateway, setSelectedGateway] = useState<string>(preSelectedService || 'orange_money');
@@ -24,10 +27,14 @@ export default function UnifiedPaymentWindow({ plan, onSuccess, isOpen = true, o
   const { user } = useAuth();
   const navigate = useNavigate();
 
+
   const paymentGateways = [
     { id: 'orange_money', name: '🍊 Orange Money' },
     { id: 'sama_money', name: '💰 SAMA Money' },
   ];
+
+
+
 
   const handlePayment = async () => {
     if (!user) {
@@ -44,12 +51,11 @@ export default function UnifiedPaymentWindow({ plan, onSuccess, isOpen = true, o
       const subscriptionRes = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, plan: 'monthly', status: 'pending' }),
+        body: JSON.stringify({ userId: user.id, plan: subscriptionPlan, status: 'pending' }),
       });
       if (!subscriptionRes.ok) throw new Error('Failed to create subscription');
       const subscriptionData = await subscriptionRes.json();
 
-      const amount = plan === 'premium' ? 12000 : plan === 'elite' ? 15000 : 11000;
       const reference = `MEMBERSHIP_${plan.toUpperCase()}_${Date.now()}`;
       const paymentData = {
         userId: user.id,
@@ -77,9 +83,13 @@ const res = await fetch(endpoint, {
 const data = await res.json();
 if (data.success && data.payment_url) {
   console.log("Opening payment in new tab:", data.payment_url);
+  console.log("Payment response data:", data);
   window.open(data.payment_url, "_blank");
   setPaymentInitiated(true);
-  setPaymentReference(data.paymentId || data.reference); // Use paymentId or fallback to reference
+  // Use paymentId first, then fallback to reference or transactionId
+  const pollId = data.paymentId || data.transactionId || data.reference;
+  console.log("Using payment ID for polling:", pollId);
+  setPaymentReference(pollId);
   toast.success("Payment initiated! Please complete the payment in the new tab.");
   return;
 }
@@ -95,23 +105,34 @@ if (data.success && data.payment_url) {
 
   // Poll payment status
   useEffect(() => {
-    if (!paymentInitiated || !paymentReference) return;
+    if (!paymentInitiated || !paymentReference) {
+      console.log('Polling conditions not met:', { paymentInitiated, paymentReference });
+      return;
+    }
 
+    console.log('Starting payment status polling for:', paymentReference);
     const interval = setInterval(async () => {
       try {
+        console.log('Polling payment status for ID:', paymentReference);
         const response = await fetch('/api/payments/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ paymentId: paymentReference }),
         });
         const data = await response.json();
+        console.log('Payment verification response:', data);
 
         if (data.success && data.status === 'completed') {
+          console.log('Payment completed successfully!');
           setPaymentInitiated(false);
-          onSuccess?.();
-          toast.success('Payment verified! Your membership is active.');
           clearInterval(interval);
+          toast.success('Payment verified! Your membership is active.');
+          // Close the payment window and trigger success callback
+          onClose?.();
+          onSuccess?.();
         } else if (data.status === 'failed' || data.status === 'cancelled') {
+          console.log('Payment failed or cancelled:', data.status);
+          setPaymentInitiated(false);
           setError('Payment failed or was cancelled.');
           toast.error('Payment failed or was cancelled.');
           clearInterval(interval);
@@ -159,12 +180,20 @@ if (data.success && data.payment_url) {
           ) : (
             <>
               <div className="text-center">
-                <h3 className="text-lg font-semibold">{plan.charAt(0).toUpperCase() + plan.slice(1)} Plan</h3>
+                <h3 className="text-lg font-semibold">
+                  {cardType === 'child' ? 'Child Plan' : `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`}
+                </h3>
                 <p className="text-2xl font-bold text-purple-600">
-                  {plan === 'premium' ? 'CFA 12,000' : plan === 'elite' ? 'CFA 15,000' : 'CFA 11,000'}
+                  CFA {amount.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-600">One-time payment + monthly fee</p>
+                <p className="text-sm text-gray-600">
+                  {cardType === 'child' 
+                    ? 'Child membership plan'
+                    : `${plan} membership plan`
+                  }
+                </p>
               </div>
+
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select Payment Method</label>

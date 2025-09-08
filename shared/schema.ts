@@ -18,7 +18,7 @@ export type SubscriptionStatus = typeof subscriptionStatusValues[number];
 export const paymentMethodValues = ['orange_money', 'sama_money', 'credit_card', 'bank_transfer'] as const;
 export type PaymentMethod = typeof paymentMethodValues[number];
 
-export const subscriptionPlanValues = ['monthly', 'quarterly', 'yearly', 'lifetime'] as const;
+export const subscriptionPlanValues = ['monthly', 'quarterly', 'yearly', 'lifetime', 'one_time', 'semi_annual'] as const;
 export type SubscriptionPlan = typeof subscriptionPlanValues[number];
 
 export const rewardTypeValues = ['credit_points', 'commission'] as const;
@@ -878,3 +878,75 @@ export interface PaymentAttemptWithRelations extends PaymentAttempt {
   subscription?: Subscription | null;
   payment?: Payment | null;
 }
+
+// Ô Secours Tables
+export const secoursSubscriptions = pgTable("secours_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  subscriptionType: text("subscription_type").notNull(), // 'motors', 'telephone', 'auto', 'cata_catanis', 'school_fees'
+  tokenBalance: integer("token_balance").default(0),
+  isActive: boolean("is_active").default(true),
+  subscriptionDate: timestamp("subscription_date").defaultNow(),
+  lastRescueClaimDate: timestamp("last_rescue_claim_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const secoursTransactions = pgTable("secours_transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  subscriptionId: uuid("subscription_id").notNull().references(() => secoursSubscriptions.id, { onDelete: 'cascade' }),
+  transactionType: text("transaction_type").notNull(), // 'purchase', 'usage'
+  tokenAmount: integer("token_amount").notNull(),
+  tokenValueFcfa: numeric("token_value_fcfa", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: text("payment_method"), // 'orange_money', 'sama_money', 'bank_card', etc.
+  transactionReference: text("transaction_reference"),
+  status: text("status").default('pending'), // 'pending', 'completed', 'failed'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const secoursRescueRequests = pgTable("secours_rescue_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  subscriptionId: uuid("subscription_id").notNull().references(() => secoursSubscriptions.id, { onDelete: 'cascade' }),
+  requestDescription: text("request_description").notNull(),
+  rescueValueFcfa: numeric("rescue_value_fcfa", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").default('pending'), // 'pending', 'approved', 'completed', 'rejected'
+  requestDate: timestamp("request_date").defaultNow(),
+  processedDate: timestamp("processed_date"),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Zod schemas for Ô Secours
+export const insertSecoursSubscriptionSchema = z.object({
+  userId: z.string().uuid(),
+  subscriptionType: z.enum(['motors', 'telephone', 'auto', 'cata_catanis', 'school_fees']),
+  tokenBalance: z.number().int().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const insertSecoursTransactionSchema = z.object({
+  subscriptionId: z.string().uuid(),
+  transactionType: z.enum(['purchase', 'usage']),
+  tokenAmount: z.number().int().positive(),
+  tokenValueFcfa: z.number().positive(),
+  paymentMethod: z.string().optional(),
+  transactionReference: z.string().optional(),
+  status: z.enum(['pending', 'completed', 'failed']).default('pending'),
+});
+
+export const insertSecoursRescueRequestSchema = z.object({
+  subscriptionId: z.string().uuid(),
+  requestDescription: z.string().min(10),
+  rescueValueFcfa: z.number().positive(),
+  status: z.enum(['pending', 'approved', 'completed', 'rejected']).default('pending'),
+});
+
+// TypeScript types
+export type SecoursSubscription = typeof secoursSubscriptions.$inferSelect;
+export type InsertSecoursSubscription = typeof secoursSubscriptions.$inferInsert;
+export type SecoursTransaction = typeof secoursTransactions.$inferSelect;
+export type InsertSecoursTransaction = typeof secoursTransactions.$inferInsert;
+export type SecoursRescueRequest = typeof secoursRescueRequests.$inferSelect;
+export type InsertSecoursRescueRequest = typeof secoursRescueRequests.$inferInsert;
