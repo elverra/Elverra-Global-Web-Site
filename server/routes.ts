@@ -23,7 +23,7 @@ import {
 } from "../shared/schema";
 import { orangeMoneyService } from "./services/payment/orangeMoneyService";
 import { v4 as uuidv4 } from 'uuid';
-import { comparePasswords, hashPassword } from "./utils/passwordUtils";
+import { comparePasswords, hashPassword } from "./utils/passwordUtils.js";
 
 // Schema for Orange Money payment request validation
 const orangeMoneyPaymentSchema = z.object({
