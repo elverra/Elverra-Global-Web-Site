@@ -1,61 +1,43 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-export default defineConfig(({ mode }) => ({
-  base: '/',
-  plugins: [react()],
+export default defineConfig({
+  plugins: [
+    react(),
+    runtimeErrorOverlay(),
+    ...(process.env.NODE_ENV !== "production" &&
+    process.env.REPL_ID !== undefined
+      ? [
+          await import("@replit/vite-plugin-cartographer").then((m) =>
+            m.cartographer(),
+          ),
+        ]
+      : []),
+  ],
   resolve: {
-    alias: [
-      {
-        find: '@',
-        replacement: path.resolve(__dirname, './client/src'),
-      },
-      {
-        find: '@shared',
-        replacement: path.resolve(__dirname, './shared'),
-      },
-      {
-        find: '@assets',
-        replacement: path.resolve(__dirname, './attached_assets'),
-      },
-    ],
-  },
-  root: './client',
-  publicDir: './client/public',
-  build: {
-    outDir: path.resolve(__dirname, 'dist/client'),
-    emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-          ui: [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-navigation-menu',
-            '@radix-ui/react-slot',
-            'class-variance-authority',
-            'tailwind-merge',
-          ],
-        },
-      },
+    alias: {
+      "@": path.resolve(import.meta.dirname, "client", "src"),
+      "@shared": path.resolve(import.meta.dirname, "shared"),
+      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
+  },
+  root: path.resolve(import.meta.dirname, "client"),
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true,
   },
   server: {
-    port: 3000,
-    strictPort: true,
     proxy: {
-      '^/api/.*': {
-        target: 'http://localhost:5000',
+      '/api': {
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
+        secure: false
+      }
     },
+    allowedHosts: [
+      "13eb4202-8453-4a4e-9031-e2ba8b751ec5-00-o6czf1rr471t.spock.replit.dev",
+    ],
   },
-  preview: {
-    port: 3000,
-    strictPort: true,
-  },
-}));
+});

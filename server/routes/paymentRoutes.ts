@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { paymentController } from '../controllers/paymentController.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';
+import { paymentController } from 'server/controllers/paymentController';
+import { authMiddleware } from 'server/middleware/authMiddleware';
+import { validateRequest } from 'server/middleware/validateRequest';
 import { z } from 'zod';
-import { validateRequest } from 'server/middleware/validateRequest.js';
 
-const router: Router = Router();
+const router = Router();
 
 // Routes protégées par authentification
 router.use(authMiddleware);

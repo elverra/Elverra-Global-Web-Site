@@ -1,10 +1,10 @@
 // services/payment/orangeMoneyService.ts
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { appConfig } from '../../../shared/config';
-import { db } from '../../db';
-import { payments, paymentAttempts, subscriptions, type Payment, type PaymentAttempt, type PaymentStatus, PaymentMethod } from '../../../shared/schema';
-import { OrangeMoneyPaymentResponse } from '../../../shared/types/orangeMoney';
+import { appConfig } from '../../../shared/config.js';
+import { db } from '../../db.js';
+import { payments, paymentAttempts, subscriptions, type Payment, type PaymentAttempt, type PaymentStatus, PaymentMethod } from '../../../shared/schema.js';
+import { OrangeMoneyPaymentResponse } from '../../../shared/types/orangeMoney.js';
 import { eq } from 'drizzle-orm';
 
 interface PaymentParams {

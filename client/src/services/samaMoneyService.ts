@@ -311,13 +311,13 @@ export class SamaMoneyService {
   }
 }
 
-// Export singleton instance
+// Export singleton instance - production configuration
 export const samaMoneyService = new SamaMoneyService({
-  baseUrl: 'https://smarchandamatest.sama.money/V1/',
+  baseUrl: 'https://smarchand.sama.money/V1/', // Production URL
   merchantCode: 'b109',
-  merchantName: 'CLUB 66 GLOBAL',
+  merchantName: 'ELVERRA GLOBAL',
   userId: '-486247242941374572',
   publicKey: '@Ub1#2HVZjQIKYOMP4t@yFAez5X9AhCz9',
   transactionKey: 'cU+ZJ69Si8wkW2x59:VktuDM7@k~PaJ;d{S]F!R5gd4,5G(7%a2_785K#}kC3*[e',
-  environment: 'test'
+  environment: 'production'
 });

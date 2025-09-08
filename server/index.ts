@@ -1,27 +1,15 @@
 import dotenv from "dotenv";
 import "dotenv/config";
 import express, { NextFunction, type Request, Response } from "express";
-import cors from 'cors';
-import { registerRoutes } from "./routes.js"; // Use .js for production
-import paymentRoutes from "./routes/paymentRoutes.js"; // Use .js for production
+import http from 'http';
+import { registerRoutes } from "./routes.js";
+import paymentRoutes from "./routes/paymentRoutes";
+import { log, serveStatic, setupVite } from "./vite.js";
 
+// Load environment variables from .env file
 dotenv.config();
 
-const requiredEnvVars = ['NODE_ENV', 'FRONTEND_URL', 'API_URL'];
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-if (missingVars.length > 0) {
-  console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
-  process.exit(1);
-}
-
-const corsOptions = {
-  origin: process.env.FRONTEND_URL,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-
+// Debug: Log environment variables
 console.log('Environment Variables:', {
   NODE_ENV: process.env.NODE_ENV,
   ORANGE_MONEY_MERCHANT_KEY: process.env.ORANGE_MONEY_MERCHANT_KEY ? '***' : 'MISSING',
@@ -30,15 +18,13 @@ console.log('Environment Variables:', {
   ORANGE_MONEY_BASE_URL: process.env.ORANGE_MONEY_BASE_URL
 });
 
+// Set environment variables for Vite development server
 if (process.env.NODE_ENV === "development") {
   process.env.VITE_HOST = "0.0.0.0";
   process.env.VITE_ALLOWED_HOSTS = "all";
 }
 
-const app: express.Express = express();
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -60,68 +46,81 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
+
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-      console.log(logLine);
+
+      log(logLine);
     }
   });
 
   next();
 });
 
-console.log('Importing routes');
-registerRoutes(app);
-console.log('Routes imported');
-console.log('Importing paymentRoutes');
-app.use('/api', paymentRoutes);
-console.log('paymentRoutes imported');
+(async () => {
+  // Enregistrer les routes existantes
+  registerRoutes(app);
+  
+  // Enregistrer les routes de paiement
+  app.use('/api', paymentRoutes);
 
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  res.status(status).json({ message });
-  console.error('Error:', err);
-});
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
 
-export default app;
+    res.status(status).json({ message });
+    throw err;
+  });
 
-if (!process.env.VERCEL) {
-  const defaultPorts = [3001, 3002, 3003, 3004, 3005, 5000, 5001, 5002, 5003, 5004, 5005];
-  const host = process.env.HOST || '0.0.0.0';
-  const portsToTry = process.env.PORT 
-    ? [parseInt(process.env.PORT, 10), ...defaultPorts]
-    : defaultPorts;
-  let currentPortIndex = 0;
-
-  const tryStartServer = () => {
-    if (currentPortIndex >= portsToTry.length) {
-      console.error('❌ All ports are in use. Please free up a port or try again later.');
-      console.log('\nTried the following ports:', portsToTry.join(', '));
-      process.exit(1);
-    }
-
-    const port = portsToTry[currentPortIndex];
-    console.log(`\n🔍 Attempting to start server on port ${port}...`);
-
-    const server = app.listen(port, host, () => {
-      console.log(`\n✅ Server is running on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
-      console.log(`🌐 Network URL: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
-      console.log(`🚀 API base URL: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}/api`);
-    });
-
-    server.on('error', (error: NodeJS.ErrnoException) => {
-      if (error.code === 'EADDRINUSE') {
-        console.log(`⚠️  Port ${port} is in use, trying next port...`);
-        currentPortIndex++;
-        tryStartServer();
-      } else {
-        console.error('❌ Server error:', error.message);
-        console.log('\n💡 Tip: Check if another process is using the port or try a different port range.');
+  // For Vercel, export the app instead of starting a server
+  if (process.env.VERCEL) {
+    // Export for Vercel serverless functions - no Vite/Rollup needed
+    module.exports = app;
+  } else {
+    // Local development server
+    const portsToTry = [5002, 5003, 5004, 5005];
+    const host = process.env.HOST || "127.0.0.1";
+    
+    const startServer = async (portIndex = 0) => {
+      if (portIndex >= portsToTry.length) {
+        console.error('All ports are in use. Please free up a port or try again later.');
         process.exit(1);
       }
-    });
-  };
-
-  tryStartServer();
-}
+      
+      const port = process.env.PORT ? Number(process.env.PORT) : portsToTry[portIndex];
+      const server = http.createServer(app);
+      
+      // Setup Vite in development
+      if (app.get("env") === "development") {
+        // Add middleware to handle host header before Vite processes it
+        app.use((req, res, next) => {
+          // Override host header to avoid allowedHosts restriction
+          if (req.headers.host && req.headers.host.includes('.replit.dev')) {
+            req.headers.host = `localhost:${port}`;
+          }
+          next();
+        });
+        await setupVite(app, server);
+      } else {
+        serveStatic(app);
+      }
+      
+      server.on('error', (e: NodeJS.ErrnoException) => {
+        if (e.code === 'EADDRINUSE') {
+          console.log(`Port ${port} is in use, trying next port...`);
+          startServer(portIndex + 1);
+          return;
+        }
+        console.error('Server error:', e);
+        process.exit(1);
+      });
+      
+      server.listen(port, host, () => {
+        console.log(`🚀 Server running on http://${host}:${port}`);
+      });
+    };
+    
+    startServer();
+  }
+})();

@@ -1,47 +1,24 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/client"
-      }
-    },
-    {
-      "src": "dist/server/index.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["dist/server/index.js", "shared/**", "migrations/**"]
-      }
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/dist/server/index.js"
+      "dest": "/api/index.ts"
     },
     {
-      "src": "^/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "^/static/(.*)",
-      "dest": "/static/$1"
-    },
-    {
-      "src": "^/(.*\\.(js|css|jpg|jpeg|png|gif|ico|svg|woff2|woff|ttf|eot))$",
-      "dest": "/$1"
-    },
-    {
-      "src": "^/(.*)",
-      "dest": "/index.html"
+      "src": "/(.*)",
+      "dest": "/dist/public/index.html"
     }
   ],
   "env": {
     "NODE_ENV": "production",
     "VERCEL": "1"
   },
-  "buildCommand": "pnpm run build",
-  "installCommand": "pnpm install --frozen-lockfile"
+  "installCommand": "pnpm install",
+  "outputDirectory": "dist/public"
 }

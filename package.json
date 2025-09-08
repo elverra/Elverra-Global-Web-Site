@@ -7,20 +7,13 @@
     "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:client\"",
     "dev:server": "NODE_ENV=development tsx server/index.ts",
     "dev:client": "vite",
-"build": "vite build && esbuild server/index.ts --bundle --platform=node --packages=external --format=esm --outfile=dist/server/index.js --resolve-extensions=.ts,.js && pnpm run copy:assets",
-    "copy:assets": "mkdir -p dist/client/assets && cp -r attached_assets/* dist/client/assets/",
-    "start": "NODE_ENV=production node dist/server/index.js",
+    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
-  },
-  "resolutions": {
-    "@radix-ui/react-visually-hidden": "^1.1.3",
-    "@radix-ui/react-select": "^2.2.6",
-    "@radix-ui/react-slot": "^1.0.3",
-    "object-keys": "^1.1.1"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.1",
@@ -60,7 +53,6 @@
     "@supabase/supabase-js": "^2.57.0",
     "@tanstack/react-query": "^5.60.5",
     "@types/bcrypt": "^6.0.0",
-    "@types/cors": "^2.8.19",
     "antd": "^5.27.3",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
@@ -68,7 +60,6 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "connect-pg-simple": "^10.0.0",
-    "cors": "^2.8.5",
     "date-fns": "^3.6.0",
     "dotenv": "^17.2.1",
     "drizzle-kit": "^0.30.4",

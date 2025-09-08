@@ -23,9 +23,9 @@ const DEFAULT_GATEWAYS: PaymentGateway[] = [
     id: 'sama_money',
     name: 'SAMA Money',
     type: 'mobile_money',
-    isActive: true, // Enable for production
+    isActive: true,
     config: {
-      baseUrl: 'https://smarchandamatest.sama.money/V1/', // Test environment URL (working endpoint)
+      baseUrl: 'https://smarchand.sama.money/V1/', // Production URL
       merchantName: 'CLUB 66 GLOBAL',
       environment: 'test', // Test mode
       supportedCurrencies: ['OUV', 'CFA']

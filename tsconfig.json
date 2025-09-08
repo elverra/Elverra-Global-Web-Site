@@ -2,19 +2,17 @@
   "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
-    "allowImportingTsExtensions": true,
-    "declaration": true,
-    "emitDeclarationOnly": true,
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-    "outDir": "./dist",
-    "module": "CommonJS", // Use CommonJS for Node.js compatibility
+    "noEmit": true,
+    "module": "ESNext",
     "strict": true,
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "moduleResolution": "node", // Use node for server-side code
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
     "baseUrl": ".",
     "types": ["node", "vite/client"],
     "paths": {
