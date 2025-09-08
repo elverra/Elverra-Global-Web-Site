@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { paymentController } from '../controllers/paymentController';
-import { authMiddleware } from '../middleware/authMiddleware';
-import { z } from 'zod';
+import { paymentController } from 'server/controllers/paymentController';
+import { authMiddleware } from 'server/middleware/authMiddleware';
 import { validateRequest } from 'server/middleware/validateRequest';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -60,7 +60,7 @@ router.post(
 );
 
 // Callback pour Orange Money (pas d'authentification requise)
-router.post('/payments/orange/callback', paymentController.handleOrangeMoneyCallback);
+router.post('/orange-callback', paymentController.handleOrangeMoneyCallback);
 
 // Webhook (pas d'authentification requise)
 router.post('/webhook', paymentController.handleWebhook);

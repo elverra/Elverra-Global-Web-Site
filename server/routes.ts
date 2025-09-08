@@ -1,6 +1,5 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { hashPassword, comparePasswords } from "./utils/passwordUtils";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 
@@ -24,6 +23,7 @@ import {
 } from "../shared/schema";
 import { orangeMoneyService } from "./services/payment/orangeMoneyService";
 import { v4 as uuidv4 } from 'uuid';
+import { comparePasswords, hashPassword } from "./utils/passwordUtils";
 
 // Schema for Orange Money payment request validation
 const orangeMoneyPaymentSchema = z.object({
@@ -2494,5 +2494,3 @@ app.post("/api/subscriptions", async (req, res) => {
 
   // No need to return server for Vercel serverless
 }
-
-export default { registerRoutes };
