@@ -20,7 +20,7 @@ const AffiliateDashboard = () => {
   const handleCopyReferralLink = () => {
     if (!affiliateData) return;
     
-    navigator.clipboard.writeText(`https://elverra-global.com/register?ref=${affiliateData.referralCode}`);
+    navigator.clipboard.writeText(`https://elverraglobalml.com/register?ref=${affiliateData.referralCode}`);
     setCopied(true);
     toast({
       title: "Copied!",
@@ -50,7 +50,7 @@ const AffiliateDashboard = () => {
           <div className="text-center">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Data</h2>
             <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={refreshData}>Try Again</Button>
+            <Button onClick={() => refreshData()}>Try Again</Button>
           </div>
         </div>
       </Layout>
