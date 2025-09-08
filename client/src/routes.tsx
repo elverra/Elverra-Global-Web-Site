@@ -85,6 +85,8 @@ import MerchantApprovals from '@/pages/admin/MerchantApprovals';
 import AccessLawyer from '@/pages/AccessLawyer';
 import RegistrationThankYou from '@/pages/RegistrationThankYou';
 import EBooks from '@/pages/EBooks';
+import MembershipSelection from '@/pages/MembershipSelection';
+import PaymentStatus from '@/pages/PaymentStatus';
 
 // Add the new route to the existing routes array
 const routes = [
@@ -419,6 +421,14 @@ const routes = [
   {
     path: '/ebooks',
     element: <EBooks />,
+  },
+  {
+    path: '/membership/selection',
+    element: <MembershipSelection />,
+  },
+  {
+    path: '/payment-status',
+    element: <PaymentStatus />,
   },
 ];
 

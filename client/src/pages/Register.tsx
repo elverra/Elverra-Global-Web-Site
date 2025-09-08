@@ -43,8 +43,6 @@ const Register = () => {
     country: "Mali",
     password: "",
     confirmPassword: "",
-    tier: (planFromUrl || "essential") as "essential" | "premium" | "elite",
-    physical_card_requested: false,
     referral_code: referralCode || "",
     is_merchant: false,
   });
@@ -138,10 +136,10 @@ const Register = () => {
     },
     onSuccess: (data) => {
       console.log("🎉 Registration completed successfully!");
-      toast.success("Registration successful! Please complete your membership payment.");
+      toast.success("Registration successful! Please sign in to continue.");
 
-      // Redirect to payment page with the selected tier and new registration flag
-      navigate(`/membership/payment?plan=${formData.tier}&new=true`);
+      // Redirect to login page after successful registration
+      navigate("/login");
     },
     onError: (error: any) => {
       console.error("❌ Registration error:", error);
@@ -169,8 +167,6 @@ const Register = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const selectedTier = membershipTiers[formData.tier];
-
   return (
     <Layout>
       <PremiumBanner
@@ -194,42 +190,6 @@ const Register = () => {
 
               <CardContent className="p-8 pt-0">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Membership Tier Selection */}
-                  <div className="space-y-4">
-                    <Label className="text-lg font-medium">
-                      Choose Your Client Tier
-                    </Label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {Object.entries(membershipTiers).map(([key, tier]) => (
-                        <div
-                          key={key}
-                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                            formData.tier === key
-                              ? "border-purple-600 bg-purple-50"
-                              : "border-gray-200 hover:border-purple-300"
-                          }`}
-                          onClick={() => handleInputChange("tier", key)}
-                        >
-                          <div className="text-center">
-                            <h3 className="font-bold text-lg">{tier.name}</h3>
-                            <p className="text-sm text-gray-600 mb-2">
-                              {tier.description}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Registration: CFA{" "}
-                              {tier.registration.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Monthly: CFA {tier.monthly.toLocaleString()}
-                            </p>
-                            <Badge className="mt-2 bg-orange-500">
-                              {tier.discount}% Discount
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
 
                   {/* Personal Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -381,22 +341,6 @@ const Register = () => {
 
                   {/* Additional Options */}
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="physical_card"
-                        checked={formData.physical_card_requested}
-                        onCheckedChange={(checked) =>
-                          handleInputChange(
-                            "physical_card_requested",
-                            checked === true,
-                          )
-                        }
-                        data-testid="checkbox-physical-card"
-                      />
-                      <Label htmlFor="physical_card" className="text-sm">
-                        Request physical ZENIKA card (additional fees may apply)
-                      </Label>
-                    </div>
 
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -426,7 +370,7 @@ const Register = () => {
                         <span>Creating Account...</span>
                       </div>
                     ) : (
-                      `Create Account - CFA ${selectedTier.registration.toLocaleString()}`
+                      "Create Account"
                     )}
                   </Button>
 

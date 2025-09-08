@@ -14,16 +14,52 @@ const MembershipPayment = () => {
   const navigate = useNavigate();
   const planFromUrl = searchParams.get('plan');
   const paymentStatus = searchParams.get('payment');
+  const cardType = searchParams.get('type'); // 'child' or 'adult'
+  const tier = searchParams.get('tier'); // 'essential', 'premium', 'elite'
+  const duration = searchParams.get('duration'); // '1', '3', '6', '12'
   const { user } = useAuth();
   const { membership, loading: membershipLoading, refetch: refetchMembership } = useMembership();
-  const [selectedTier, setSelectedTier] = useState<string>('');
+  const [selectedTier, setSelectedTier] = useState<string>(tier || planFromUrl || '');
   const [showPayment, setShowPayment] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
 
-  const plans = {
-    essential: { name: 'Essential', price: '11,000', monthly: '1,000' },
-    premium: { name: 'Premium', price: '12,000', monthly: '2,000' },
-    elite: { name: 'Elite', price: '15,000', monthly: '5,000' },
+  const childCard = {
+    name: 'Carte Enfant ZENIKA',
+    price: 5000,
+    monthly: 0,
+    description: 'Carte spéciale pour les enfants de 6 à 17 ans'
+  };
+
+  const adultPlans = {
+    essential: { name: 'Essential', registration: 10000, monthly: 1000 },
+    premium: { name: 'Premium', registration: 10000, monthly: 2000 },
+    elite: { name: 'Elite', registration: 10000, monthly: 5000 },
+  };
+
+  const durationOptions = {
+    "1": { label: "1 mois", discount: 0 },
+    "3": { label: "3 mois", discount: 5 },
+    "6": { label: "6 mois", discount: 10 },
+    "12": { label: "12 mois", discount: 15 }
+  };
+
+  const calculatePrice = () => {
+    if (cardType === 'child') {
+      return childCard.price;
+    }
+    
+    if (cardType === 'adult' && tier && duration) {
+      const plan = adultPlans[tier as keyof typeof adultPlans];
+      const durationNum = parseInt(duration);
+      const durationDiscount = durationOptions[duration as keyof typeof durationOptions].discount;
+      
+      const monthlyPrice = plan.monthly * (1 - durationDiscount / 100);
+      const totalMonthly = monthlyPrice * durationNum;
+      
+      return plan.registration + totalMonthly;
+    }
+    
+    return 0;
   };
 
   useEffect(() => {
@@ -48,7 +84,7 @@ const MembershipPayment = () => {
   }, [searchParams, paymentStatus, refetchMembership]);
 
   useEffect(() => {
-    if (planFromUrl && plans[planFromUrl as keyof typeof plans]) {
+    if (planFromUrl && adultPlans[planFromUrl as keyof typeof adultPlans]) {
       setSelectedTier(planFromUrl);
       setShowPayment(true);
       const newSearchParams = new URLSearchParams(searchParams);
@@ -72,7 +108,7 @@ const MembershipPayment = () => {
             <CheckCircle className="h-24 w-24 text-green-500 mx-auto" />
             <h1 className="text-4xl font-bold text-gray-900">Payment Successful!</h1>
             <p className="text-lg text-gray-600">
-              Welcome to Elverra Global {plans[selectedTier as keyof typeof plans]?.name} membership!
+              Welcome to Elverra Global {cardType === 'child' ? childCard.name : adultPlans[selectedTier as keyof typeof adultPlans]?.name} membership!
             </p>
             <p className="text-gray-600">You will receive your digital membership card via email within 24 hours.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

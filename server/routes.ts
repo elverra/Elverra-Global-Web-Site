@@ -1452,6 +1452,7 @@ app.post("/api/subscriptions", async (req, res) => {
         amount: paymentResponse.amount,
         status: paymentResponse.status,
         transactionId: paymentResponse._rawResponse?.pay_token || paymentResponse.orderId,
+        paymentId: paymentResponse.paymentId,
       });
     } catch (error) {
       console.error("Orange Money payment initiation error:", error);
@@ -1835,7 +1836,23 @@ app.post("/api/subscriptions", async (req, res) => {
 
   // Payment success/cancel routes  
   app.get("/payment-success", (req, res) => {
-    res.redirect('/#/thank-you?payment=success');
+    const { reference, amount, method, status } = req.query;
+    res.redirect(`/#/payment-status?status=success&reference=${reference}&amount=${amount}&method=${method}`);
+  });
+
+  app.get("/payment-failed", (req, res) => {
+    const { reference, reason, method } = req.query;
+    res.redirect(`/#/payment-status?status=failed&reference=${reference}&reason=${reason}&method=${method}`);
+  });
+
+  app.get("/payment-cancelled", (req, res) => {
+    const { reference, method } = req.query;
+    res.redirect(`/#/payment-status?status=cancelled&reference=${reference}&method=${method}`);
+  });
+
+  app.get("/payment-pending", (req, res) => {
+    const { reference, method } = req.query;
+    res.redirect(`/#/payment-status?status=pending&reference=${reference}&method=${method}`);
   });
 
   app.get("/payment-cancel", (req, res) => {
@@ -1846,7 +1863,7 @@ app.post("/api/subscriptions", async (req, res) => {
   app.post("/api/payments/orange-callback", async (req, res) => {
     try {
       console.log("Orange Money callback received:", req.body);
-      const { pay_token, status, order_id } = req.body; // Use pay_token and order_id as per logs
+      const { pay_token, status, order_id, amount, currency } = req.body;
   
       if (!pay_token || !order_id) {
         return res.status(400).json({ success: false, error: "Pay token and order ID are required" });
@@ -1864,16 +1881,46 @@ app.post("/api/subscriptions", async (req, res) => {
         return res.status(404).json({ success: false, error: "Payment not found" });
       }
   
-      // Map Orange Money status to internal status
-      const newStatus = status.toLowerCase() === "success" ? "completed" : status.toLowerCase();
+      // Map Orange Money status to internal status with more detailed handling
+      let newStatus: "pending" | "completed" | "failed" | "cancelled";
+      switch (status.toLowerCase()) {
+        case "success":
+        case "completed":
+        case "paid":
+          newStatus = "completed";
+          break;
+        case "failed":
+        case "error":
+        case "declined":
+          newStatus = "failed";
+          break;
+        case "cancelled":
+        case "canceled":
+        case "aborted":
+          newStatus = "cancelled";
+          break;
+        default:
+          newStatus = "pending";
+      }
   
-      // Update payment attempt
+      // Update payment attempt with detailed information
       const [payment] = await db
         .update(paymentAttempts)
         .set({
           status: newStatus,
           transactionId: pay_token,
           updatedAt: new Date(),
+          metadata: {
+            ...(existingPayment.metadata as Record<string, any> || {}),
+            orangeMoneyStatus: status,
+            orangeMoneyResponse: {
+              pay_token,
+              order_id,
+              amount,
+              currency,
+              timestamp: new Date().toISOString()
+            }
+          }
         })
         .where(eq(paymentAttempts.id, existingPayment.id))
         .returning();
@@ -1883,7 +1930,7 @@ app.post("/api/subscriptions", async (req, res) => {
         return res.status(500).json({ success: false, error: "Failed to update payment" });
       }
   
-      // Update subscription if payment is successful
+      // Handle different payment statuses
       if (newStatus === "completed") {
         const metadata = existingPayment.metadata as Record<string, any> | null;
         const subscriptionId = metadata?.subscriptionId;
@@ -1898,7 +1945,7 @@ app.post("/api/subscriptions", async (req, res) => {
                 updatedAt: new Date(),
               })
               .where(eq(subscriptions.id, subscriptionId));
-            console.log(`Subscription ${subscriptionId} updated to active`);
+            console.log(`✅ Subscription ${subscriptionId} activated successfully`);
           } catch (updateError) {
             console.error("Error updating subscription status:", updateError);
           }
@@ -1918,9 +1965,16 @@ app.post("/api/subscriptions", async (req, res) => {
         }
   
         // Redirect to success page
-        res.redirect(`/payment-success?reference=${order_id}&amount=${existingPayment.amount}&method=orange_money`);
+        res.redirect(`/payment-success?reference=${order_id}&amount=${existingPayment.amount}&method=orange_money&status=success`);
+      } else if (newStatus === "failed") {
+        console.log(`❌ Payment failed for order_id: ${order_id}`);
+        res.redirect(`/payment-failed?reference=${order_id}&reason=payment_failed&method=orange_money`);
+      } else if (newStatus === "cancelled") {
+        console.log(`🚫 Payment cancelled for order_id: ${order_id}`);
+        res.redirect(`/payment-cancelled?reference=${order_id}&method=orange_money`);
       } else {
-        res.redirect(`/payment-cancel?reference=${order_id}`);
+        console.log(`⏳ Payment pending for order_id: ${order_id}`);
+        res.redirect(`/payment-pending?reference=${order_id}&method=orange_money`);
       }
     } catch (error) {
       console.error("Orange callback error:", error);
