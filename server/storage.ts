@@ -1,6 +1,6 @@
 // storage.ts
 import { eq, and, desc } from 'drizzle-orm';
-import { db } from './db';
+import { db } from './db.js';
 import {
   productReviews,
   users,
@@ -51,7 +51,7 @@ import {
   type ProductReview,
   type InsertProductReview,
   type RewardType
-} from '../shared/schema';
+} from '../shared/schema.js';
 
 // Alias types for backward compatibility
 type UserBase = User;
