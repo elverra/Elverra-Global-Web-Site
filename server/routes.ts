@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { eq, desc, sql, or, ilike, and } from "drizzle-orm";
+import jwt from "jsonwebtoken";
 
 // Internal imports
 import { storage } from "./storage.js";
@@ -33,6 +34,7 @@ import {
 import { orangeMoneyService } from "./services/payment/orangeMoneyService.js";
 import { v4 as uuidv4 } from 'uuid';
 import { comparePasswords, hashPassword } from "./utils/passwordUtils.js";
+import { error } from "console";
 
 // Schema for Orange Money payment request validation
 const orangeMoneyPaymentSchema = z.object({
@@ -56,6 +58,46 @@ export function registerRoutes(app: Express): void {
 
   // Ô Secours Token System Routes
   
+  // Get user's token balances (frontend expects this endpoint)
+  app.get("/api/secours/balances", async (req, res) => {
+    try {
+      const { userId } = req.query;
+      
+      if (!userId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "User ID is required" 
+        });
+      }
+
+      // Get all subscriptions for the user
+      const subscriptions = await db.select().from(secoursSubscriptions)
+        .where(eq(secoursSubscriptions.userId, userId as string));
+
+      // Transform to token balance format expected by frontend
+      const tokenBalances = subscriptions.map(sub => ({
+        tokenId: sub.subscriptionType,
+        tokenType: sub.subscriptionType,
+        balance: sub.tokenBalance || 0,
+        subscriptionId: sub.id,
+        isActive: sub.isActive,
+        usedThisMonth: 0 // TODO: Calculate from transactions
+      }));
+
+      res.json({
+        success: true,
+        data: tokenBalances
+      });
+    } catch (error) {
+      console.error('Error fetching token balances:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to fetch token balances",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Get user's secours subscriptions
   app.get("/api/secours/subscriptions", async (req, res) => {
     try {
@@ -337,6 +379,59 @@ app.post("/api/secours/subscriptions", async (req, res) => {
     res.status(500).json({ error: "Failed to create subscription" });
   }
 });
+
+  // Get user membership status
+  app.get("/api/memberships/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Check if user exists
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const userData = user[0];
+      
+      // Check for active subscription
+      const activeSubscription = await db
+        .select()
+        .from(subscriptions)
+        .where(
+          and(
+            eq(subscriptions.userId, userId),
+            eq(subscriptions.status, 'active')
+          )
+        )
+        .orderBy(desc(subscriptions.createdAt))
+        .limit(1);
+
+      // If no active subscription, check if user has paid membership tier
+      const hasPaidTier = userData.membershipTier && 
+        ['essential', 'premium', 'elite'].includes(userData.membershipTier);
+
+      if (activeSubscription.length === 0 && !hasPaidTier) {
+        return res.status(404).json({ error: "No active membership found" });
+      }
+
+      // Create membership response
+      const membership = {
+        id: activeSubscription[0]?.id || `membership_${userId}`,
+        user_id: userId,
+        tier: userData.membershipTier || 'essential',
+        is_active: activeSubscription.length > 0 || hasPaidTier,
+        start_date: activeSubscription[0]?.startDate?.toISOString() || userData.createdAt?.toISOString(),
+        expiry_date: activeSubscription[0]?.endDate?.toISOString() || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now if no subscription
+        physical_card_requested: false,
+        member_id: `ELV${userId.slice(0, 8).toUpperCase()}`
+      };
+
+      res.json(membership);
+    } catch (error) {
+      console.error('Error fetching membership:', error);
+      res.status(500).json({ error: "Failed to fetch membership" });
+    }
+  });
 
 // Regular subscriptions endpoint
 app.post("/api/subscriptions", async (req, res) => {
@@ -856,12 +951,21 @@ app.post("/api/subscriptions", async (req, res) => {
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { referral_code, is_merchant, ...userDataRaw } = req.body;
-      const userData = insertUserSchema.parse({
+      console.log("📝 Registration request body:", JSON.stringify(req.body, null, 2));
+      
+      const { referral_code, physical_card_requested, ...userDataRaw } = req.body;
+      
+      // Prepare data for validation
+      const dataForValidation = {
         ...userDataRaw,
-        isMerchant: is_merchant || false,
-        merchantApprovalStatus: is_merchant ? 'pending' : 'approved'
-      }) as { email: string; [key: string]: any }; // Add type assertion
+        fullName: userDataRaw.full_name, // Map full_name to fullName for schema validation
+        isMerchant: false,
+        merchantApprovalStatus: 'approved'
+      };
+      
+      console.log("🔍 Data for validation:", JSON.stringify(dataForValidation, null, 2));
+      
+      const userData = insertUserSchema.parse(dataForValidation) as { email: string; [key: string]: any };
   
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
@@ -897,7 +1001,7 @@ app.post("/api/subscriptions", async (req, res) => {
           referrerId: referrerId,
           referredUserId: user.id,
           referralCode: referral_code,
-          referralType: is_merchant ? 'merchant' : 'member',
+          referralType: 'member',
           status: 'active'
         });
   
@@ -953,7 +1057,23 @@ app.post("/api/subscriptions", async (req, res) => {
       
       console.log('Login successful for:', email);
       const roles = await storage.getUserRoles(user.id);
-      res.json({ user: { id: user.id, email: user.email, fullName: user.fullName }, roles });
+      
+      // Generate JWT token
+      const token = jwt.sign(
+        { 
+          id: user.id, 
+          email: user.email, 
+          role: roles.includes('admin') ? 'admin' : 'user' 
+        },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
+      );
+      
+      res.json({ 
+        user: { id: user.id, email: user.email, fullName: user.fullName }, 
+        roles,
+        token 
+      });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ error: "Login failed", details: error instanceof Error ? error.message : 'Unknown error' });
@@ -2061,30 +2181,61 @@ app.post("/api/subscriptions", async (req, res) => {
           updatedAt: new Date()
         })
         .where(eq(payments.id, payment.id));
-  
-      // If payment successful, update subscription
+
+      // ONLY update subscription and user tier if payment is SUCCESSFUL
       if (newStatus === 'completed' && payment.subscriptionId) {
         const subscriptionRecord = await db.select()
           .from(subscriptions)
           .where(eq(subscriptions.id, payment.subscriptionId))
           .limit(1);
-  
+
         if (subscriptionRecord.length > 0) {
+          const subscription = subscriptionRecord[0];
+          
+          // Update subscription to active
           await db.update(subscriptions)
             .set({ 
               status: 'active',
               updatedAt: new Date()
             })
             .where(eq(subscriptions.id, payment.subscriptionId));
+
+          // Update user's membership tier ONLY on successful payment
+          if (payment.userId) {
+            // Get tier from payment metadata or default to essential
+            const metadata = payment.metadata as Record<string, any> | null;
+            const tierToSet = metadata?.membershipTier || 'essential';
+            
+            await db.update(users)
+              .set({ 
+                membershipTier: tierToSet,
+                updatedAt: new Date()
+              })
+              .where(eq(users.id, payment.userId));
+            
+            console.log(`✅ User ${payment.userId} upgraded to ${tierToSet} after successful payment`);
+          }
         }
-  
+
         // Redirect to success page
         res.redirect(`/payment-success?reference=${order_id}&method=orange_money`);
       } else if (newStatus === 'failed') {
+        // For failed payments, ensure subscription remains inactive
+        if (payment.subscriptionId) {
+          await db.update(subscriptions)
+            .set({ 
+              status: 'cancelled',
+              updatedAt: new Date()
+            })
+            .where(eq(subscriptions.id, payment.subscriptionId));
+          
+          console.log(`❌ Subscription ${payment.subscriptionId} cancelled due to failed payment`);
+        }
+        
         // Redirect to failure page
         res.redirect(`/payment-failed?reference=${order_id}&method=orange_money`);
       } else {
-        // Still pending
+        // Still pending - no changes to subscription or user tier
         res.redirect(`/payment-pending?reference=${order_id}&method=orange_money`);
       }
     } catch (error) {

@@ -69,14 +69,26 @@ const TokenPurchase: React.FC<TokenPurchaseProps> = ({
     try {
       const response: ApiResponse<any> = await TokenService.purchaseTokens(
         selectedTokenId,
-        amountNum
+        amountNum,
+        'orange_money' // Default to Orange Money, can be made configurable
       );
 
       if (response.success) {
-        toast({
-          title: 'Success',
-          description: `Successfully purchased ${amount} ${selectedToken?.name} tokens`,
-        });
+        // If payment URL is provided, redirect to payment
+        if (response.paymentUrl) {
+          toast({
+            title: 'Redirecting to Payment',
+            description: `Redirecting to complete payment of ${response.amount} FCFA for ${amountNum} tokens`,
+          });
+          
+          // Open payment URL in new window or redirect
+          window.open(response.paymentUrl, '_blank');
+        } else {
+          toast({
+            title: 'Success',
+            description: `Successfully purchased ${amountNum} ${selectedToken?.name} tokens`,
+          });
+        }
         onPurchaseSuccess?.();
       } else {
         throw new Error(response.error || 'Failed to process purchase');

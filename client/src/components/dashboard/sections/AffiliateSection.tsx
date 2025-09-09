@@ -145,8 +145,10 @@ const AffiliateSection = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Affiliate Program</h2>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Current Tier:</span>
-          {affiliateData?.currentTier ? getTierBadge(affiliateData.currentTier) : '-'}
+          <span className="text-sm text-gray-600">Performance:</span>
+          <Badge className="bg-blue-100 text-blue-800">
+            {affiliateData?.totalReferrals || 0} Referrals
+          </Badge>
         </div>
       </div>
 
@@ -232,7 +234,7 @@ const AffiliateSection = () => {
                   {loading ? (
                     <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    `${affiliateData?.commissionRate || 0}%`
+                    `10%`
                   )}
                 </p>
               </div>
@@ -256,7 +258,7 @@ const AffiliateSection = () => {
               <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Code</label>
               <div className="flex gap-2">
                 <Input
-                  value={affiliateData?.referralCode || 'REFCABG'}
+                  value={affiliateData?.referralCode || 'Loading...'}
                   readOnly
                   className="font-mono"
                 />
@@ -271,11 +273,11 @@ const AffiliateSection = () => {
               <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Link</label>
               <div className="flex gap-2">
                 <Input
-                  value={affiliateData?.referralCode ? `https://elverra-global.com/register?ref=${affiliateData.referralCode}` : 'https://www.elverraglobal.com/register?ref=REFCABG'}
+                  value={affiliateData?.referralCode ? `https://elverra-global.com/register?ref=${affiliateData.referralCode}` : 'Loading...'}
                   readOnly
                   className="text-sm"
                 />
-                <Button onClick={shareReferralLink} variant="outline">
+                <Button onClick={shareReferralLink} variant="outline" disabled={!affiliateData?.referralCode}>
                   <Share2 className="h-4 w-4" />
                   Share
                 </Button>
@@ -326,23 +328,19 @@ const AffiliateSection = () => {
             </div>
 
             <div className="bg-green-50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-2">Tier Benefits:</h4>
+              <h4 className="font-semibold mb-2">Commission Info:</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Bronze (0-5 referrals):</span>
-                  <span>10% commission</span>
+                  <span>Commission Rate:</span>
+                  <span className="font-semibold">10% on all payments</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Silver (6-15 referrals):</span>
-                  <span>12% commission</span>
-                </div>
-                <div className="flex justify-between font-semibold text-yellow-700">
-                  <span>Gold (16-30 referrals):</span>
-                  <span>15% commission</span>
+                  <span>Payment Types:</span>
+                  <span>Card purchase & renewals</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Platinum (30+ referrals):</span>
-                  <span>20% commission</span>
+                  <span>Payout Schedule:</span>
+                  <span>Monthly on 15th</span>
                 </div>
               </div>
             </div>

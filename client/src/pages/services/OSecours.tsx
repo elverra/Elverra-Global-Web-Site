@@ -1,6 +1,9 @@
+import React from 'react';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Layout from "@/components/layout/Layout";
+import Layout from '@/components/layout/Layout';
+import MembershipGuard from '@/components/auth/MembershipGuard';
+import OSecoursComponent from '@/components/tokens/OSecours';
 import PremiumBanner from "@/components/layout/PremiumBanner";
 import SecoursSubscriptions from "@/components/secours/SecoursSubscriptions";
 import TokenPurchase from "@/components/secours/TokenPurchase";
@@ -141,8 +144,9 @@ const OSecours = () => {
   ];
 
   return (
-    <Layout>
-      <PremiumBanner
+    <MembershipGuard requiredFeature="osecours">
+      <Layout>
+        <PremiumBanner
         title="Ô Secours - Emergency Assistance"
         description="Emergency Support, Simplified! Token-based subscription system for emergency bailout services. Be Prepared, Stay Secured with Ô Secour!"
         backgroundImage="https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
@@ -501,6 +505,7 @@ const OSecours = () => {
         </div>
       </div>
     </Layout>
+    </MembershipGuard>
   );
 };
 

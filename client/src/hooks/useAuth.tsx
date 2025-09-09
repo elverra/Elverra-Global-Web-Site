@@ -5,7 +5,13 @@ interface User {
   email: string;
   fullName?: string;
   phone?: string;
+  membershipTier?: 'essential' | 'premium' | 'elite' | null;
 }
+
+// Global cache for user role data
+const userRoleCache = new Map<string, { role: string; isAdmin: boolean; timestamp: number }>();
+const userRolePromises = new Map<string, Promise<{ role: string; isAdmin: boolean }>>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 interface AuthContextType {
   user: User | null;
@@ -38,23 +44,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const checkUserRole = async () => {
-    if (!user) {
-      setUserRole(null);
-      setIsAdmin(false);
-      return;
-    }
-
+  const fetchUserRoleFromAPI = async (userId: string): Promise<{ role: string; isAdmin: boolean }> => {
     try {
-      // First check if this is the admin email
-      if (user.email === 'admin@elverra.com' || user.email === 'oladokunefi123@gmail.com') {
-        setUserRole('admin');
-        setIsAdmin(true);
-        return;
-      }
-
       // Use our server API to check roles
-      const response = await fetch(`/api/users/${user.id}`);
+      const response = await fetch(`/api/users/${userId}`);
       if (response.ok) {
         const userData = await response.json();
         const roles = userData.roles || [];
@@ -63,9 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const hasAdminRole = roles.includes('admin');
         
         if (hasAdminRole) {
-          setUserRole('admin');
-          setIsAdmin(true);
-          return;
+          return { role: 'admin', isAdmin: true };
         }
         
         // Set the highest priority role
@@ -73,20 +64,66 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         for (const role of priorityOrder) {
           if (roles.includes(role)) {
-            setUserRole(role);
-            setIsAdmin(role === 'admin');
-            return;
+            return { role, isAdmin: role === 'admin' };
           }
         }
       }
       
       // Default to user role
-      setUserRole('user');
-      setIsAdmin(false);
+      return { role: 'user', isAdmin: false };
     } catch (error) {
       console.error('Error checking user role:', error);
-      setUserRole('user');
+      return { role: 'user', isAdmin: false };
+    }
+  };
+
+  const checkUserRole = async () => {
+    if (!user) {
+      setUserRole(null);
       setIsAdmin(false);
+      return;
+    }
+
+    // First check if this is the admin email
+    if (user.email === 'admin@elverra.com' || user.email === 'oladokunefi123@gmail.com') {
+      setUserRole('admin');
+      setIsAdmin(true);
+      return;
+    }
+
+    const cacheKey = user.id;
+    const now = Date.now();
+
+    // Check cache first
+    const cached = userRoleCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      setUserRole(cached.role);
+      setIsAdmin(cached.isAdmin);
+      return;
+    }
+
+    // Check if there's already a pending request
+    let rolePromise = userRolePromises.get(cacheKey);
+    if (!rolePromise) {
+      rolePromise = fetchUserRoleFromAPI(user.id);
+      userRolePromises.set(cacheKey, rolePromise);
+    }
+
+    try {
+      const result = await rolePromise;
+      
+      // Cache the result
+      userRoleCache.set(cacheKey, {
+        role: result.role,
+        isAdmin: result.isAdmin,
+        timestamp: now
+      });
+
+      setUserRole(result.role);
+      setIsAdmin(result.isAdmin);
+    } finally {
+      // Clean up the promise
+      userRolePromises.delete(cacheKey);
     }
   };
 
@@ -145,6 +182,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const loggedInUser = data.user;
         setUser(loggedInUser);
         localStorage.setItem('currentUser', JSON.stringify(loggedInUser));
+        // Store JWT token if provided
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
         return { data: { user: loggedInUser }, error: null };
       } else {
         const error = await response.json();
@@ -161,6 +202,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUserRole(null);
       setIsAdmin(false);
       localStorage.removeItem('currentUser');
+      localStorage.removeItem('token');
     } catch (error) {
       console.error('Error during sign out:', error);
     }

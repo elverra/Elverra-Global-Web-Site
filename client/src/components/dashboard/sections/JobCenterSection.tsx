@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
+import { useJobApplications } from '@/hooks/useJobs';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +30,7 @@ import {
 const JobCenterSection = () => {
   const { user } = useAuth();
   const { membership } = useMembership();
+  const { getUserApplications } = useJobApplications();
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('all');
@@ -64,11 +66,9 @@ const JobCenterSection = () => {
   const fetchAppliedJobs = async () => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`/api/users/${user.id}/applications`);
-      if (response.ok) {
-        const data = await response.json();
-        setAppliedJobs(data);
-      }
+      // Use cached getUserApplications from useJobs hook
+      const applications = await getUserApplications();
+      setAppliedJobs(applications);
     } catch (error) {
       console.error('Error fetching applied jobs:', error);
     }

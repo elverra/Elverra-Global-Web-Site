@@ -426,6 +426,174 @@ export class OrangeMoneyService {
       throw new Error(error.response?.data?.message || 'Failed to verify payment');
     }
   }
+
+  async cancelRecurringPayment(subscriptionId: string): Promise<{ success: boolean; message: string; reference?: string }> {
+    try {
+      const accessToken = await this.getAccessToken();
+      
+      // Orange Money API endpoint for cancelling recurring payments
+      const response = await axios.post(`${this.baseUrl}/subscription/${subscriptionId}/cancel`, {
+        merchant_key: this.merchantKey,
+        subscription_id: subscriptionId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Merchant-Key': this.merchantKey
+        },
+      });
+
+      console.log('Orange Money cancellation response:', {
+        status: response.status,
+        data: response.data
+      });
+
+      return {
+        success: true,
+        message: response.data.message || 'Subscription cancelled successfully',
+        reference: response.data.reference || subscriptionId
+      };
+    } catch (error: any) {
+      console.error('Error cancelling recurring payment:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data,
+        subscriptionId
+      });
+
+      // If the API doesn't support cancellation or returns an error,
+      // we'll still return success since we handle the cancellation locally
+      if (error.response?.status === 404 || error.response?.status === 501) {
+        console.log('Orange Money API does not support subscription cancellation, handling locally');
+        return {
+          success: true,
+          message: 'Subscription cancelled locally (Orange Money API does not support remote cancellation)',
+          reference: subscriptionId
+        };
+      }
+
+      throw new Error(error.response?.data?.message || 'Failed to cancel recurring payment');
+    }
+  }
+
+  async handleWebhook(webhookData: any, signature?: string): Promise<void> {
+    try {
+      console.log('Processing Orange Money webhook:', {
+        data: webhookData,
+        signature: signature ? '***' : 'NO_SIGNATURE'
+      });
+
+      // Validate webhook signature if provided
+      if (signature && this.merchantKey) {
+        // Orange Money webhook signature validation would go here
+        // For now, we'll log it for debugging
+        console.log('Webhook signature validation:', { hasSignature: !!signature });
+      }
+
+      const { status, order_id, pay_token, amount, currency } = webhookData;
+
+      if (!order_id) {
+        throw new Error('Missing order_id in webhook data');
+      }
+
+      // Find the payment record by order_id (paymentReference)
+      const [payment] = await db
+        .select()
+        .from(payments)
+        .where(eq(payments.paymentReference, order_id))
+        .limit(1);
+
+      if (!payment) {
+        console.error('Payment not found for order_id:', order_id);
+        throw new Error(`Payment not found for order_id: ${order_id}`);
+      }
+
+      // Map Orange Money status to our payment status
+      let paymentStatus: PaymentStatus;
+      switch (status?.toLowerCase()) {
+        case 'success':
+        case 'completed':
+        case 'paid':
+          paymentStatus = 'completed';
+          break;
+        case 'failed':
+        case 'error':
+          paymentStatus = 'failed';
+          break;
+        case 'cancelled':
+        case 'canceled':
+          paymentStatus = 'cancelled';
+          break;
+        default:
+          paymentStatus = 'pending';
+      }
+
+      // Update payment record
+      await db
+        .update(payments)
+        .set({
+          status: paymentStatus,
+          externalTransactionId: pay_token || payment.externalTransactionId,
+          updatedAt: new Date(),
+          metadata: {
+            ...(payment.metadata as Record<string, unknown> || {}),
+            webhookData,
+            webhookProcessedAt: new Date().toISOString(),
+            finalStatus: paymentStatus
+          }
+        })
+        .where(eq(payments.id, payment.id));
+
+      // Update payment attempt if it exists
+      if (payment.paymentAttemptId) {
+        await db
+          .update(paymentAttempts)
+          .set({
+            status: paymentStatus,
+            updatedAt: new Date(),
+            metadata: {
+              ...(payment.metadata as Record<string, unknown> || {}),
+              webhookData,
+              webhookProcessedAt: new Date().toISOString()
+            }
+          })
+          .where(eq(paymentAttempts.id, payment.paymentAttemptId));
+      }
+
+      // If payment is successful and has a subscription, activate it
+      if (paymentStatus === 'completed' && payment.subscriptionId) {
+        await db
+          .update(subscriptions)
+          .set({
+            status: 'active',
+            lastPaymentId: payment.id,
+            updatedAt: new Date()
+          })
+          .where(eq(subscriptions.id, payment.subscriptionId));
+
+        console.log('Subscription activated for successful payment:', {
+          paymentId: payment.id,
+          subscriptionId: payment.subscriptionId
+        });
+      }
+
+      console.log('Orange Money webhook processed successfully:', {
+        paymentId: payment.id,
+        orderId: order_id,
+        status: paymentStatus
+      });
+
+    } catch (error: any) {
+      console.error('Error processing Orange Money webhook:', {
+        message: error.message,
+        stack: error.stack,
+        webhookData
+      });
+      throw error;
+    }
+  }
 }
 
 export const orangeMoneyService = new OrangeMoneyService();

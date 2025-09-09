@@ -23,7 +23,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import MembershipGuard from "@/components/membership/MembershipGuard";
+import MembershipGuard from "@/components/auth/MembershipGuard";
 import { useMembership } from "@/hooks/useMembership";
 
 interface Job {
@@ -175,7 +175,8 @@ const Jobs = () => {
   }
 
   return (
-    <Layout>
+    <MembershipGuard requiredFeature="jobs">
+      <Layout>
       <PremiumBanner
         title="Find Your Dream Job"
         description="Discover exclusive job opportunities with Elverra Global's premium job portal"
@@ -373,6 +374,7 @@ const Jobs = () => {
         </div>
       </div>
     </Layout>
+    </MembershipGuard>
   );
 };
 

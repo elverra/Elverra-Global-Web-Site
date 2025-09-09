@@ -31,6 +31,7 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
   const paymentGateways = [
     { id: 'orange_money', name: '🍊 Orange Money' },
     { id: 'sama_money', name: '💰 SAMA Money' },
+    { id: 'cinetpay', name: '📱 CinetPay Mobile Money' },
   ];
 
 
@@ -57,21 +58,35 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
       const subscriptionData = await subscriptionRes.json();
 
       const reference = `MEMBERSHIP_${plan.toUpperCase()}_${Date.now()}`;
-      const paymentData = {
-        userId: user.id,
-        amount,
-        currency: 'OUV',
-        phone: user.phone || '+2237701100100',
-        email: user.email,
-        name: user.fullName || user.email?.split('@')[0] || 'User',
-        reference,
-        subscriptionId: subscriptionData.id,
-        metadata: { plan, userId: user.id },
-      };
-
-      const endpoint = selectedGateway === 'sama_money'
-        ? '/api/payments/initiate-sama-money'
-        : '/api/payments/initiate-orange-money';
+      
+      let endpoint;
+      let paymentData;
+      
+      if (selectedGateway === 'cinetpay') {
+        endpoint = '/api/payments/initiate-cinetpay';
+        paymentData = {
+          amount,
+          membershipTier: plan,
+          description: `Abonnement ${plan} - Elverra Global`,
+        };
+      } else {
+        // Pour Orange Money et SAMA Money
+        endpoint = selectedGateway === 'sama_money'
+          ? '/api/payments/initiate-sama-money'
+          : '/api/payments/initiate-orange-money';
+        
+        paymentData = {
+          userId: user.id,
+          amount,
+          currency: 'OUV',
+          phone: user.phone || '+2237701100100',
+          email: user.email,
+          name: user.fullName || user.email?.split('@')[0] || 'User',
+          reference,
+          subscriptionId: subscriptionData.id,
+          metadata: { plan, userId: user.id },
+        };
+      }
 
     // In handlePayment
 const res = await fetch(endpoint, {
@@ -81,13 +96,14 @@ const res = await fetch(endpoint, {
 });
 
 const data = await res.json();
-if (data.success && data.payment_url) {
-  console.log("Opening payment in new tab:", data.payment_url);
+if (data.success && (data.payment_url || data.paymentUrl)) {
+  const paymentUrl = data.payment_url || data.paymentUrl;
+  console.log("Opening payment in new tab:", paymentUrl);
   console.log("Payment response data:", data);
-  window.open(data.payment_url, "_blank");
+  window.open(paymentUrl, "_blank");
   setPaymentInitiated(true);
   // Use paymentId first, then fallback to reference or transactionId
-  const pollId = data.paymentId || data.transactionId || data.reference;
+  const pollId = data.paymentId || data.transactionId || data.reference || data.paymentAttemptId;
   console.log("Using payment ID for polling:", pollId);
   setPaymentReference(pollId);
   toast.success("Payment initiated! Please complete the payment in the new tab.");
@@ -214,7 +230,13 @@ if (data.success && data.payment_url) {
               <Button
                 onClick={handlePayment}
                 disabled={loading}
-                className={`w-full ${selectedGateway === 'orange_money' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}
+                className={`w-full ${
+                  selectedGateway === 'orange_money' 
+                    ? 'bg-orange-600 hover:bg-orange-700' 
+                    : selectedGateway === 'cinetpay'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : `Pay with ${paymentGateways.find(g => g.id === selectedGateway)?.name}`}
               </Button>

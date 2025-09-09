@@ -2,6 +2,17 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
+// Global cache for user profile data
+const profileCache = new Map<string, { 
+  profile: UserProfile | null; 
+  skills: UserSkill[]; 
+  experience: UserExperience[]; 
+  education: UserEducation[]; 
+  timestamp: number 
+}>();
+const profilePromises = new Map<string, Promise<any>>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export interface UserProfile {
   id: string;
   full_name: string;
@@ -47,28 +58,76 @@ export const useUserProfile = () => {
   const [education, setEducation] = useState<UserEducation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfileFromAPI = async (userId: string) => {
+    const response = await fetch(`/api/users/${userId}/profile`);
+    
+    if (response.ok) {
+      const profileData = await response.json();
+      return {
+        profile: profileData.profile || null,
+        skills: profileData.skills || [],
+        experience: profileData.experience || [],
+        education: profileData.education || []
+      };
+    } else if (response.status !== 404) {
+      throw new Error('Failed to fetch profile data');
+    }
+    
+    return {
+      profile: null,
+      skills: [],
+      experience: [],
+      education: []
+    };
+  };
+
   const fetchProfile = async () => {
     if (!user) return;
 
+    const cacheKey = user.id;
+    const now = Date.now();
+
+    // Check cache first
+    const cached = profileCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      setProfile(cached.profile);
+      setSkills(cached.skills);
+      setExperience(cached.experience);
+      setEducation(cached.education);
+      setLoading(false);
+      return;
+    }
+
+    // Check if there's already a pending request
+    let profilePromise = profilePromises.get(cacheKey);
+    if (!profilePromise) {
+      profilePromise = fetchProfileFromAPI(user.id);
+      profilePromises.set(cacheKey, profilePromise);
+    }
+
     try {
       setLoading(true);
+      const result = await profilePromise;
       
-      // Fetch profile data from API
-      const response = await fetch(`/api/users/${user.id}/profile`);
-      
-      if (response.ok) {
-        const profileData = await response.json();
-        setProfile(profileData.profile || null);
-        setSkills(profileData.skills || []);
-        setExperience(profileData.experience || []);
-        setEducation(profileData.education || []);
-      } else if (response.status !== 404) {
-        throw new Error('Failed to fetch profile data');
-      }
+      // Cache the result
+      profileCache.set(cacheKey, {
+        profile: result.profile,
+        skills: result.skills,
+        experience: result.experience,
+        education: result.education,
+        timestamp: now
+      });
+
+      setProfile(result.profile);
+      setSkills(result.skills);
+      setExperience(result.experience);
+      setEducation(result.education);
     } catch (err) {
       console.error('Error fetching profile:', err);
     } finally {
       setLoading(false);
+      // Clean up the promise
+      profilePromises.delete(cacheKey);
     }
   };
 
@@ -92,6 +151,9 @@ export const useUserProfile = () => {
       if (!response.ok) {
         throw new Error('Failed to update profile');
       }
+      
+      // Clear cache before refetching
+      profileCache.delete(user.id);
       await fetchProfile();
       return { success: true };
     } catch (err) {
@@ -117,6 +179,9 @@ export const useUserProfile = () => {
       if (!response.ok) {
         throw new Error('Failed to add skill');
       }
+      
+      // Clear cache before refetching
+      profileCache.delete(user.id);
       await fetchProfile();
     } catch (err) {
       console.error('Error adding skill:', err);
@@ -140,6 +205,9 @@ export const useUserProfile = () => {
       if (!response.ok) {
         throw new Error('Failed to add experience');
       }
+      
+      // Clear cache before refetching
+      profileCache.delete(user.id);
       await fetchProfile();
     } catch (err) {
       console.error('Error adding experience:', err);
@@ -163,6 +231,9 @@ export const useUserProfile = () => {
       if (!response.ok) {
         throw new Error('Failed to add education');
       }
+      
+      // Clear cache before refetching
+      profileCache.delete(user.id);
       await fetchProfile();
     } catch (err) {
       console.error('Error adding education:', err);

@@ -15,7 +15,7 @@ export type PaymentStatus = typeof paymentStatusValues[number];
 export const subscriptionStatusValues = ['active', 'pending', 'cancelled', 'expired', 'paused'] as const;
 export type SubscriptionStatus = typeof subscriptionStatusValues[number];
 
-export const paymentMethodValues = ['orange_money', 'sama_money', 'credit_card', 'bank_transfer'] as const;
+export const paymentMethodValues = ['orange_money', 'sama_money', 'credit_card', 'bank_transfer', 'cinetpay'] as const;
 export type PaymentMethod = typeof paymentMethodValues[number];
 
 export const subscriptionPlanValues = ['monthly', 'quarterly', 'yearly', 'lifetime', 'one_time', 'semi_annual'] as const;
@@ -49,7 +49,7 @@ export const users = pgTable("users", {
   profilePictureUrl: text("profile_picture_url"),
   isEmailVerified: boolean("is_email_verified").default(false),
   isPhoneVerified: boolean("is_phone_verified").default(false),
-  membershipTier: text("membership_tier").default('essential'),
+  membershipTier: text("membership_tier"),
   totalCreditsEarned: numeric("total_credits_earned").default('0'),
   totalCreditsSpent: numeric("total_credits_spent").default('0'),
   currentCredits: numeric("current_credits").default('0'),
@@ -532,9 +532,9 @@ export const insertUserSchema = createInsertSchema(users).omit({
 }).extend({
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  fullName: z.string().optional().nullable(),
+  fullName: z.string().min(1, 'Full name is required'),
   phone: z.string().optional().nullable(),
-  membershipTier: z.enum(['essential', 'premium', 'elite']).default('essential'),
+  membershipTier: z.enum(['essential', 'premium', 'elite']).optional().nullable(),
   merchantApprovalStatus: z.enum(['pending', 'approved', 'rejected']).default('pending'),
 });
 

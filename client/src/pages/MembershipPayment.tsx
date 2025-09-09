@@ -28,8 +28,8 @@ const MembershipPayment = () => {
 
   const childCard = {
     name: 'Carte Enfant ELVERRA',
-    registration: 0.5,
-    monthly: 0.5,
+    registration: 5000,
+    monthly: 500,
     description: 'Carte unique pour les enfants de 6 à 17 ans'
   };
 

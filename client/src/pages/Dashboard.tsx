@@ -23,13 +23,18 @@ import { useMembership } from '@/hooks/useMembership';
 import { useNavigate } from 'react-router-dom';
 import MembershipStatusWidget from '@/components/membership/MembershipStatus';
 
+// Global cache for agent data to prevent repeated API calls and 404 errors
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const agentCache = new Map<string, { data: any | null; timestamp: number }>();
+const agentPromises = new Map<string, Promise<any | null>>();
+
 interface MembershipCheckProps {
   children: React.ReactNode;
 }
 
 const MembershipCheck = ({ children }: MembershipCheckProps) => {
   const { user } = useAuth();
-  const { membership, loading } = useMembership();
+  const { membership, loading, getMembershipAccess } = useMembership();
 
   if (loading) {
     return (
@@ -45,10 +50,11 @@ const MembershipCheck = ({ children }: MembershipCheckProps) => {
     );
   }
 
-  // For testing purposes, allow dashboard access without membership
-  // if (!membership || !membership.is_active) {
-  //   return <Navigate to="/membership-payment" replace />;
-  // }
+  // Check if user has active membership
+  const access = getMembershipAccess();
+  if (!access.hasActiveMembership) {
+    return <Navigate to="/membership-payment" replace />;
+  }
 
   return <>{children}</>;
 };
@@ -58,6 +64,8 @@ const Dashboard = () => {
   const { profile, loading: profileLoading } = useUserProfile();
   const { membership, getMembershipAccess } = useMembership();
   const { getUserApplications } = useJobApplications();
+  // EMERGENCY FIX: Removed useJobBookmarks to stop infinite calls
+  const bookmarks: string[] = [];
   const [userRole, setUserRole] = useState<'user' | 'agent' | 'admin'>('user');
   const navigate = useNavigate();
   
@@ -80,32 +88,59 @@ const Dashboard = () => {
     if (!user) return;
 
     try {
-      // Check if user is an agent
-      try {
-        const response = await fetch(`/api/agents/${user.id}`);
-        
-        if (response.ok) {
-          const agentData = await response.json();
-          if (agentData) {
-            setUserRole('agent');
-            return;
-          }
+      // Check cache first
+      const cached = agentCache.get(user.id);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+        if (cached.data) {
+          setUserRole('agent');
         }
-      } catch (error) {
-        // User is not an agent, continue
-      }
-
-      // Check if user is admin (you can add admin role logic here)
-      // For now, checking if user email contains 'admin'
-      if (user.email?.includes('admin')) {
-        setUserRole('admin');
         return;
       }
 
-      setUserRole('user');
+      // Check if there's already a promise in flight
+      let promise = agentPromises.get(user.id);
+      if (!promise) {
+        promise = (async () => {
+          const response = await fetch(`/api/agents/${user.id}`);
+          
+          if (response.ok) {
+            const agentData = await response.json();
+            return agentData;
+          } else if (response.status === 404) {
+            // User is not an agent, cache null to prevent repeated 404s
+            return null;
+          } else {
+            throw new Error('Failed to fetch agent data');
+          }
+        })();
+        agentPromises.set(user.id, promise);
+      }
+
+      const agentData = await promise;
+      
+      // Cache the result (including null for non-agents)
+      agentCache.set(user.id, { data: agentData, timestamp: Date.now() });
+      agentPromises.delete(user.id);
+      
+      if (agentData) {
+        setUserRole('agent');
+        return;
+      }
     } catch (error) {
-      setUserRole('user');
+      console.error('Error checking agent status:', error);
+      agentPromises.delete(user.id);
+      // Cache null to prevent repeated failed requests
+      agentCache.set(user.id, { data: null, timestamp: Date.now() });
     }
+
+    // Check if user is admin (you can add admin role logic here)
+    // For now, checking if user email contains 'admin'
+    if (user.email?.includes('admin')) {
+      setUserRole('admin');
+      return;
+    }
+
+    setUserRole('user');
   };
 
   const fetchUserData = async () => {
@@ -120,17 +155,8 @@ const Dashboard = () => {
       const pending = applicationsData.filter((app: any) => app.status === 'pending').length;
       const interviews = applicationsData.filter((app: any) => app.status === 'interview').length;
       
-      // Fetch saved jobs count
-      let savedJobsCount = 0;
-      try {
-        const response = await fetch(`/api/users/${user.id}/bookmarks`);
-        if (response.ok) {
-          const bookmarks = await response.json();
-          savedJobsCount = bookmarks?.length || 0;
-        }
-      } catch (error) {
-        // Use default count
-      }
+      // Get saved jobs count from bookmarks hook
+      const savedJobsCount = bookmarks?.length || 0;
 
       setStats({
         totalApplications: applicationsData.length,

@@ -4,7 +4,7 @@ import { CreditCardOutlined, MobileOutlined, BankOutlined } from '@ant-design/ic
 
 const { Title, Text } = Typography;
 
-type PaymentMethod = 'card' | 'orange_money' | 'sama_money' | 'wave' | 'moov';
+type PaymentMethod = 'card' | 'orange_money' | 'sama_money' | 'cinetpay' | 'wave' | 'moov';
 
 interface PaymentMethodSelectorProps {
   onSelect: (method: PaymentMethod) => void;
@@ -32,6 +32,12 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ on
       name: 'Sama Money',
       icon: <BankOutlined style={{ fontSize: '24px', color: '#1890ff' }} />,
       description: 'Paiement via Sama Money',
+    },
+    {
+      id: 'cinetpay',
+      name: 'CinetPay Mobile Money',
+      icon: <MobileOutlined style={{ fontSize: '24px', color: '#00c851' }} />,
+      description: 'Paiement via CinetPay (Mobile Money)',
     },
   ];
 

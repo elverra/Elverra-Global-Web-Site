@@ -46,6 +46,7 @@ import MyCardSection from './sections/MyCardSection';
 import SubscriptionsSection from './sections/SubscriptionsSection';
 import SettingsSection from './sections/SettingsSection';
 import HelpSection from './sections/HelpSection';
+import { Link } from 'react-router-dom';
 
 const ModernDashboard = () => {
   const { user, signOut } = useAuth();
@@ -95,8 +96,6 @@ const ModernDashboard = () => {
     { id: 'affiliate', label: t('affiliate.program'), icon: Users },
     { id: 'o-secours', label: t('nav.services.osecours'), icon: HeartHandshake },
     { id: 'online-store', label: t('nav.services.shop'), icon: Store },
-    { id: 'account', label: t('nav.account'), icon: User },
-    { id: 'my-card', label: 'My Card', icon: CreditCard },
     { id: 'subscriptions', label: 'Subscriptions', icon: Crown },
     { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings },
     { id: 'help', label: 'Help', icon: HelpCircle },
@@ -136,8 +135,6 @@ const ModernDashboard = () => {
         return <OnlineStoreSection />;
       case 'account':
         return <AccountSection />;
-      case 'my-card':
-        return <MyCardSection />;
       case 'subscriptions':
         return <SubscriptionsSection />;
       case 'settings':
@@ -361,7 +358,16 @@ const ModernDashboard = () => {
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">EG</span>
+                <span className="text-white font-bold text-sm">
+                   <Link to="/" className="flex items-center">
+                <img
+              src={"/lovable-uploads/logo.png"}
+              alt="Elverra Global"
+              className="h-10 w-auto object-contain"
+              
+            />
+            </Link>
+                </span>
               </div>
             </div>
             <div>
@@ -393,13 +399,24 @@ const ModernDashboard = () => {
         </nav>
 
         {/* Logout */}
-        <div className="p-4 border-t border-blue-500">
+        <div className="flex gap-3 p-4 border-t border-blue-500">
+          <button
+           onClick={() => setActiveSection("account")}
+           className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            activeSection === "account"
+              ? 'bg-blue-700 text-white'
+              : 'text-blue-100 hover:bg-blue-500 hover:text-white'
+          }`}
+          >
+            <User className="h-5 w-5" />
+            <span className="text-sm font-medium">{t('nav.account')}</span>
+          </button>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center space-x-3 px-4 py-3 text-blue-100 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
+            className=" flex items-center space-x-3 px-4 py-3 text-blue-100 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
           >
             <LogOut className="h-5 w-5" />
-            <span className="text-sm font-medium">{t('nav.signout')}</span>
+            
           </button>
         </div>
       </div>

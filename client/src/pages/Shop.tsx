@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Filter, ShoppingCart, Star, Truck, CheckCircle, Plus, Minus, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
-import MembershipGuard from '@/components/membership/MembershipGuard';
+import MembershipGuard from '@/components/auth/MembershipGuard';
 import { useMembership } from '@/hooks/useMembership';
 
 interface Product {
@@ -218,7 +218,8 @@ const Shop = () => {
   }
 
   return (
-    <Layout>
+    <MembershipGuard requiredFeature="shop">
+      <Layout>
       {/* Hero Banner Section */}
       <div className="relative h-[500px] bg-gradient-to-r from-blue-600 to-green-500 overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>
@@ -564,6 +565,7 @@ const Shop = () => {
         </div>
         </div>
       </Layout>
+    </MembershipGuard>
   );
 };
 

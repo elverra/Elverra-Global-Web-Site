@@ -59,8 +59,24 @@ router.post(
   paymentController.initiateOrangeMoneyPayment
 );
 
+// Routes pour CinetPay
+router.post(
+  '/initiate-cinetpay',
+  validateRequest({
+    body: z.object({
+      amount: z.number().positive(),
+      membershipTier: z.enum(['essential', 'premium', 'elite']),
+      description: z.string().optional(),
+    })
+  }),
+  paymentController.initiateCinetPayPayment
+);
+
 // Callback pour Orange Money (pas d'authentification requise)
 router.post('/orange-callback', paymentController.handleOrangeMoneyCallback);
+
+// Webhook CinetPay (pas d'authentification requise)
+router.post('/cinetpay-webhook', paymentController.handleCinetPayWebhook);
 
 // Webhook (pas d'authentification requise)
 router.post('/webhook', paymentController.handleWebhook);

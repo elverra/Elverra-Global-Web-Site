@@ -18,6 +18,8 @@ import {
   Headphones, Search, Filter, Plus, Trash2, Copy, Share2, LogOut, UserCheck
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useMembership } from '@/hooks/useMembership';
+import { useJobApplications, useJobs } from '@/hooks/useJobs';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useDiscountUsage } from '@/hooks/useDiscounts';
 import { useAffiliateData } from '@/hooks/useAffiliateData';
@@ -28,15 +30,33 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 
+// Types
+interface NotificationSettings {
+  email: boolean;
+  sms: boolean;
+  push: boolean;
+  marketing: boolean;
+  security: boolean;
+  [key: string]: boolean;
+}
+
+// Global cache for agent data to prevent repeated API calls and 404 errors
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const agentCache = new Map<string, { data: any | null; timestamp: number }>();
+const agentPromises = new Map<string, Promise<any | null>>();
+
 const MyAccount = () => {
   const { user, signOut, userRole } = useAuth();
-  const { profile, loading, updateProfile } = useUserProfile();
+  const { profile, updateProfile, loading } = useUserProfile();
+  const { membership, loading: membershipLoading } = useMembership();
+  const { getUserApplications } = useJobApplications();
   const { usageHistory, getTotalSavings } = useDiscountUsage();
-  const { affiliateData, loading: affiliateLoading, error: affiliateError } = useAffiliateData();
+  const { affiliateData, loading: affiliateLoading } = useAffiliateData();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'dashboard';
   
+  // State management
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
@@ -45,17 +65,13 @@ const MyAccount = () => {
     city: '',
     country: 'Mali'
   });
-  const [membership, setMembership] = useState<any>(null);
-  const [uploading, setUploading] = useState(false);
-  const [notifications, setNotifications] = useState({
-    email: true,
-    sms: false,
-    push: true,
-    marketing: false,
-    security: true
-  });
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  
+  // Data states
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [availableOffers, setAvailableOffers] = useState<any[]>([]);
+  const [jobApplications, setJobApplications] = useState<any[]>([]);
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
+  const [agentData, setAgentData] = useState<any>(null);
   const [cardActivated, setCardActivated] = useState(true);
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [showActivationDialog, setShowActivationDialog] = useState(false);
@@ -69,10 +85,15 @@ const MyAccount = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
-  const [availableOffers, setAvailableOffers] = useState<any[]>([]);
-  const [jobApplications, setJobApplications] = useState<any[]>([]);
-  const [supportTickets, setSupportTickets] = useState<any[]>([]);
-  const [agentData, setAgentData] = useState<any>(null);
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    email: true,
+    sms: false,
+    push: true,
+    marketing: false,
+    security: true
+  });
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -114,14 +135,9 @@ const MyAccount = () => {
     if (!user) return;
     
     try {
-      const response = await fetch(`/api/users/${user.id}/membership`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setMembership(data);
-      } else if (response.status !== 404) {
-        throw new Error('Failed to fetch membership');
-      }
+      // The useMembership hook already handles fetching membership data
+      // This function is kept for compatibility but doesn't need to do anything
+      // as the hook manages the membership state internally
     } catch (error) {
       console.error('Error fetching membership:', error);
     }
@@ -165,14 +181,10 @@ const MyAccount = () => {
     if (!user) return;
     
     try {
-      const response = await fetch(`/api/users/${user.id}/applications?limit=5`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setJobApplications(data || []);
-      } else if (response.status !== 404) {
-        throw new Error('Failed to fetch job applications');
-      }
+      // Use cached getUserApplications from useJobs hook
+      const applications = await getUserApplications();
+      // Limit to 5 for MyAccount display
+      setJobApplications(applications.slice(0, 5));
     } catch (error) {
       console.error('Error fetching job applications:', error);
       setJobApplications([]);
@@ -183,16 +195,45 @@ const MyAccount = () => {
     if (!user) return;
     
     try {
-      const response = await fetch(`/api/agents/${user.id}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAgentData(data);
-      } else if (response.status !== 404) {
-        console.log('User is not an agent');
+      // Check cache first
+      const cached = agentCache.get(user.id);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+        setAgentData(cached.data);
+        return;
       }
+
+      // Check if there's already a promise in flight
+      let promise = agentPromises.get(user.id);
+      if (!promise) {
+        promise = (async () => {
+          const response = await fetch(`/api/agents/${user.id}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            return data;
+          } else if (response.status === 404) {
+            // User is not an agent, cache null to prevent repeated 404s
+            return null;
+          } else {
+            throw new Error('Failed to fetch agent data');
+          }
+        })();
+        agentPromises.set(user.id, promise);
+      }
+
+      const data = await promise;
+      
+      // Cache the result (including null for non-agents)
+      agentCache.set(user.id, { data, timestamp: Date.now() });
+      agentPromises.delete(user.id);
+      
+      setAgentData(data);
     } catch (error) {
       console.error('Error fetching agent data:', error);
+      agentPromises.delete(user.id);
+      // Cache null to prevent repeated failed requests
+      agentCache.set(user.id, { data: null, timestamp: Date.now() });
+      setAgentData(null);
     }
   };
 
@@ -461,7 +502,7 @@ const MyAccount = () => {
           <p className="text-gray-600 mt-2">Manage your Elverra Global membership and services</p>
         </div>
 
-        <Tabs defaultValue={defaultTab} className="space-y-6">
+        <Tabs defaultValue={activeTab} className="space-y-6">
           <TabsList className={`grid w-full ${hasAffiliateAccess ? 'grid-cols-10' : 'grid-cols-9'} overflow-x-auto`}>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="cards">Cards</TabsTrigger>
@@ -593,15 +634,15 @@ const MyAccount = () => {
               <CardContent>
                 {/* ZENIKA Card Design */}
                 <div className={`relative overflow-hidden rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl ${
-                  membership?.tier === 'Elite' 
+                  membership?.tier === 'elite' 
                     ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600' 
-                    : membership?.tier === 'Premium'
+                    : membership?.tier === 'premium'
                     ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600'
                     : 'bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700'
                 }`} style={{
-                  border: membership?.tier === 'Elite' 
+                  border: membership?.tier === 'elite' 
                     ? '3px solid #22c55e' 
-                    : membership?.tier === 'Premium'
+                    : membership?.tier === 'premium'
                     ? '3px solid #22c55e'
                     : '3px solid #3b82f6',
                   aspectRatio: '1.6/1',
@@ -628,9 +669,9 @@ const MyAccount = () => {
                     {/* ZENIKA Header */}
                     <div className="mb-8">
                       <h2 className="text-3xl font-bold tracking-wider" style={{ 
-                        color: membership?.tier === 'Elite' 
+                        color: membership?.tier === 'elite' 
                           ? '#277732' 
-                          : membership?.tier === 'Premium'
+                          : membership?.tier === 'premium'
                           ? '#ffcf08'
                           : '#b4121d'
                       }}>

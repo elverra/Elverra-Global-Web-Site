@@ -8,14 +8,29 @@ export interface ApiResponse<T = any> {
   error?: string;
   details?: string | undefined;
   status?: number;
+  paymentUrl?: string;
+  amount?: number;
 }
 
 export const TokenService = {
   // Get token balances for the current user
-  async getTokenBalances(): Promise<ApiResponse<TokenBalance[]>> {
+  async getTokenBalances(userId?: string): Promise<ApiResponse<TokenBalance[]>> {
     try {
-      console.log('Fetching token balances from:', `${API_BASE_URL}/balances`);
-      const response = await fetch(`${API_BASE_URL}/balances`, {
+      // Get userId from localStorage if not provided
+      const currentUser = localStorage.getItem('currentUser');
+      const userIdToUse = userId || (currentUser ? JSON.parse(currentUser).id : null);
+      
+      if (!userIdToUse) {
+        return {
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+
+      const url = `${API_BASE_URL}/balances?userId=${userIdToUse}`;
+      console.log('Fetching token balances from:', url);
+      
+      const response = await fetch(url, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
@@ -62,20 +77,102 @@ export const TokenService = {
   // Purchase tokens
   async purchaseTokens(
     tokenId: string, 
-    amount: number
+    amount: number,
+    paymentMethod: 'orange_money' | 'sama_money' | 'credit_card' = 'orange_money'
   ): Promise<ApiResponse<TokenPurchase>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/purchase`, {
+      // Get current user
+      const currentUser = localStorage.getItem('currentUser');
+      if (!currentUser) {
+        return { success: false, error: 'User not authenticated' };
+      }
+      
+      const user = JSON.parse(currentUser);
+      
+      // First, ensure user has a subscription for this token type
+      const subscriptionResponse = await this.ensureSubscription(user.id, tokenId);
+      if (!subscriptionResponse.success) {
+        return subscriptionResponse;
+      }
+
+      const subscriptionId = subscriptionResponse.data.id;
+
+      // Initiate token purchase with payment
+      const response = await fetch(`${API_BASE_URL}/purchase-tokens`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ tokenId, amount }),
+        body: JSON.stringify({ 
+          userId: user.id,
+          subscriptionId,
+          tokenAmount: amount,
+          phoneNumber: user.phone || '22670000000', // Default phone if not set
+          subscriptionType: tokenId,
+          paymentMethod
+        }),
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { 
+          success: false, 
+          error: errorData.error || 'Failed to initiate token purchase' 
+        };
+      }
+      
       return await response.json();
     } catch (error) {
       console.error('Error purchasing tokens:', error);
       return { success: false, error: 'Failed to process token purchase' };
+    }
+  },
+
+  // Ensure user has a subscription for the token type
+  async ensureSubscription(userId: string, tokenType: string): Promise<ApiResponse<any>> {
+    try {
+      // Check if subscription exists
+      const response = await fetch(`${API_BASE_URL}/subscriptions?userId=${userId}`, {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const subscriptions = await response.json();
+        const existingSubscription = subscriptions.find((sub: any) => 
+          sub.subscription_type === tokenType
+        );
+        
+        if (existingSubscription) {
+          return { success: true, data: existingSubscription };
+        }
+      }
+
+      // Create new subscription
+      const createResponse = await fetch(`${API_BASE_URL}/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          subscriptionType: tokenType,
+          tokenBalance: 0,
+          isActive: true
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        return { 
+          success: false, 
+          error: errorData.error || 'Failed to create subscription' 
+        };
+      }
+
+      return { success: true, data: await createResponse.json() };
+    } catch (error) {
+      console.error('Error ensuring subscription:', error);
+      return { success: false, error: 'Failed to ensure subscription' };
     }
   },
 

@@ -21,7 +21,7 @@ import {
   Award,
   Share2
 } from 'lucide-react';
-import { useJobDetails, useJobBookmarks } from '@/hooks/useJobs';
+import { useJobDetails } from '@/hooks/useJobs';
 import JobApplicationForm from '@/components/jobs/JobApplicationForm';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,7 +34,11 @@ const JobDetail = () => {
   const { user } = useAuth();
   const { getMembershipAccess } = useMembership();
   const { job, loading, error } = useJobDetails(id || '');
-  const { bookmarks, toggleBookmark } = useJobBookmarks();
+  // EMERGENCY FIX: Removed useJobBookmarks to stop infinite calls
+  const bookmarks: string[] = [];
+  const toggleBookmark = () => {
+    toast.error('Bookmark functionality is temporarily disabled for maintenance');
+  };
   const [showApplicationForm, setShowApplicationForm] = useState(false);
 
   const isBookmarked = id ? bookmarks.includes(id) : false;
@@ -56,9 +60,7 @@ const JobDetail = () => {
       navigate('/membership-payment');
       return;
     }
-    if (id) {
-      toggleBookmark(id);
-    }
+    toggleBookmark();
   };
 
   const handleShare = async () => {

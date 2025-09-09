@@ -30,6 +30,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import CountrySelector from "./CountrySelector";
 import { useEffect } from "react";
 
+// Global cache for logo to prevent repeated API calls
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let logoCache: { url: string; timestamp: number } | null = null;
+let logoPromise: Promise<string> | null = null;
+
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string>(
@@ -42,18 +47,37 @@ const Header = () => {
   useEffect(() => {
     const fetchLogo = async () => {
       try {
-        // Try to get the uploaded logo from API
-        const response = await fetch("/api/files/logo");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.url) {
-            setLogoUrl(data.url);
-          }
-        } else {
-          console.log("Logo API not accessible, using default logo");
+        // Check cache first
+        if (logoCache && (Date.now() - logoCache.timestamp) < CACHE_DURATION) {
+          setLogoUrl(logoCache.url);
+          return;
         }
+
+        // Check if there's already a promise in flight
+        if (!logoPromise) {
+          logoPromise = (async () => {
+            const response = await fetch("/api/files/logo");
+            if (response.ok) {
+              const data = await response.json();
+              if (data.url) {
+                return data.url;
+              }
+            }
+            return "/lovable-uploads/logo.png"; // Default fallback
+          })();
+        }
+
+        const url = await logoPromise;
+        
+        // Cache the result
+        logoCache = { url, timestamp: Date.now() };
+        logoPromise = null; // Clear the promise
+        
+        setLogoUrl(url);
       } catch (error) {
         console.log("Error fetching logo, using default:", error);
+        setLogoUrl("/lovable-uploads/logo.png");
+        logoPromise = null; // Clear the promise on error
       }
     };
 

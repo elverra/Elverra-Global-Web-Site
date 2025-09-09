@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
+// Global cache to prevent multiple API calls
+let membershipCache: { [userId: string]: Membership | null } = {};
+let fetchPromises: { [userId: string]: Promise<Membership | null> } = {};
+
 export interface Membership {
   id: string;
   user_id: string;
@@ -34,45 +38,84 @@ export const useMembership = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       fetchMembership();
     } else {
       setMembership(null);
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id to prevent unnecessary re-fetches
 
   const fetchMembership = async () => {
     if (!user) return;
 
+    // Check cache first
+    if (membershipCache[user.id] !== undefined) {
+      setMembership(membershipCache[user.id]);
+      setLoading(false);
+      return;
+    }
+
+    // Check if there's already a fetch in progress for this user
+    const existingPromise = fetchPromises[user.id];
+    if (existingPromise) {
+      try {
+        const cachedResult = await existingPromise;
+        setMembership(cachedResult);
+        setLoading(false);
+        return;
+      } catch (err) {
+        // Continue with new fetch if cached promise failed
+        delete fetchPromises[user.id];
+      }
+    }
+
     try {
       setLoading(true);
       
-      // Fetch membership from API
-      const response = await fetch(`/api/memberships/${user.id}`);
+      // Create and store the fetch promise
+      const fetchPromise = fetch(`/api/memberships/${user.id}`)
+        .then(async (response) => {
+          if (response.ok) {
+            const data = await response.json();
+            membershipCache[user.id] = data;
+            return data;
+          } else if (response.status === 404) {
+            membershipCache[user.id] = null;
+            return null;
+          } else {
+            throw new Error('Failed to fetch membership');
+          }
+        });
+
+      fetchPromises[user.id] = fetchPromise;
       
-      if (response.ok) {
-        const data = await response.json();
-        setMembership(data);
-      } else if (response.status === 404) {
-        // No membership found
-        setMembership(null);
-      } else {
-        throw new Error('Failed to fetch membership');
-      }
+      const result = await fetchPromise;
+      setMembership(result);
+      
+      // Clean up the promise after completion
+      delete fetchPromises[user.id];
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch membership');
       console.error('Error fetching membership:', err);
+      // Clean up failed promise
+      delete fetchPromises[user.id];
     } finally {
       setLoading(false);
     }
   };
 
   const getMembershipAccess = (): MembershipAccess => {
-    const hasActiveMembership = !!membership && membership.is_active;
-    const membershipTier = membership?.tier || null;
+    // Check if user has a valid membership tier (not null/undefined)
+    const userTier = user?.membershipTier;
+    const hasValidTier = userTier && ['essential', 'premium', 'elite'].includes(userTier);
+    
+    // Also check if membership record exists and is active
+    const hasActiveMembership = hasValidTier && (!!membership && membership.is_active);
+    const membershipTier = hasValidTier ? userTier as 'essential' | 'premium' | 'elite' : null;
 
-    if (!hasActiveMembership) {
+    if (!hasActiveMembership || !hasValidTier) {
       return {
         hasActiveMembership: false,
         membershipTier: null,
@@ -172,12 +215,25 @@ export const useMembership = () => {
     return expiryDate <= thirtyDaysFromNow;
   };
 
+  const clearCache = () => {
+    if (user?.id) {
+      delete membershipCache[user.id];
+      delete fetchPromises[user.id];
+    }
+  };
+
+  const refetch = async () => {
+    clearCache();
+    await fetchMembership();
+  };
+
   return {
     membership,
     loading,
     error,
     fetchMembership,
-    refetch: fetchMembership, // Alias for fetchMembership for consistency with React Query
+    refetch,
+    clearCache,
     getMembershipAccess,
     requiresMembership,
     getMembershipTierName,

@@ -1,7 +1,14 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+
+// Global cache for bookmarks and applications data
+const bookmarksCache = new Map<string, { bookmarks: string[]; timestamp: number }>();
+const bookmarksPromises = new Map<string, Promise<string[]>>();
+const applicationsCache = new Map<string, { applications: any[]; timestamp: number }>();
+const applicationsPromises = new Map<string, Promise<any[]>>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export interface Job {
   id: string;
@@ -59,7 +66,7 @@ export const useJobs = () => {
       
       if (filters?.search) {
         const searchLower = filters.search.toLowerCase();
-        filteredData = filteredData.filter(job => 
+        filteredData = filteredData.filter((job: any) => 
           job.title?.toLowerCase().includes(searchLower) ||
           job.company?.toLowerCase().includes(searchLower) ||
           job.description?.toLowerCase().includes(searchLower)
@@ -67,21 +74,21 @@ export const useJobs = () => {
       }
 
       if (filters?.location) {
-        filteredData = filteredData.filter(job => 
-          job.location?.toLowerCase().includes(filters.location.toLowerCase())
+        filteredData = filteredData.filter((job: any) => 
+          job.location?.toLowerCase().includes(filters.location!.toLowerCase())
         );
       }
 
       if (filters?.employmentType) {
-        filteredData = filteredData.filter(job => job.employment_type === filters.employmentType);
+        filteredData = filteredData.filter((job: any) => job.employment_type === filters.employmentType);
       }
 
       if (filters?.experienceLevel) {
-        filteredData = filteredData.filter(job => job.experience_level === filters.experienceLevel);
+        filteredData = filteredData.filter((job: any) => job.experience_level === filters.experienceLevel);
       }
       
       // Transform data to match our interface
-      const transformedJobs = filteredData.map(job => ({
+      const transformedJobs = filteredData.map((job: any) => ({
         ...job,
         type: job.employment_type,
         experience_required: job.experience_level === 'entry' ? 0 : 
@@ -233,70 +240,28 @@ export const useJobDetails = (jobId: string) => {
   return { job, loading, error };
 };
 
+// Global state for bookmarks to prevent multiple hook instances from conflicting
+const globalBookmarksState = new Map<string, {
+  bookmarks: string[];
+  subscribers: Set<(bookmarks: string[]) => void>;
+  timestamp: number;
+  isLoading: boolean;
+}>();
+
+// Track if we've already initiated a fetch for a user to prevent duplicate requests
+const activeFetches = new Set<string>();
+
 export const useJobBookmarks = () => {
-  const { user } = useAuth();
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
-
-  const fetchBookmarks = async () => {
-    if (!user) return;
-
-    try {
-      const response = await fetch(`/api/users/${user.id}/bookmarks`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBookmarks(data?.map((b: any) => b.job_id) || []);
-      } else if (response.status !== 404) {
-        throw new Error('Failed to fetch bookmarks');
-      }
-    } catch (err) {
-      console.error('Error fetching bookmarks:', err);
-    }
+  // EMERGENCY FIX: Return static values immediately to prevent any API calls
+  console.warn('useJobBookmarks is temporarily disabled to prevent infinite API calls');
+  
+  return { 
+    bookmarks: [] as string[], 
+    toggleBookmark: () => {
+      toast.error('Bookmark functionality is temporarily disabled for maintenance');
+    }, 
+    refetchBookmarks: () => Promise.resolve()
   };
-
-  const toggleBookmark = async (jobId: string) => {
-    if (!user) {
-      toast.error('Please login to bookmark jobs');
-      return;
-    }
-
-    try {
-      const isBookmarked = bookmarks.includes(jobId);
-      
-      if (isBookmarked) {
-        const response = await fetch(`/api/users/${user.id}/bookmarks/${jobId}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to remove bookmark');
-        }
-        setBookmarks(prev => prev.filter(id => id !== jobId));
-        toast.success('Job removed from bookmarks');
-      } else {
-        const response = await fetch(`/api/users/${user.id}/bookmarks`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_id: jobId }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to add bookmark');
-        }
-        setBookmarks(prev => [...prev, jobId]);
-        toast.success('Job bookmarked successfully');
-      }
-    } catch (err) {
-      console.error('Error toggling bookmark:', err);
-      toast.error('Failed to update bookmark');
-    }
-  };
-
-  useEffect(() => {
-    fetchBookmarks();
-  }, [user]);
-
-  return { bookmarks, toggleBookmark, fetchBookmarks };
 };
 
 export const useJobApplications = () => {
@@ -331,6 +296,11 @@ export const useJobApplications = () => {
         throw new Error('Failed to submit application');
       }
       
+      // Clear applications cache after successful submission
+      if (user?.id) {
+        applicationsCache.delete(user.id);
+      }
+      
       toast.success('Application submitted successfully!');
       return { success: true };
     } catch (err) {
@@ -344,17 +314,39 @@ export const useJobApplications = () => {
     if (!user) return [];
 
     try {
-      const response = await fetch(`/api/users/${user.id}/applications`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        return data || [];
-      } else if (response.status !== 404) {
-        throw new Error('Failed to fetch applications');
+      // Check cache first
+      const cached = applicationsCache.get(user.id);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+        return cached.applications;
       }
-      return [];
+
+      // Check if there's already a promise in flight
+      let promise = applicationsPromises.get(user.id);
+      if (!promise) {
+        promise = (async () => {
+          const response = await fetch(`/api/users/${user.id}/applications`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            return data || [];
+          } else if (response.status !== 404) {
+            throw new Error('Failed to fetch applications');
+          }
+          return [];
+        })();
+        applicationsPromises.set(user.id, promise);
+      }
+
+      const applications = await promise;
+      
+      // Cache the result
+      applicationsCache.set(user.id, { applications, timestamp: Date.now() });
+      applicationsPromises.delete(user.id);
+      
+      return applications;
     } catch (err) {
       console.error('Error fetching applications:', err);
+      applicationsPromises.delete(user.id);
       return [];
     }
   };

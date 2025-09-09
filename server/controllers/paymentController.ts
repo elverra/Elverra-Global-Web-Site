@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { orangeMoneyService } from '../services/payment/orangeMoneyService';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { db } from '../db';
-import { payments, paymentAttempts, subscriptions } from '../../shared/schema';
+import { payments, paymentAttempts, subscriptions, users } from '../../shared/schema';
 import { and, eq } from 'drizzle-orm';
 import { OrangeMoneyPaymentResponse } from '../../shared/types/orangeMoney';
 import { z } from 'zod';
@@ -301,6 +301,249 @@ class PaymentController {
         success: false,
         error: 'Failed to initiate Orange Money payment',
         details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * Initie un paiement CinetPay
+   */
+  async initiateCinetPayPayment(req: AuthRequest, res: Response) {
+    try {
+      const { amount, membershipTier, description } = req.body as {
+        amount: number;
+        membershipTier: string;
+        description: string;
+      };
+      
+      const userId = req.user?.id;
+      const user = req.user;
+      
+      if (!userId || !user) {
+        console.error('[CINETPAY_INITIATE] Authentication failed:', {
+          hasUserId: !!userId,
+          hasUser: !!user,
+          headers: req.headers.authorization ? 'Present' : 'Missing'
+        });
+        return res.status(401).json({ error: 'Unauthorized - No valid authentication token provided' });
+      }
+
+      // Vérifier si l'utilisateur a déjà un abonnement actif
+      const [activeSubscription] = await db
+        .select()
+        .from(subscriptions)
+        .where(
+          and(
+            eq(subscriptions.userId, userId),
+            eq(subscriptions.status, 'active')
+          )
+        )
+        .limit(1);
+
+      if (activeSubscription) {
+        return res.status(400).json({
+          error: 'User already has an active subscription',
+          subscription: activeSubscription,
+        });
+      }
+
+      // Vérifier les credentials CinetPay
+      if (!process.env.CINETPAY_API_KEY || !process.env.CINETPAY_SITE_ID) {
+        console.error('[CINETPAY_INITIATE] Missing CinetPay credentials:', {
+          hasApiKey: !!process.env.CINETPAY_API_KEY,
+          hasSiteId: !!process.env.CINETPAY_SITE_ID
+        });
+        return res.status(500).json({
+          success: false,
+          error: 'CinetPay credentials not configured. Please check CINETPAY_API_KEY and CINETPAY_SITE_ID environment variables.'
+        });
+      }
+
+      // Créer un identifiant de transaction unique
+      const transactionId = `ELVERRA-${Date.now()}`;
+
+      // Construire le payload pour CinetPay
+      const payload = {
+        apikey: process.env.CINETPAY_API_KEY,
+        site_id: process.env.CINETPAY_SITE_ID,
+        transaction_id: transactionId,
+        amount: amount,
+        currency: "XOF",
+        description: description || `Abonnement ${membershipTier} - Elverra Global`,
+        return_url: `${process.env.CLIENT_URL}/my-account?payment=success`,
+        notify_url: `${process.env.API_URL}/api/payments/cinetpay-webhook`,
+        metadata: JSON.stringify({
+          userId,
+          membershipTier,
+          type: 'membership_payment'
+        }),
+        customer_id: userId,
+        customer_name: user.email.split('@')[0],
+        customer_surname: '',
+        channels: "MOBILE_MONEY",
+        invoice_data: {
+          "Membership Tier": membershipTier,
+          "Amount": `${amount} XOF`,
+          "User": user.email,
+        },
+      };
+
+      // Enregistrer la tentative de paiement
+      const [paymentAttempt] = await db
+        .insert(paymentAttempts)
+        .values({
+          userId,
+          amount: amount.toString(),
+          status: 'pending',
+          paymentMethod: 'cinetpay',
+          metadata: {
+            transactionId,
+            membershipTier,
+            cinetpayPayload: payload,
+          },
+          currency: 'XOF',
+          processedAt: new Date(),
+        } as any)
+        .returning();
+
+      // Envoyer la requête vers l'API CinetPay
+      const response = await fetch(
+        "https://api-checkout.cinetpay.com/v2/payment",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      
+      const data = await response.json();
+
+      if (!response.ok || !data.data?.payment_url) {
+        console.error('CinetPay API Error:', data);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to create CinetPay payment',
+          details: data.message || 'Unknown error'
+        });
+      }
+
+      // Retourner l'URL de paiement
+      return res.json({
+        success: true,
+        paymentUrl: data.data.payment_url,
+        transactionId,
+        paymentAttemptId: paymentAttempt.id,
+      });
+    } catch (error) {
+      console.error('[CINETPAY_INITIATE]', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * Gère le webhook CinetPay
+   */
+  async handleCinetPayWebhook(req: Request, res: Response) {
+    try {
+      const { transaction_id, status, metadata } = req.body;
+      
+      if (!transaction_id) {
+        return res.status(400).json({ error: 'Transaction ID is required' });
+      }
+
+      // Récupérer toutes les tentatives de paiement CinetPay
+      const cinetpayAttempts = await db
+        .select()
+        .from(paymentAttempts);
+
+      // Filtrer par transactionId dans les métadonnées
+      const paymentAttempt = cinetpayAttempts.find((attempt: any) => {
+        const metadata = attempt.metadata as any;
+        return metadata?.transactionId === transaction_id;
+      });
+
+      if (!paymentAttempt) {
+        console.warn(`Payment attempt not found for transaction: ${transaction_id}`);
+        return res.status(404).json({ error: 'Payment not found' });
+      }
+
+      // Mettre à jour le statut du paiement
+      const paymentStatus = (status === 'ACCEPTED' || status === 'SUCCESS') ? 'completed' : 'failed';
+      
+      await db
+        .update(paymentAttempts)
+        .set({
+          status: paymentStatus,
+          transactionId: transaction_id,
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentAttempts.id, paymentAttempt.id));
+
+      // Si le paiement est réussi, créer l'abonnement et mettre à jour l'utilisateur
+      if (paymentStatus === 'completed') {
+        const paymentMetadata = paymentAttempt.metadata as any;
+        const membershipTier = paymentMetadata?.membershipTier;
+        const userId = paymentAttempt.userId;
+
+        if (membershipTier && userId) {
+          // Créer l'abonnement
+          const endDate = new Date();
+          endDate.setFullYear(endDate.getFullYear() + 1); // Abonnement d'un an
+
+          const [subscription] = await db
+            .insert(subscriptions)
+            .values({
+              userId,
+              tier: membershipTier,
+              status: 'active',
+              startDate: new Date(),
+              endDate,
+              isRecurring: false,
+              metadata: {
+                paymentMethod: 'cinetpay',
+                transactionId: transaction_id,
+              },
+            } as any)
+            .returning();
+
+          // Mettre à jour le tier de l'utilisateur
+          await db
+            .update(users)
+            .set({
+              membershipTier,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, userId));
+
+          // Enregistrer le paiement dans la table payments
+          await db
+            .insert(payments)
+            .values({
+              userId,
+              subscriptionId: subscription.id,
+              amount: paymentAttempt.amount,
+              currency: 'XOF',
+              status: 'completed',
+              paymentMethod: 'cinetpay',
+              transactionId: transaction_id,
+              metadata: {
+                membershipTier,
+                cinetpayTransactionId: transaction_id,
+              },
+            } as any);
+        }
+      }
+
+      return res.json({ message: 'Webhook processed successfully' });
+    } catch (error) {
+      console.error('[CINETPAY_WEBHOOK]', error);
+      return res.status(500).json({
+        error: 'Webhook processing failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }

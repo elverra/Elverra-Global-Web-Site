@@ -44,7 +44,7 @@ const Register = () => {
     password: "",
     confirmPassword: "",
     referral_code: referralCode || "",
-    is_merchant: false,
+    physical_card_requested: false,
   });
 
   const membershipTiers = {
@@ -111,7 +111,7 @@ const Register = () => {
         city: data.city || "",
         country: data.country || "Mali",
         referral_code: data.referral_code || "",
-        is_merchant: data.is_merchant,
+        physical_card_requested: data.physical_card_requested,
       };
 
       // Call the backend registration API
@@ -344,15 +344,15 @@ const Register = () => {
 
                     <div className="flex items-center space-x-2">
                       <Checkbox
-                        id="is_merchant"
-                        checked={formData.is_merchant}
+                        id="physical_card_requested"
+                        checked={formData.physical_card_requested}
                         onCheckedChange={(checked) =>
-                          handleInputChange("is_merchant", checked === true)
+                          handleInputChange("physical_card_requested", checked === true)
                         }
-                        data-testid="checkbox-merchant"
+                        data-testid="checkbox-physical-card"
                       />
-                      <Label htmlFor="is_merchant" className="text-sm">
-                        I want to become a merchant and sell products/services
+                      <Label htmlFor="physical_card_requested" className="text-sm">
+                        I want to receive a physical membership card
                       </Label>
                     </div>
                   </div>

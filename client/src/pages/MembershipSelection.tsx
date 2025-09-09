@@ -58,8 +58,8 @@ const MembershipSelection = () => {
       "Support communautaire"
     ],
     pricing: {
-      registration: 50,
-      monthly: 50
+      registration: 5000,
+      monthly: 500
     }
   };
 
@@ -141,7 +141,7 @@ const MembershipSelection = () => {
     if (selectedCard === "child") {
       navigate(`/membership/payment?type=child&duration=${selectedDuration}`);
     } else if (selectedCard === "adult") {
-      navigate(`/membership/payment?type=adult&tier=${selectedTier}&duration=${selectedDuration}`);
+      navigate(`/membership-payment?tier=${selectedTier}&duration=${selectedDuration}`);
     }
   };
 

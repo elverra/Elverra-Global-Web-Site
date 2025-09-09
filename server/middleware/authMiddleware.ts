@@ -6,7 +6,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
-    role?: string;
+    role: string;
   };
 }
 
@@ -15,23 +15,52 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     // Récupérer le token du header Authorization
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[AUTH_MIDDLEWARE] Missing or invalid authorization header:', {
+        hasAuthHeader: !!authHeader,
+        authHeaderValue: authHeader ? authHeader.substring(0, 20) + '...' : 'none',
+        url: req.url,
+        method: req.method
+      });
       return res.status(401).json({ error: 'Unauthorized - No token provided' });
     }
 
     const token = authHeader.split(' ')[1];
     if (!token) {
+      console.error('[AUTH_MIDDLEWARE] Token extraction failed:', {
+        authHeader: authHeader.substring(0, 50) + '...',
+        url: req.url
+      });
       return res.status(401).json({ error: 'Unauthorized - Invalid token format' });
     }
 
     // Vérifier le token
-    const decoded = jwt.verify(token, appConfig.jwtSecret);
+    const decoded = jwt.verify(token, appConfig.auth.jwtSecret) as {
+      id: string;
+      email: string;
+      role: string;
+    };
     
     // Ajouter les informations de l'utilisateur à la requête
-    req.user = decoded as AuthRequest['user'];
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role || 'user' // Fallback to 'user' if role is missing
+    };
+    
+    console.log('[AUTH_MIDDLEWARE] Authentication successful:', {
+      userId: req.user?.id,
+      email: req.user?.email,
+      url: req.url
+    });
     
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('[AUTH_MIDDLEWARE] Authentication error:', {
+      error: error instanceof Error ? error.message : error,
+      url: req.url,
+      method: req.method,
+      hasAuthHeader: !!req.headers.authorization
+    });
     return res.status(401).json({ error: 'Unauthorized - Invalid or expired token' });
   }
 };

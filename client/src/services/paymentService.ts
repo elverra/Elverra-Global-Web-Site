@@ -76,6 +76,57 @@ class PaymentService {
   }
 
   /**
+   * Initie un paiement CinetPay pour l'achat de carte d'adhésion
+   * @param amount Le montant du paiement
+   * @param membershipTier Le tier d'adhésion (essential, premium, elite)
+   * @param description Description optionnelle du paiement
+   * @returns Une promesse résolue avec la réponse du paiement
+   */
+  async initiateCinetPayPayment(amount: number, membershipTier: string, description?: string): Promise<PaymentResponse> {
+    try {
+      const payload = {
+        amount,
+        membershipTier,
+        description: description || `Abonnement ${membershipTier} - Elverra Global`
+      };
+
+      const response = await fetch('/api/payments/initiate-cinetpay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de l\'initiation du paiement CinetPay');
+      }
+
+      const data = await response.json();
+
+      // Rediriger vers l'URL de paiement CinetPay
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      }
+
+      return {
+        success: true,
+        transactionId: data.transactionId,
+        paymentUrl: data.paymentUrl,
+        gatewayResponse: data
+      };
+    } catch (error) {
+      console.error('Erreur CinetPay:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue lors du paiement CinetPay'
+      };
+    }
+  }
+
+  /**
    * Vérifie le statut d'un paiement existant
    * @param transactionId L'identifiant de la transaction
    * @returns Une promesse résolue avec le statut du paiement
