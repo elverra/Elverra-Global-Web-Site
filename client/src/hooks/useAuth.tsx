@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     try {
       // First check if this is the admin email
-      if (user.email === 'admin@elverra.com' || user.email === 'madymadhu6@gmail.com') {
+      if (user.email === 'admin@elverra.com' || user.email === 'oladokunefi123@gmail.com') {
         setUserRole('admin');
         setIsAdmin(true);
         return;

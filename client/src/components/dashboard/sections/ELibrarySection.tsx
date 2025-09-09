@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,11 +33,78 @@ const ELibrarySection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedFormat, setSelectedFormat] = useState('all');
+  const [books, setBooks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const hasAccess = membership?.tier === 'premium' || membership?.tier === 'elite';
+  const hasAccess = membership?.tier === 'essential' || membership?.tier === 'premium' || membership?.tier === 'elite';
 
-  // Mock books data
-  const [books] = useState([
+  useEffect(() => {
+    if (hasAccess) {
+      fetchBooks();
+    }
+  }, [hasAccess]);
+
+  const fetchBooks = async () => {
+    try {
+      const response = await fetch('/api/library/books');
+      if (response.ok) {
+        const data = await response.json();
+        setBooks(data);
+      }
+    } catch (error) {
+      console.error('Error fetching books:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load library books",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [readingHistory, setReadingHistory] = useState<any[]>([]);
+  const [myReviews, setMyReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.id && hasAccess) {
+      fetchReadingHistory();
+      fetchMyReviews();
+    }
+  }, [user, hasAccess]);
+
+  const fetchReadingHistory = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/library/reading-history/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReadingHistory(data);
+      }
+    } catch (error) {
+      console.error('Error fetching reading history:', error);
+    }
+  };
+
+  const fetchMyReviews = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/library/reviews/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMyReviews(data);
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your reviews",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const bookData = [
     {
       id: 1,
       title: 'Introduction to Programming',
@@ -105,41 +173,7 @@ const ELibrarySection = () => {
       size: '120 MB',
       downloaded: false
     }
-  ]);
-
-  // Mock reading history
-  const [readingHistory] = useState([
-    {
-      id: 2,
-      title: 'Business Management in Africa',
-      author: 'Fatou Kone',
-      lastRead: '2024-01-20',
-      progress: 75,
-      totalPages: 280,
-      currentPage: 210
-    },
-    {
-      id: 1,
-      title: 'Introduction to Programming',
-      author: 'Dr. Amadou Diallo',
-      lastRead: '2024-01-15',
-      progress: 45,
-      totalPages: 320,
-      currentPage: 144
-    }
-  ]);
-
-  // Mock reviews
-  const [myReviews] = useState([
-    {
-      id: 1,
-      bookId: 2,
-      bookTitle: 'Business Management in Africa',
-      rating: 5,
-      review: 'Excellent book with practical insights for African businesses.',
-      date: '2024-01-18'
-    }
-  ]);
+  ];
 
   const categories = ['all', 'Technology', 'Business', 'History', 'Education', 'Science', 'Literature', 'Health'];
   const formats = ['all', 'PDF', 'EPUB', 'Audio', 'Video'];
@@ -154,7 +188,7 @@ const ELibrarySection = () => {
 
   const downloadBook = (bookId: number) => {
     if (!hasAccess) {
-      alert('E-Library access requires Premium or Elite membership. Please upgrade to download books.');
+      alert('E-Library access requires a paid membership (Essential, Premium, or Elite). Please get a membership to download books.');
       return;
     }
     alert('Download started! Check your downloads folder.');

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,110 +33,60 @@ const JobCenterSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [appliedJobs, setAppliedJobs] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock jobs data
-  const [jobs] = useState([
-    {
-      id: 1,
-      title: 'Software Developer',
-      company: 'TechCorp Mali',
-      location: 'Bamako, Mali',
-      type: 'Full-time',
-      salary: 'CFA 800,000 - 1,200,000',
-      posted: '2 days ago',
-      description: 'We are looking for a skilled software developer to join our team...',
-      requirements: ['JavaScript', 'React', 'Node.js'],
-      category: 'Technology',
-      saved: false,
-      applied: false
-    },
-    {
-      id: 2,
-      title: 'Marketing Manager',
-      company: 'Bamako Marketing Group',
-      location: 'Bamako, Mali',
-      type: 'Full-time',
-      salary: 'CFA 600,000 - 900,000',
-      posted: '1 week ago',
-      description: 'Lead our marketing efforts and drive brand awareness...',
-      requirements: ['Marketing', 'Digital Marketing', 'Leadership'],
-      category: 'Marketing',
-      saved: true,
-      applied: false
-    },
-    {
-      id: 3,
-      title: 'Sales Representative',
-      company: 'Mali Trade Company',
-      location: 'Sikasso, Mali',
-      type: 'Full-time',
-      salary: 'CFA 400,000 - 600,000',
-      posted: '3 days ago',
-      description: 'Join our sales team and help grow our business...',
-      requirements: ['Sales', 'Communication', 'Customer Service'],
-      category: 'Sales',
-      saved: false,
-      applied: true
-    },
-    {
-      id: 4,
-      title: 'Data Analyst Intern',
-      company: 'Analytics Pro',
-      location: 'Bamako, Mali',
-      type: 'Internship',
-      salary: 'CFA 150,000 - 250,000',
-      posted: '5 days ago',
-      description: 'Learn data analysis in a professional environment...',
-      requirements: ['Excel', 'Statistics', 'Python (preferred)'],
-      category: 'Technology',
-      saved: false,
-      applied: false
-    }
-  ]);
+  useEffect(() => {
+    fetchJobs();
+    fetchAppliedJobs();
+    fetchCompanies();
+  }, [user]);
 
-  // Mock applied jobs
-  const [appliedJobs] = useState([
-    {
-      id: 3,
-      title: 'Sales Representative',
-      company: 'Mali Trade Company',
-      appliedDate: '2024-01-10',
-      status: 'interview',
-      nextStep: 'Phone interview scheduled for Jan 25'
-    },
-    {
-      id: 5,
-      title: 'Accountant',
-      company: 'Finance Solutions',
-      appliedDate: '2024-01-05',
-      status: 'pending',
-      nextStep: 'Application under review'
+  const fetchJobs = async () => {
+    try {
+      const response = await fetch('/api/jobs');
+      if (response.ok) {
+        const data = await response.json();
+        setJobs(data);
+      }
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load jobs",
+        variant: "destructive"
+      });
     }
-  ]);
+  };
 
-  // Mock companies
-  const [companies] = useState([
-    {
-      id: 1,
-      name: 'TechCorp Mali',
-      industry: 'Technology',
-      size: '50-100 employees',
-      location: 'Bamako, Mali',
-      openJobs: 5,
-      rating: 4.5,
-      description: 'Leading technology company in West Africa'
-    },
-    {
-      id: 2,
-      name: 'Bamako Marketing Group',
-      industry: 'Marketing',
-      size: '20-50 employees', 
-      location: 'Bamako, Mali',
-      openJobs: 3,
-      rating: 4.2,
-      description: 'Full-service marketing and advertising agency'
+  const fetchAppliedJobs = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/users/${user.id}/applications`);
+      if (response.ok) {
+        const data = await response.json();
+        setAppliedJobs(data);
+      }
+    } catch (error) {
+      console.error('Error fetching applied jobs:', error);
     }
-  ]);
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch('/api/companies');
+      if (response.ok) {
+        const data = await response.json();
+        setCompanies(data);
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories = ['all', 'Technology', 'Marketing', 'Sales', 'Finance', 'Healthcare', 'Education'];
   const locations = ['all', 'Bamako', 'Sikasso', 'Mopti', 'Segou', 'Gao'];
@@ -285,7 +236,7 @@ const JobCenterSection = () => {
 
                       <div className="flex items-center justify-between">
                         <div className="flex gap-2">
-                          {job.requirements.slice(0, 3).map((req, index) => (
+                          {job.requirements?.slice(0, 3).map((req: string, index: number) => (
                             <Badge key={index} variant="secondary">{req}</Badge>
                           ))}
                         </div>

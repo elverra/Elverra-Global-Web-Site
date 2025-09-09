@@ -20,7 +20,7 @@
 ## Backup Admin Account
 
 If the primary admin doesn't work, try:
-- Email: `madymadhu6@gmail.com` 
+- Email: `oladokunefi123@gmail.com` 
 - Password: (your existing password)
 - This account now has admin privileges
 

@@ -111,15 +111,13 @@ const ShopManagement = () => {
   };
 
   const fetchProducts = async () => {
-    const mockResult = { data: null, error: null }; // TODO: Replace with API call
-      
-      
-      ;
-
-    if (error) throw error;
+    const response = await fetch('/api/admin/products');
+    if (!response.ok) throw new Error('Failed to fetch products');
+    
+    const data = await response.json();
     
     // Transform the data to match our interface
-    const transformedData = (data || []).map(product => ({
+    const transformedData = (data || []).map((product: any) => ({
       ...product,
       images: Array.isArray(product.images) ? product.images as string[] : []
     }));
@@ -128,59 +126,72 @@ const ShopManagement = () => {
   };
 
   const fetchCategories = async () => {
-    const mockResult = { data: null, error: null }; // TODO: Replace with API call
-      
-      
-      ;
-
-    if (error) throw error;
+    const response = await fetch('/api/products/categories');
+    if (!response.ok) throw new Error('Failed to fetch categories');
+    
+    const data = await response.json();
     setCategories(data || []);
   };
 
   const fetchOffers = async () => {
-    // Mock data for offers - in real app, this would come from database
-    const mockOffers = [
-      {
-        id: '1',
-        title: 'Premium Member Exclusive',
-        description: 'Extra 15% off on all construction materials',
-        discount_percentage: 15,
-        valid_until: '2024-12-31',
-        premium_only: true,
-        is_active: true
-      },
-      {
-        id: '2',
-        title: 'Free Delivery Week',
-        description: 'Free delivery on orders above 25,000 CFA',
-        discount_percentage: 0,
-        valid_until: '2024-08-31',
-        premium_only: false,
-        is_active: true
+    try {
+      const response = await fetch('/api/admin/shop-offers');
+      if (response.ok) {
+        const data = await response.json();
+        setOffers(data || []);
+      } else {
+        // If endpoint doesn't exist yet, set empty array
+        setOffers([]);
       }
-    ];
-    setOffers(mockOffers);
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      setOffers([]);
+    }
   };
 
   const fetchStats = async () => {
-    const mockProductsResult = { data: [], error: null }; // TODO: Replace with API call
-    const { data: products, error: productsError } = mockProductsResult;
+    try {
+      const [productsResponse, categoriesResponse] = await Promise.all([
+        fetch('/api/admin/products'),
+        fetch('/api/products/categories')
+      ]);
+      
+      const products = productsResponse.ok ? await productsResponse.json() : [];
+      const categories = categoriesResponse.ok ? await categoriesResponse.json() : [];
+      
+      // Try to get order stats from API, fallback to calculation
+      let recentOrders = 0;
+      try {
+        const ordersResponse = await fetch('/api/admin/orders/recent');
+        if (ordersResponse.ok) {
+          const ordersData = await ordersResponse.json();
+          recentOrders = ordersData.count || 0;
+        }
+      } catch {
+        // Fallback calculation based on products
+        recentOrders = Math.floor((products?.length || 0) * 0.1);
+      }
 
-    if (productsError) throw productsError;
-
-    const mockCategoriesResult = { data: [], error: null }; // TODO: Replace with API call
-    const { data: categories, error: categoriesError } = mockCategoriesResult;
-
-    if (categoriesError) throw categoriesError;
-
-    setStats({
-      totalProducts: products?.length || 0,
-      activeProducts: products?.filter(p => p.is_active).length || 0,
-      totalCategories: categories?.length || 0,
-      totalRevenue: products?.reduce((sum, p) => sum + p.price, 0) || 0,
-      totalViews: products?.reduce((sum, p) => sum + p.views, 0) || 0,
-      recentOrders: Math.floor(Math.random() * 50) + 10 // Mock data
-    });
+      setStats({
+        totalProducts: products?.length || 0,
+        activeProducts: products?.filter((p: Product) => p.is_active).length || 0,
+        totalCategories: categories?.length || 0,
+        totalRevenue: products?.reduce((sum: number, p: Product) => sum + p.price, 0) || 0,
+        totalViews: products?.reduce((sum: number, p: Product) => sum + p.views, 0) || 0,
+        recentOrders
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      // Set default stats on error
+      setStats({
+        totalProducts: 0,
+        activeProducts: 0,
+        totalCategories: 0,
+        totalRevenue: 0,
+        totalViews: 0,
+        recentOrders: 0
+      });
+    }
   };
 
   const handleCreateCategory = async () => {
@@ -190,14 +201,22 @@ const ShopManagement = () => {
     }
 
     try {
-      const mockResult = { data: null, error: null }; // TODO: Replace with API call
-      const { data, error } = mockResult;
+      const response = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCategory.name,
+          description: newCategory.description,
+          is_active: true
+        })
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to create category');
 
       toast.success('Category created successfully');
       setNewCategory({ name: '', description: '' });
       fetchCategories();
+      fetchStats();
     } catch (error) {
       console.error('Error creating category:', error);
       toast.error('Failed to create category');
@@ -206,15 +225,17 @@ const ShopManagement = () => {
 
   const handleToggleCategoryStatus = async (categoryId: string, isActive: boolean) => {
     try {
-      const mockResult = { data: null, error: null }; // TODO: Replace with API call
-        
-        
-        ;
+      const response = await fetch(`/api/admin/categories/${categoryId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !isActive })
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to update category');
 
       toast.success('Category status updated');
       fetchCategories();
+      fetchStats();
     } catch (error) {
       console.error('Error updating category:', error);
       toast.error('Failed to update category');
@@ -223,12 +244,13 @@ const ShopManagement = () => {
 
   const handleToggleProductStatus = async (productId: string, isActive: boolean) => {
     try {
-      const mockResult = { data: null, error: null }; // TODO: Replace with API call
-        
-        
-        ;
+      const response = await fetch(`/api/admin/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !isActive })
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to update product');
 
       toast.success('Product status updated');
       fetchProducts();
@@ -236,6 +258,39 @@ const ShopManagement = () => {
     } catch (error) {
       console.error('Error updating product:', error);
       toast.error('Failed to update product');
+    }
+  };
+
+  const handleCreateOffer = async () => {
+    if (!newOffer.title || !newOffer.description) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/shop-offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newOffer,
+          is_active: true
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to create offer');
+
+      toast.success('Offer created successfully');
+      setNewOffer({
+        title: '',
+        description: '',
+        discount_percentage: 0,
+        valid_until: '',
+        premium_only: false
+      });
+      fetchOffers();
+    } catch (error) {
+      console.error('Error creating offer:', error);
+      toast.error('Failed to create offer');
     }
   };
 
@@ -510,7 +565,7 @@ const ShopManagement = () => {
                   />
                   <Label>Premium Members Only</Label>
                 </div>
-                <Button className="w-full">
+                <Button className="w-full" onClick={handleCreateOffer}>
                   <Plus className="w-4 h-4 mr-2" />
                   Create Offer
                 </Button>

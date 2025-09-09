@@ -26,7 +26,7 @@
 
 ## Alternative Admin Users
 You can also grant admin access to existing users:
-- `madymadhu6@gmail.com` (already has premium membership)
+- `oladokunefi123@gmail.com` (already has premium membership)
 - `arunmadhavan29@gmail.com`
 
 ## Security Note

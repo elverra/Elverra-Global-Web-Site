@@ -37,12 +37,10 @@ import {
 
 // Import all section components
 import PaymentsSection from './sections/PaymentsSection';
-import DiscountsSection from './sections/DiscountsSection';
 import JobCenterSection from './sections/JobCenterSection';
 import AffiliateSection from './sections/AffiliateSection';
 import OSecoursSection from './sections/OSecoursSection';
 import OnlineStoreSection from './sections/OnlineStoreSection';
-import ELibrarySection from './sections/ELibrarySection';
 import AccountSection from './sections/AccountSection';
 import MyCardSection from './sections/MyCardSection';
 import SubscriptionsSection from './sections/SubscriptionsSection';
@@ -93,12 +91,10 @@ const ModernDashboard = () => {
   const sidebarItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'payments', label: 'Payments History', icon: CreditCard },
-    { id: 'discounts', label: t('nav.services.discounts'), icon: Tag },
     { id: 'job-center', label: t('nav.services.jobs'), icon: Briefcase },
     { id: 'affiliate', label: t('affiliate.program'), icon: Users },
     { id: 'o-secours', label: t('nav.services.osecours'), icon: HeartHandshake },
     { id: 'online-store', label: t('nav.services.shop'), icon: Store },
-    { id: 'e-library', label: t('nav.services.ebooks'), icon: Library },
     { id: 'account', label: t('nav.account'), icon: User },
     { id: 'my-card', label: 'My Card', icon: CreditCard },
     { id: 'subscriptions', label: 'Subscriptions', icon: Crown },
@@ -130,8 +126,6 @@ const ModernDashboard = () => {
     switch (activeSection) {
       case 'payments':
         return <PaymentsSection />;
-      case 'discounts':
-        return <DiscountsSection />;
       case 'job-center':
         return <JobCenterSection />;
       case 'affiliate':
@@ -140,8 +134,6 @@ const ModernDashboard = () => {
         return <OSecoursSection />;
       case 'online-store':
         return <OnlineStoreSection />;
-      case 'e-library':
-        return <ELibrarySection />;
       case 'account':
         return <AccountSection />;
       case 'my-card':

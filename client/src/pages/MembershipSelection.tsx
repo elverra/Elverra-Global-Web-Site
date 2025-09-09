@@ -58,8 +58,8 @@ const MembershipSelection = () => {
       "Support communautaire"
     ],
     pricing: {
-      registration: 500,
-      monthly: 500
+      registration: 50,
+      monthly: 50
     }
   };
 

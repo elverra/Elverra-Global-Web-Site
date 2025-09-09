@@ -128,28 +128,19 @@ const Shop = () => {
   };
 
   const fetchOffers = async () => {
-    // Mock offers data - in real app, this would come from database
-    const mockOffers = [
-      {
-        id: '1',
-        title: 'Premium Client Exclusive',
-        description: 'Extra 15% off on all construction materials',
-        discount_percentage: 15,
-        image_url: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800',
-        valid_until: '2024-12-31',
-        premium_only: true
-      },
-      {
-        id: '2',
-        title: 'Free Delivery Week',
-        description: 'Free delivery on orders above 25,000 CFA',
-        discount_percentage: 0,
-        image_url: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-        valid_until: '2024-08-31',
-        premium_only: false
+    try {
+      const response = await fetch('/api/shop-offers');
+      if (response.ok) {
+        const data = await response.json();
+        setOffers(data || []);
+      } else {
+        // If endpoint doesn't exist yet, set empty array
+        setOffers([]);
       }
-    ];
-    setOffers(mockOffers);
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      setOffers([]);
+    }
   };
 
   const checkPremiumStatus = async () => {
@@ -348,7 +339,7 @@ const Shop = () => {
                     </span>
                     {offer.premium_only && !isPremiumMember && (
                       <Button size="sm" variant="outline" onClick={() => navigate('/membership-payment')}>
-                        Upgrade to Premium
+                        Get Membership
                       </Button>
                     )}
                   </div>

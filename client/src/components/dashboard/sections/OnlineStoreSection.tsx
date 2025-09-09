@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,129 +33,82 @@ const OnlineStoreSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [priceRange, setPriceRange] = useState('all');
+  const [products, setProducts] = useState<any[]>([]);
+  const [myProducts, setMyProducts] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const isSeller = membership?.tier === 'premium' || membership?.tier === 'elite';
 
-  // Mock products data
-  const [products] = useState([
-    {
-      id: 1,
-      title: 'Samsung Galaxy A54',
-      description: 'Latest smartphone with excellent camera',
-      price: 250000,
-      category: 'Electronics',
-      seller: 'TechStore Mali',
-      location: 'Bamako, Mali',
-      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop',
-      rating: 4.5,
-      reviews: 12,
-      condition: 'New',
-      inStock: true,
-      wishlist: false
-    },
-    {
-      id: 2,
-      title: 'Traditional Malian Dress',
-      description: 'Beautiful handcrafted traditional dress',
-      price: 45000,
-      category: 'Fashion',
-      seller: 'Fashion Plus',
-      location: 'Sikasso, Mali',
-      image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=300&h=300&fit=crop',
-      rating: 4.8,
-      reviews: 8,
-      condition: 'New',
-      inStock: true,
-      wishlist: true
-    },
-    {
-      id: 3,
-      title: 'Motorcycle Yamaha',
-      description: 'Reliable motorcycle for city transportation',
-      price: 800000,
-      category: 'Vehicles',
-      seller: 'Moto Mali',
-      location: 'Bamako, Mali',
-      image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=300&fit=crop',
-      rating: 4.3,
-      reviews: 5,
-      condition: 'Used',
-      inStock: true,
-      wishlist: false
-    },
-    {
-      id: 4,
-      title: 'Local Rice (50kg)',
-      description: 'Premium quality local rice',
-      price: 35000,
-      category: 'Food',
-      seller: 'Farm Fresh',
-      location: 'Mopti, Mali',
-      image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=300&fit=crop',
-      rating: 4.6,
-      reviews: 20,
-      condition: 'New',
-      inStock: true,
-      wishlist: false
+  useEffect(() => {
+    fetchProducts();
+    if (isSeller && user?.id) {
+      fetchMyProducts();
+      fetchMessages();
     }
-  ]);
+    if (user?.id) {
+      fetchWishlist();
+    }
+  }, [user, isSeller]);
 
-  // Mock seller products (if user is a seller)
-  const [myProducts] = useState([
-    {
-      id: 101,
-      title: 'Apple iPhone 13',
-      price: 450000,
-      category: 'Electronics',
-      views: 156,
-      inquiries: 8,
-      status: 'active',
-      stock: 3,
-      dateAdded: '2024-01-15'
-    },
-    {
-      id: 102,
-      title: 'Office Chair',
-      price: 85000,
-      category: 'Furniture',
-      views: 43,
-      inquiries: 2,
-      status: 'active',
-      stock: 1,
-      dateAdded: '2024-01-10'
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products');
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load products",
+        variant: "destructive"
+      });
     }
-  ]);
+  };
 
-  // Mock messages for sellers
-  const [messages] = useState([
-    {
-      id: 1,
-      productTitle: 'Apple iPhone 13',
-      buyer: 'Aminata D.',
-      message: 'Is this phone still available? Can I see it today?',
-      date: '2024-01-22',
-      status: 'unread'
-    },
-    {
-      id: 2,
-      productTitle: 'Office Chair',
-      buyer: 'Ibrahim T.',
-      message: 'What is the condition of the chair?',
-      date: '2024-01-21',
-      status: 'read'
+  const fetchMyProducts = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/products?sellerId=${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMyProducts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching my products:', error);
     }
-  ]);
+  };
 
-  // Mock wishlist
-  const [wishlist] = useState([
-    {
-      id: 2,
-      title: 'Traditional Malian Dress',
-      price: 45000,
-      seller: 'Fashion Plus',
-      addedDate: '2024-01-20'
+  const fetchMessages = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/shop/messages/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
     }
-  ]);
+  };
+
+  const fetchWishlist = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/users/${user.id}/wishlist`);
+      if (response.ok) {
+        const data = await response.json();
+        setWishlist(data);
+      }
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories = ['all', 'Electronics', 'Fashion', 'Vehicles', 'Food', 'Furniture', 'Books', 'Sports'];
   const priceRanges = [
