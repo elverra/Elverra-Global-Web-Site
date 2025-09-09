@@ -141,11 +141,7 @@ const MyAccount = () => {
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
-      // Use mock data as fallback
-      setRecentTransactions([
-        { id: '1', created_at: '2024-01-15', payment_type: 'Monthly Membership', amount: 5000, status: 'completed' },
-        { id: '2', created_at: '2024-01-10', payment_type: 'Product Purchase', amount: 2500, status: 'completed' }
-      ]);
+      setRecentTransactions([]);
     }
   };
 
@@ -161,11 +157,7 @@ const MyAccount = () => {
       }
     } catch (error) {
       console.error('Error fetching offers:', error);
-      // Use mock data as fallback
-      setAvailableOffers([
-        { id: '1', title: '10% Off Electronics', discount_percentage: 10, description: 'Valid on all electronics' },
-        { id: '2', title: 'Free Delivery', discount_percentage: 0, description: 'Free delivery on orders above 25,000 CFA' }
-      ]);
+      setAvailableOffers([]);
     }
   };
 
@@ -251,10 +243,16 @@ const MyAccount = () => {
     }
 
     try {
-      const mockResult = { error: null }; // TODO: Replace with API call
-      const { error } = mockResult;
+      const response = await fetch('/api/user/update-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword
+        })
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to update password');
 
       setShowPasswordDialog(false);
       setCurrentPassword('');
@@ -271,10 +269,13 @@ const MyAccount = () => {
     
     try {
       // Update notification preferences in database
-      const mockResult = { data: null, error: null }; // TODO: Replace with API call
-      const { data, error } = mockResult;
+      const response = await fetch('/api/user/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notifications)
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to update preferences');
       toast.success('Notification preferences updated');
     } catch (error) {
       console.error('Error updating notifications:', error);
@@ -401,16 +402,21 @@ const MyAccount = () => {
       const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
-      const mockUploadResult = { error: null }; // TODO: Replace with API call
-      const { error: uploadError } = mockUploadResult;
+      // Upload file to server
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', filePath);
 
-      if (uploadError) {
-        throw uploadError;
+      const uploadResponse = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload image');
       }
 
-      const mockUrlResult = { data: { publicUrl: '/default-profile.jpg' } }; // TODO: Replace with API call
-      const { data: { publicUrl } } = mockUrlResult;
-
+      const { url: publicUrl } = await uploadResponse.json();
       await updateProfile({ profile_image_url: publicUrl });
       toast.success('Profile picture updated successfully!');
     } catch (error) {
@@ -1374,7 +1380,7 @@ const MyAccount = () => {
                   <div>
                     <h3 className="text-lg font-semibold">{profile?.full_name || 'User'}</h3>
                     <p className="text-gray-500">{user?.email}</p>
-                    <p className="text-sm text-gray-400">Member since {new Date(user?.created_at || '').toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-400">Member since {(user as any)?.createdAt ? new Date((user as any).createdAt).toLocaleDateString() : 'N/A'}</p>
                   </div>
                 </div>
 

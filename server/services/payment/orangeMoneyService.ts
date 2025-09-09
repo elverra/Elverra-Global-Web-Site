@@ -164,6 +164,14 @@ export class OrangeMoneyService {
         baseCallbackUrl = baseCallbackUrl.replace('${API_URL}', appConfig.apiUrl);
       }
       
+      // For development, use ngrok or a publicly accessible callback URL
+      if (this.isSandbox && (baseCallbackUrl.includes('localhost') || baseCallbackUrl.includes('127.0.0.1') || !baseCallbackUrl)) {
+        // Use a development-friendly callback URL that Orange Money will accept
+        baseCallbackUrl = 'https://fcc245ae3f67.ngrok-free.app/api/payments/orange/callback';
+        console.log('Using development callback URL for Orange Money:', baseCallbackUrl);
+        console.log('Note: For local development, you need to set up ngrok or use a publicly accessible URL');
+      }
+      
       const paymentRequestData = {
         merchant_key: this.merchantKey,
         currency: 'OUV', // ✅ Matches your test

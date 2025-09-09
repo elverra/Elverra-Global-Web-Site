@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,103 +14,88 @@ const DiscountsSection = () => {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [partnerStores, setPartnerStores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock partner stores data
-  const [partnerStores] = useState([
-    {
-      id: 1,
-      name: 'TechMart Bamako',
-      category: 'Electronics',
-      discount: '15%',
-      description: 'Electronics and gadgets',
-      location: 'Bamako, Mali',
-      image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300&h=200&fit=crop',
-      rating: 4.5,
-      expires: '2024-03-31'
-    },
-    {
-      id: 2,
-      name: 'Fashion Plaza',
-      category: 'Clothing',
-      discount: '20%',
-      description: 'Latest fashion trends',
-      location: 'Sikasso, Mali',
-      image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=300&h=200&fit=crop',
-      rating: 4.8,
-      expires: '2024-04-15'
-    },
-    {
-      id: 3,
-      name: 'Fresh Market',
-      category: 'Food & Drinks',
-      discount: '10%',
-      description: 'Fresh groceries and local produce',
-      location: 'Mopti, Mali',
-      image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=200&fit=crop',
-      rating: 4.3,
-      expires: '2024-05-01'
-    },
-    {
-      id: 4,
-      name: 'Health Plus Pharmacy',
-      category: 'Health',
-      discount: '12%',
-      description: 'Medicines and health products',
-      location: 'Segou, Mali',
-      image: 'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=300&h=200&fit=crop',
-      rating: 4.6,
-      expires: '2024-03-20'
-    }
-  ]);
+  useEffect(() => {
+    fetchDiscounts();
+  }, []);
 
-  // Mock personalized offers
-  const [personalizedOffers] = useState([
-    {
-      id: 1,
-      title: 'Your Favorite Coffee Shop',
-      discount: '25%',
-      description: 'Get 25% off at Café Bamako - your most visited coffee spot!',
-      validUntil: '2024-02-29',
-      used: false
-    },
-    {
-      id: 2,
-      title: 'Electronics Deal for You',
-      discount: '30%',
-      description: 'Special discount on smartphones based on your browsing history',
-      validUntil: '2024-03-15',
-      used: false
-    },
-    {
-      id: 3,
-      title: 'Birthday Special',
-      discount: '50%',
-      description: 'Happy Birthday! Enjoy 50% off your next purchase',
-      validUntil: '2024-02-20',
-      used: true
+  const fetchDiscounts = async () => {
+    try {
+      const response = await fetch('/api/discounts/partners');
+      if (response.ok) {
+        const data = await response.json();
+        setPartnerStores(data);
+      }
+    } catch (error) {
+      console.error('Error fetching discounts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load partner discounts",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  // Mock coupons and points
-  const [userPoints] = useState(2450);
-  const [availableCoupons] = useState([
-    {
-      id: 1,
-      code: 'WELCOME20',
-      discount: '20%',
-      description: 'Welcome bonus for new members',
-      minSpend: 5000,
-      expires: '2024-04-30'
-    },
-    {
-      id: 2,
-      code: 'LOYALTY15',
-      discount: '15%',
-      description: 'Loyalty reward coupon',
-      minSpend: 3000,
-      expires: '2024-03-31'
+  const [personalizedOffers, setPersonalizedOffers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchPersonalizedOffers();
     }
-  ]);
+  }, [user]);
+
+  const fetchPersonalizedOffers = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/discounts/personalized/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPersonalizedOffers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching personalized offers:', error);
+    }
+  };
+
+  const [userPoints, setUserPoints] = useState(0);
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserPoints();
+      fetchCoupons();
+    }
+  }, [user]);
+
+  const fetchUserPoints = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/users/${user.id}/points`);
+      if (response.ok) {
+        const data = await response.json();
+        setUserPoints(data.points || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching user points:', error);
+    }
+  };
+
+  const fetchCoupons = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/coupons/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCoupons(data);
+      }
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+    }
+  };
 
   const categories = [
     'all',

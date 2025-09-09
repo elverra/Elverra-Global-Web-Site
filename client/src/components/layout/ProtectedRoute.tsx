@@ -28,7 +28,7 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireAuth = true }: 
     return <Navigate to="/login" replace />;
   }
 
-  if (requireAdmin && !isAdmin && user?.email !== 'admin@elverra.com' && user?.email !== 'madymadhu6@gmail.com') {
+  if (requireAdmin && !isAdmin && user?.email !== 'admin@elverra.com' && user?.email !== 'oladokunefi123@gmail.com') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <Card className="max-w-md w-full">

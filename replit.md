@@ -87,7 +87,7 @@ Complete schema includes:
 - Fixed Login page redirect issue: Added authentication checking to prevent showing login form when user is already logged in
 - Added smart redirect logic for authenticated users based on membership status
 - Fixed /admin route access by adding missing route configuration
-- **MEMBERSHIP MANAGEMENT**: Updated madymadhu6@gmail.com to premium membership for testing advanced features
+- **MEMBERSHIP MANAGEMENT**: Updated oladokunefi123@gmail.com to premium membership for testing advanced features
 - User now has access to premium features including job posting, product posting, and priority support
 - All admin routes now accessible including: /admin, /admin/dashboard, /admin/jobs, /admin/payments, etc.
 

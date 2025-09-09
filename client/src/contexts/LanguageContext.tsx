@@ -2,10 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Language = 'en' | 'fr';
 
+type TranslationKey = string;
+type TranslationValue = string | Record<string, string | Record<string, string>>;
+type Translations = Record<string, Record<string, string>>;
+
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, values?: Record<string, any>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -45,6 +49,7 @@ const translations = {
     'selector.mali': 'Mali',
     'selector.french': 'French',
     'selector.english': 'English',
+    'error_invalid_amount': 'Amount must be between {{min}} and {{max}} tokens',
     'selector.not_available': 'Country Not Available',
     'selector.not_available_desc': 'This country is not yet available. Currently, only Mali and International are active.',
     
@@ -136,6 +141,7 @@ const translations = {
     'selector.mali': 'Mali',
     'selector.french': 'Français',
     'selector.english': 'Anglais',
+    'error_invalid_amount': 'Le montant doit être compris entre {{min}} et {{max}} jetons',
     'selector.not_available': 'Pays non disponible',
     'selector.not_available_desc': 'Ce pays n\'est pas encore disponible. Actuellement, seuls le Mali et International sont actifs.',
     
@@ -210,8 +216,36 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('language', lang);
   };
 
-  const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations[typeof language]] || key;
+  const t = (key: string, values?: Record<string, any>): string => {
+    const keys = key.split('.');
+    const translation = translations[language];
+    
+    // Safely navigate the nested translation object
+    let value: any = translation;
+    for (const k of keys) {
+      if (value && typeof value === 'object' && k in value) {
+        value = value[k];
+      } else {
+        console.warn(`Translation key not found: ${key}`);
+        return key; // Return the key if translation not found
+      }
+    }
+    
+    // Ensure we have a string at the end
+    if (typeof value !== 'string') {
+      console.warn(`Translation value is not a string for key: ${key}`);
+      return key;
+    }
+
+    // Handle interpolation if values are provided
+    let result = value;
+    if (values) {
+      Object.keys(values).forEach(k => {
+        result = result.replace(new RegExp(`{{${k}}}`, 'g'), String(values[k]));
+      });
+    }
+    
+    return result;
   };
 
   return (

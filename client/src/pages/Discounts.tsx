@@ -215,21 +215,6 @@ const Discounts = () => {
               </CardContent>
             </Card>
 
-            {/* Demo Notice */}
-            <div className="mb-8">
-              <Card className="bg-yellow-50 border-yellow-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                    <p className="text-yellow-800 font-medium">
-                      Demo Content: All discount data below is for demonstration
-                      purposes
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {/* Stats Section */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
               <Card className="text-center p-6">

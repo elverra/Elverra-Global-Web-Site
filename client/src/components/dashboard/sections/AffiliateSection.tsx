@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,100 +26,75 @@ const AffiliateSection = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [copiedCode, setCopiedCode] = useState(false);
+  const [affiliateData, setAffiliateData] = useState<any>({});
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock affiliate data
-  const affiliateData = {
-    referralCode: 'ELV-' + user?.id?.slice(0, 8)?.toUpperCase() || 'ELV-DEMO123',
-    totalEarnings: 175000,
-    monthlyEarnings: 45000,
-    totalReferrals: 7,
-    activeReferrals: 5,
-    pendingPayouts: 25000,
-    nextPayoutDate: '2024-02-15',
-    commissionRate: 15,
-    currentTier: 'Gold'
+  useEffect(() => {
+    if (user?.id) {
+      fetchAffiliateData();
+      fetchReferrals();
+      fetchLeaderboard();
+    }
+  }, [user]);
+
+  const fetchAffiliateData = async () => {
+    setLoading(true);
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/affiliates/${user.id}/stats`);
+      if (response.ok) {
+        const data = await response.json();
+        setAffiliateData(data);
+      } else {
+        throw new Error('Failed to fetch affiliate data');
+      }
+    } catch (error) {
+      console.error('Error fetching affiliate data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load affiliate data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Mock referral history
-  const [referrals] = useState([
-    {
-      id: 1,
-      name: 'Aminata Diallo',
-      email: 'aminata.d@email.com',
-      joinDate: '2024-01-15',
-      status: 'active',
-      earnings: 25000,
-      plan: 'Premium'
-    },
-    {
-      id: 2,
-      name: 'Ibrahim Traore',
-      email: 'ibrahim.t@email.com',
-      joinDate: '2024-01-12',
-      status: 'active',
-      earnings: 30000,
-      plan: 'Elite'
-    },
-    {
-      id: 3,
-      name: 'Fatoumata Kone',
-      email: 'fatoumata.k@email.com',
-      joinDate: '2024-01-08',
-      status: 'active',
-      earnings: 25000,
-      plan: 'Premium'
-    },
-    {
-      id: 4,
-      name: 'Sekou Camara',
-      email: 'sekou.c@email.com',
-      joinDate: '2024-01-05',
-      status: 'inactive',
-      earnings: 15000,
-      plan: 'Essential'
-    },
-    {
-      id: 5,
-      name: 'Mariam Sidibe',
-      email: 'mariam.s@email.com',
-      joinDate: '2023-12-28',
-      status: 'active',
-      earnings: 30000,
-      plan: 'Elite'
-    },
-    {
-      id: 6,
-      name: 'Moussa Bamba',
-      email: 'moussa.b@email.com',
-      joinDate: '2023-12-20',
-      status: 'active',
-      earnings: 25000,
-      plan: 'Premium'
-    },
-    {
-      id: 7,
-      name: 'Aicha Toure',
-      email: 'aicha.t@email.com',
-      joinDate: '2023-12-15',
-      status: 'inactive',
-      earnings: 0,
-      plan: 'Essential'
+  const fetchReferrals = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/affiliates/${user.id}/referrals`);
+      if (response.ok) {
+        const data = await response.json();
+        setReferrals(data);
+      }
+    } catch (error) {
+      console.error('Error fetching referrals:', error);
     }
-  ]);
+  };
 
-  // Mock leaderboard
-  const [leaderboard] = useState([
-    { rank: 1, name: 'Mamadou Keita', referrals: 25, earnings: 425000 },
-    { rank: 2, name: 'Kadiatou Diarra', referrals: 18, earnings: 350000 },
-    { rank: 3, name: 'You', referrals: 7, earnings: 175000 },
-    { rank: 4, name: 'Ousmane Sanogo', referrals: 12, earnings: 165000 },
-    { rank: 5, name: 'Safiatou Cisse', referrals: 9, earnings: 140000 }
-  ]);
+  const fetchLeaderboard = async () => {
+    try {
+      const response = await fetch('/api/affiliates/leaderboard');
+      if (response.ok) {
+        const data = await response.json();
+        setLeaderboard(data);
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const copyReferralCode = () => {
-    navigator.clipboard.writeText(affiliateData.referralCode);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
+    if (affiliateData?.referralCode) {
+      navigator.clipboard.writeText(affiliateData.referralCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
   };
 
   const handleWithdraw = () => {
@@ -127,6 +103,7 @@ const AffiliateSection = () => {
   };
 
   const shareReferralLink = () => {
+    if (!affiliateData?.referralCode) return;
     const referralLink = `https://elverra-global.com/register?ref=${affiliateData.referralCode}`;
     if (navigator.share) {
       navigator.share({
@@ -169,7 +146,7 @@ const AffiliateSection = () => {
         <h2 className="text-2xl font-bold text-gray-900">Affiliate Program</h2>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Current Tier:</span>
-          {getTierBadge(affiliateData.currentTier)}
+          {affiliateData?.currentTier ? getTierBadge(affiliateData.currentTier) : '-'}
         </div>
       </div>
 
@@ -180,9 +157,13 @@ const AffiliateSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Earnings</p>
-                <p className="text-2xl font-bold text-green-600">
-                  CFA {affiliateData.totalEarnings.toLocaleString()}
-                </p>
+                {loading ? (
+                  <div className="h-8 w-24 bg-gray-200 rounded animate-pulse mt-1"></div>
+                ) : (
+                  <p className="text-2xl font-bold text-green-600">
+                    CFA {(affiliateData.totalEarnings || 0).toLocaleString()}
+                  </p>
+                )}
                 <Button
                   onClick={handleWithdraw}
                   className="mt-2 bg-green-600 hover:bg-green-700 text-white"
@@ -202,7 +183,13 @@ const AffiliateSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Referrals</p>
-                <p className="text-2xl font-bold text-blue-600">{affiliateData.totalReferrals}</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {loading ? (
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (
+                    affiliateData?.totalReferrals || 0
+                  )}
+                </p>
               </div>
               <Users className="h-8 w-8 text-blue-600" />
             </div>
@@ -214,9 +201,13 @@ const AffiliateSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">This Month</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  CFA {affiliateData.monthlyEarnings.toLocaleString()}
-                </p>
+                {loading ? (
+                  <div className="h-8 w-24 bg-gray-200 rounded animate-pulse mt-1"></div>
+                ) : (
+                  <p className="text-2xl font-bold text-purple-600">
+                    CFA {(affiliateData.monthlyEarnings || 0).toLocaleString()}
+                  </p>
+                )}
                 <Button
                   onClick={handleWithdraw}
                   variant="outline"
@@ -237,7 +228,13 @@ const AffiliateSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Commission Rate</p>
-                <p className="text-2xl font-bold text-orange-600">{affiliateData.commissionRate}%</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {loading ? (
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (
+                    `${affiliateData?.commissionRate || 0}%`
+                  )}
+                </p>
               </div>
               <Award className="h-8 w-8 text-orange-600" />
             </div>
@@ -259,7 +256,7 @@ const AffiliateSection = () => {
               <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Code</label>
               <div className="flex gap-2">
                 <Input
-                  value={affiliateData.referralCode}
+                  value={affiliateData?.referralCode || ''}
                   readOnly
                   className="font-mono"
                 />
@@ -274,7 +271,7 @@ const AffiliateSection = () => {
               <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Link</label>
               <div className="flex gap-2">
                 <Input
-                  value={`https://elverra-global.com/register?ref=${affiliateData.referralCode}`}
+                  value={affiliateData?.referralCode ? `https://elverra-global.com/register?ref=${affiliateData.referralCode}` : ''}
                   readOnly
                   className="text-sm"
                 />
@@ -289,7 +286,7 @@ const AffiliateSection = () => {
               <h4 className="font-semibold mb-2">How to Earn:</h4>
               <ul className="text-sm space-y-1 text-gray-700">
                 <li>• Share your referral code with friends</li>
-                <li>• Earn {affiliateData.commissionRate}% commission on their payments</li>
+                <li>• Earn {affiliateData?.commissionRate || 0}% commission on their payments</li>
                 <li>• Get bonuses for active referrals</li>
                 <li>• Monthly payouts on the 15th</li>
               </ul>
@@ -309,12 +306,22 @@ const AffiliateSection = () => {
               <div>
                 <p className="text-sm text-gray-600">Pending Payout</p>
                 <p className="text-lg font-bold text-orange-600">
-                  CFA {affiliateData.pendingPayouts.toLocaleString()}
+                  {loading ? (
+                    <div className="h-6 w-20 bg-gray-200 rounded animate-pulse inline-block"></div>
+                  ) : (
+                    `CFA ${(affiliateData?.pendingPayouts || 0).toLocaleString()}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Next Payout</p>
-                <p className="text-lg font-bold text-blue-600">{affiliateData.nextPayoutDate}</p>
+                <p className="text-lg font-bold text-blue-600">
+                  {loading ? (
+                    <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (
+                    affiliateData?.nextPayoutDate || 'N/A'
+                  )}
+                </p>
               </div>
             </div>
 

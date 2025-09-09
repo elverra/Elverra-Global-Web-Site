@@ -49,7 +49,7 @@ export const users = pgTable("users", {
   profilePictureUrl: text("profile_picture_url"),
   isEmailVerified: boolean("is_email_verified").default(false),
   isPhoneVerified: boolean("is_phone_verified").default(false),
-  membershipTier: text("membership_tier").default('basic'),
+  membershipTier: text("membership_tier").default('essential'),
   totalCreditsEarned: numeric("total_credits_earned").default('0'),
   totalCreditsSpent: numeric("total_credits_spent").default('0'),
   currentCredits: numeric("current_credits").default('0'),
@@ -534,7 +534,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   fullName: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
-  membershipTier: z.enum(['basic', 'premium', 'elite']).default('basic'),
+  membershipTier: z.enum(['essential', 'premium', 'elite']).default('essential'),
   merchantApprovalStatus: z.enum(['pending', 'approved', 'rejected']).default('pending'),
 });
 

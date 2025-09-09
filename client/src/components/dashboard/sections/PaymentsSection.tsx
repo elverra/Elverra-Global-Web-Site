@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,82 +15,50 @@ const PaymentsSection = () => {
   const [filterDate, setFilterDate] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterAmount, setFilterAmount] = useState('');
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({});
+  const [loading, setLoading] = useState(true);
 
-  // Mock payment history data
-  const [payments] = useState([
-    {
-      id: 'PAY001',
-      date: '2024-01-15',
-      description: 'Monthly Premium Membership',
-      category: 'Subscription',
-      amount: 10000,
-      currency: 'CFA',
-      status: 'completed' as const,
-      method: 'Orange Money'
-    },
-    {
-      id: 'PAY002', 
-      date: '2024-01-10',
-      description: 'Job Application Fee',
-      category: 'Service',
-      amount: 2500,
-      currency: 'CFA',
-      status: 'completed' as const,
-      method: 'SAMA Money'
-    },
-    {
-      id: 'PAY003',
-      date: '2024-01-05',
-      description: 'Card Top-up',
-      category: 'Top-up',
-      amount: 25000,
-      currency: 'CFA', 
-      status: 'completed' as const,
-      method: 'Bank Transfer'
-    },
-    {
-      id: 'PAY004',
-      date: '2024-01-03',
-      description: 'Store Purchase - Electronics',
-      category: 'Shopping',
-      amount: 15000,
-      currency: 'CFA',
-      status: 'pending' as const,
-      method: 'Elite Card'
-    },
-    {
-      id: 'PAY005',
-      date: '2023-12-28',
-      description: 'Payday Loan Repayment',
-      category: 'Loan',
-      amount: 50000,
-      currency: 'CFA',
-      status: 'completed' as const,
-      method: 'Auto Deduct'
+  useEffect(() => {
+    if (user?.id) {
+      fetchPaymentData();
     }
-  ]);
+  }, [user]);
 
-  // Mock loan history
-  const [loans] = useState([
-    {
-      id: 'LOAN001',
-      date: '2023-12-01',
-      amount: 50000,
-      currency: 'CFA',
-      term: '30 days',
-      status: 'repaid' as const,
-      dueDate: '2023-12-31'
-    },
-    {
-      id: 'LOAN002',
-      date: '2024-01-20',
-      amount: 75000,
-      currency: 'CFA',
-      term: '45 days',
-      status: 'active' as const,
-      dueDate: '2024-03-05'
+  const fetchPaymentData = async () => {
+    try {
+      // Fetch payment history
+      const paymentsResponse = await fetch(`/api/payments/${user?.id}/history`);
+      if (paymentsResponse.ok) {
+        const paymentsData = await paymentsResponse.json();
+        setPayments(paymentsData);
+      }
+
+      // Fetch loan history
+      const loansResponse = await fetch(`/api/loans/${user?.id}/history`);
+      if (loansResponse.ok) {
+        const loansData = await loansResponse.json();
+        setLoans(loansData);
+      }
+
+      // Fetch payment stats
+      const statsResponse = await fetch(`/api/payments/${user?.id}/stats`);
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats(statsData);
+      }
+    } catch (error) {
+      console.error('Error fetching payment data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load payment data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -147,7 +116,9 @@ const PaymentsSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Spent This Month</p>
-                <p className="text-2xl font-bold text-gray-900">CFA 52,500</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  CFA {stats.monthlySpent?.toLocaleString() || '0'}
+                </p>
               </div>
               <DollarSign className="h-8 w-8 text-blue-600" />
             </div>
@@ -159,7 +130,7 @@ const PaymentsSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Active Loans</p>
-                <p className="text-2xl font-bold text-gray-900">1</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.activeLoans || 0}</p>
               </div>
               <CreditCard className="h-8 w-8 text-orange-600" />
             </div>
@@ -171,7 +142,7 @@ const PaymentsSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Transactions</p>
-                <p className="text-2xl font-bold text-gray-900">{payments.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{payments.length || 0}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>

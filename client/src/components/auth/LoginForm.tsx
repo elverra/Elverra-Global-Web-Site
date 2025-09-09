@@ -31,7 +31,8 @@ const LoginForm = () => {
   const handleResendConfirmationEmail = async (email: string) => {
     try {
       // TODO: Replace with API call to server - resend confirmation email
-      const { error } = { error: null }; // Placeholder for migration
+      const response: { error: { message: string } | null } = { error: null }; // Placeholder for migration
+      const { error } = response;
 
       if (error) {
         toast({
@@ -120,7 +121,7 @@ const LoginForm = () => {
             // Check if this is an admin user directly
             const isAdminUser =
               data.user.email === "admin@elverra.com" ||
-              data.user.email === "madymadhu6@gmail.com";
+              data.user.email === "oladokunefi123@gmail.com";
 
             if (isAdminUser || isAdmin) {
               console.log(

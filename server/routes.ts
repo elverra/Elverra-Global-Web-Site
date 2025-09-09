@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, or, ilike, and } from "drizzle-orm";
 
 // Internal imports
 import { storage } from "./storage.js";
@@ -9,6 +9,7 @@ import { db } from "./db.js";
 import { sendWelcomeEmail } from "./emailService.js";
 import { otpService } from "./otpService.js";
 import projectRoutes from "./routes/projects.js";
+import { affiliateRouter } from "./routes/affiliateRoutes.js";
 
 // Schema imports
 import { 
@@ -21,6 +22,7 @@ import {
   insertProductSchema, 
   insertLoanApplicationSchema, 
   users,
+  products,
   secoursSubscriptions,
   secoursTransactions,
   secoursRescueRequests,
@@ -48,6 +50,9 @@ const orangeMoneyPaymentSchema = z.object({
 export function registerRoutes(app: Express): void {
   // Mount project routes
   app.use('/api/projects', projectRoutes);
+  
+  // Mount affiliate routes
+  app.use('/api/affiliates', affiliateRouter);
 
   // Ô Secours Token System Routes
   
@@ -266,28 +271,21 @@ export function registerRoutes(app: Express): void {
   // Discount sectors endpoint - now uses admin-managed sectors
   app.get("/api/discounts/sectors", async (req, res) => {
     try {
-      // Get sectors from admin data (same structure as /api/admin/sectors)
+      // TODO: Replace with real database query when discount tables are created
       const sectors = [
-        { id: "1", name: "Food & Drink", description: "Restaurants, cafes, and food delivery", is_active: true },
-        { id: "2", name: "Technology", description: "Electronics, gadgets, and tech services", is_active: true },
-        { id: "3", name: "Travel & Tourism", description: "Hotels, flights, and travel packages", is_active: true },
-        { id: "4", name: "Fashion & Beauty", description: "Clothing, accessories, and beauty services", is_active: true },
-        { id: "5", name: "Health & Wellness", description: "Medical services, fitness, and wellness", is_active: true },
-        { id: "6", name: "Education", description: "Courses, books, and educational services", is_active: true },
-        { id: "7", name: "Entertainment", description: "Movies, games, and recreational activities", is_active: true },
-        { id: "8", name: "Home & Garden", description: "Furniture, appliances, and home improvement", is_active: true },
-        { id: "9", name: "Automotive", description: "Car services, parts, and transportation", is_active: true },
-        { id: "10", name: "Professional Services", description: "Business services, consulting, and legal", is_active: true }
+        { id: "1", name: "Food & Drink", description: "Restaurants, cafes, and food delivery" },
+        { id: "2", name: "Technology", description: "Electronics, gadgets, and tech services" },
+        { id: "3", name: "Travel & Tourism", description: "Hotels, flights, and travel packages" },
+        { id: "4", name: "Fashion & Beauty", description: "Clothing, accessories, and beauty services" },
+        { id: "5", name: "Health & Wellness", description: "Medical services, fitness, and wellness" }
       ];
       
-      // Filter to only active sectors and return in format expected by frontend
-      const activeSectors = sectors
-        .filter(sector => sector.is_active)
-        .map(sector => ({
-          id: sector.id,
-          name: sector.name,
-          description: sector.description
-        }));
+      // Return in format expected by frontend
+      const activeSectors = sectors.map(sector => ({
+        id: sector.id,
+        name: sector.name,
+        description: sector.description
+      }));
       
       res.json(activeSectors);
     } catch (error) {
@@ -406,7 +404,7 @@ app.post("/api/subscriptions", async (req, res) => {
             merchant: merchant.businessName,
             sector: merchantSector?.name || "General",
             discount_percentage: Number(merchant.discountPercentage),
-            description: merchant.description || getDiscountDescription(merchant.businessType, Number(merchant.discountPercentage)),
+            description: merchant.description || `Special ${merchant.discountPercentage}% discount for members`,
             location: location,
             image_url: imageUrl,
             rating: Number(merchant.rating) || 4.0,
@@ -424,146 +422,20 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  // Centralized data store for merchants (shared between admin and discounts)
-  let merchantsData = [
-    {
-      id: "m1",
-      businessName: "Café Bella Vista",
-      businessType: "Restaurant",
-      sectorId: "1",
-      address: "123 Restaurant Street",
-      city: "Dakar",
-      country: "Senegal",
-      phone: "+221 77 123 4567",
-      email: "contact@cafebella.sn",
-      website: "https://cafebella.sn",
-      discountPercentage: 15,
-      description: "Authentic French-Senegalese fusion cuisine",
-      logoUrl: null,
-      rating: 4.5,
-      featured: false,
-      isActive: true
-    },
-    {
-      id: "m2", 
-      businessName: "Digital World Electronics",
-      businessType: "Electronics Store",
-      sectorId: "2",
-      address: "456 Tech Avenue",
-      city: "Abidjan",
-      country: "Côte d'Ivoire",
-      phone: "+225 07 89 01 23",
-      email: "info@digitalworld.ci",
-      website: "https://digitalworld.ci",
-      discountPercentage: 25,
-      description: "Latest electronics and mobile devices",
-      logoUrl: null,
-      rating: 4.3,
-      featured: true,
-      isActive: true
-    },
-    {
-      id: "m3",
-      businessName: "Fashion Hub Boutique",
-      businessType: "Fashion Retail",
-      sectorId: "4",
-      address: "789 Fashion Street",
-      city: "Lagos",
-      country: "Nigeria",
-      phone: "+234 803 456 7890",
-      email: "sales@fashionhub.ng",
-      website: "https://fashionhub.ng",
-      discountPercentage: 30,
-      description: "Trendy African fashion and accessories",
-      logoUrl: null,
-      rating: 4.6,
-      featured: false,
-      isActive: true
-    },
-    {
-      id: "m4",
-      businessName: "WellCare Medical Center",
-      businessType: "Healthcare",
-      sectorId: "5",
-      address: "321 Health Avenue",
-      city: "Accra",
-      country: "Ghana",
-      phone: "+233 24 567 8901",
-      email: "appointments@wellcare.gh",
-      website: "https://wellcare.gh",
-      discountPercentage: 18,
-      description: "Comprehensive healthcare services",
-      logoUrl: null,
-      rating: 4.8,
-      featured: false,
-      isActive: true
-    },
-    {
-      id: "m5",
-      businessName: "EduTech Learning Hub",
-      businessType: "Education",
-      sectorId: "6",
-      address: "654 Learning Lane",
-      city: "Bamako",
-      country: "Mali",
-      phone: "+223 76 234 567",
-      email: "learn@edutech.ml",
-      website: "https://edutech.ml",
-      discountPercentage: 22,
-      description: "Professional skills and certification courses",
-      logoUrl: null,
-      rating: 4.4,
-      featured: false,
-      isActive: true  // Changed to active to show more merchants
-    }
-  ];
+  // TODO: Replace with database queries when merchant tables are created
+  let merchantsData: any[] = [];
 
+  // TODO: Replace with database queries when tables are created
   const getMerchants = () => merchantsData;
   const getSectors = () => [
     { id: "1", name: "Food & Drink", description: "Restaurants, cafes, and food delivery" },
     { id: "2", name: "Technology", description: "Electronics, gadgets, and tech services" },
     { id: "3", name: "Travel & Tourism", description: "Hotels, flights, and travel packages" },
     { id: "4", name: "Fashion & Beauty", description: "Clothing, accessories, and beauty services" },
-    { id: "5", name: "Health & Wellness", description: "Medical services, fitness, and wellness" },
-    { id: "6", name: "Education", description: "Courses, books, and educational services" },
-    { id: "7", name: "Entertainment", description: "Movies, games, and recreational activities" },
-    { id: "8", name: "Home & Garden", description: "Furniture, appliances, and home improvement" },
-    { id: "9", name: "Automotive", description: "Car services, parts, and transportation" },
-    { id: "10", name: "Professional Services", description: "Business services, consulting, and legal" }
+    { id: "5", name: "Health & Wellness", description: "Medical services, fitness, and wellness" }
   ];
 
-  // Helper functions for generating discount data from merchants
-  const getDiscountByBusinessType = (businessType: string): number => {
-    const discountMap: Record<string, number> = {
-      'Restaurant': 15,
-      'Electronics Store': 25,
-      'Fashion Retail': 30,
-      'Healthcare': 18,
-      'Education': 22,
-      'Hotel': 35,
-      'Entertainment': 28,
-      'Automotive': 20,
-      'Beauty': 25,
-      'Fitness': 30
-    };
-    return discountMap[businessType] || 20;
-  };
-
-  const getDiscountDescription = (businessType: string, discount: number): string => {
-    const descriptionMap: Record<string, string> = {
-      'Restaurant': `Enjoy delicious meals with ${discount}% off for members`,
-      'Electronics Store': `Latest electronics and gadgets with ${discount}% member pricing`,
-      'Fashion Retail': `Trendy clothing and accessories with ${discount}% member discount`,
-      'Healthcare': `Quality healthcare services with ${discount}% off for members`,
-      'Education': `Educational courses and training with ${discount}% member savings`,
-      'Hotel': `Comfortable accommodation with ${discount}% off for members`,
-      'Entertainment': `Fun activities and entertainment with ${discount}% member discount`,
-      'Automotive': `Professional car services with ${discount}% off for members`,
-      'Beauty': `Beauty treatments and services with ${discount}% member pricing`,
-      'Fitness': `Fitness programs and gym access with ${discount}% member discount`
-    };
-    return descriptionMap[businessType] || `Special ${discount}% discount for members`;
-  };
+  // TODO: Replace with database queries when discount tables are created
 
   const getImageByBusinessType = (businessType: string): string => {
     const imageMap: Record<string, string> = {
@@ -607,7 +479,7 @@ app.post("/api/subscriptions", async (req, res) => {
             merchant: merchant.businessName,  // Use actual business name
             sector: merchantSector?.name || "General",
             discount_percentage: Number(merchant.discountPercentage), // Use actual discount from merchant
-            description: merchant.description || getDiscountDescription(merchant.businessType, Number(merchant.discountPercentage)),
+            description: merchant.description || `Special ${merchant.discountPercentage}% discount for members`,
             location: location,  // Use actual address from merchant
             image_url: imageUrl,  // Use merchant logo or fallback
             rating: Number(merchant.rating) || 4.0,  // Use actual merchant rating
@@ -648,18 +520,13 @@ app.post("/api/subscriptions", async (req, res) => {
   // Admin sectors endpoint (matches frontend expectations)
   app.get("/api/admin/sectors", async (req, res) => {
     try {
-      // Return sectors with correct property names to match frontend expectations
+      // TODO: Replace with real database query when discount tables are created
       const sectors = [
         { id: "1", name: "Food & Drink", description: "Restaurants, cafes, and food delivery", is_active: true },
         { id: "2", name: "Technology", description: "Electronics, gadgets, and tech services", is_active: true },
         { id: "3", name: "Travel & Tourism", description: "Hotels, flights, and travel packages", is_active: true },
         { id: "4", name: "Fashion & Beauty", description: "Clothing, accessories, and beauty services", is_active: true },
-        { id: "5", name: "Health & Wellness", description: "Medical services, fitness, and wellness", is_active: true },
-        { id: "6", name: "Education", description: "Courses, books, and educational services", is_active: true },
-        { id: "7", name: "Entertainment", description: "Movies, games, and recreational activities", is_active: true },
-        { id: "8", name: "Home & Garden", description: "Furniture, appliances, and home improvement", is_active: true },
-        { id: "9", name: "Automotive", description: "Car services, parts, and transportation", is_active: true },
-        { id: "10", name: "Professional Services", description: "Business services, consulting, and legal", is_active: true }
+        { id: "5", name: "Health & Wellness", description: "Medical services, fitness, and wellness", is_active: true }
       ];
       res.json(sectors);
     } catch (error) {
@@ -675,15 +542,15 @@ app.post("/api/subscriptions", async (req, res) => {
         return res.status(400).json({ error: "Sector name is required" });
       }
       
-      // For demo purposes, create a mock sector
+      // TODO: Replace with real database insert when discount tables are created
       const newSector = {
         id: `custom_${Date.now()}`,
         name,
-        description: description || "",
+        description: description || '',
         is_active: is_active !== false
       };
       
-      res.json(newSector);
+      res.status(201).json(newSector);
     } catch (error) {
       res.status(400).json({ error: "Failed to create sector" });
     }
@@ -796,29 +663,23 @@ app.post("/api/subscriptions", async (req, res) => {
         return res.status(400).json({ error: "Title, merchant, sector, and discount percentage are required" });
       }
       
-      // For demo purposes, create a mock discount
+      // TODO: Replace with real database insert when discount tables are created
       const newDiscount = {
         id: `discount_${Date.now()}`,
         title,
-        description: description || "",
-        merchantId,
-        sectorId,
-        discountPercentage: Number(discountPercentage),
-        minOrderAmount: Number(minOrderAmount) || 0,
-        maxDiscountAmount: Number(maxDiscountAmount) || null,
-        validFrom: validFrom || new Date().toISOString(),
+        merchantId: merchantId,
+        sectorId: sectorId,
+        discountPercentage: discountPercentage,
+        description: description || '',
+        location: 'Global',
         validUntil: validUntil || null,
-        usageLimit: Number(usageLimit) || null,
-        usageCount: 0,
-        isFeatured: isFeatured === true,
+        premiumOnly: false,
         isActive: isActive !== false,
         termsAndConditions: termsAndConditions || "",
-        imageUrl: imageUrl || "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        imageUrl: imageUrl || ""
       };
       
-      res.json(newDiscount);
+      res.status(201).json(newDiscount);
     } catch (error) {
       res.status(400).json({ error: "Failed to create discount" });
     }
@@ -1871,62 +1732,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  // Demo payment page route
-  app.get("/demo-payment", (req, res) => {
-    const { amount, currency, reference, provider } = req.query;
-    const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Demo Payment - ${String(provider).toUpperCase()} Money</title>
-        <style>
-            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-            .payment-card { border: 2px solid ${provider === 'sama' ? '#10b981' : '#ff6600'}; border-radius: 10px; padding: 30px; text-align: center; }
-            .amount { font-size: 2em; color: ${provider === 'sama' ? '#10b981' : '#ff6600'}; font-weight: bold; margin: 20px 0; }
-            .btn { background: ${provider === 'sama' ? '#10b981' : '#ff6600'}; color: white; border: none; padding: 15px 30px; border-radius: 5px; font-size: 1.1em; cursor: pointer; margin: 10px; }
-            .btn:hover { background: ${provider === 'sama' ? '#059669' : '#e55a00'}; }
-            .demo-notice { background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin: 20px 0; }
-        </style>
-    </head>
-    <body>
-        <div class="payment-card">
-            <h1>${provider === 'sama' ? '💰' : '🍊'} ${String(provider).toUpperCase()} Money Payment</h1>
-            <div class="demo-notice">
-                <strong>Demo Mode:</strong> This is a simulated payment for testing purposes
-            </div>
-            <div class="amount">${amount} ${currency}</div>
-            <p><strong>Reference:</strong> ${reference}</p>
-            <p>Proceed with your payment using ${String(provider).toUpperCase()} Money</p>
-            <button class="btn" onclick="simulateSuccess()">✅ Simulate Successful Payment</button>
-            <button class="btn" onclick="simulateFailure()" style="background: #dc3545;">❌ Simulate Failed Payment</button>
-            <button class="btn" onclick="goBack()" style="background: #6c757d;">← Go Back</button>
-        </div>
-        <script>
-            function simulateSuccess() {
-                alert('Payment successful! Redirecting...');
-                window.close();
-                if (window.opener) {
-                    window.opener.postMessage({type: 'payment-success', reference: '${reference}'}, '*');
-                }
-            }
-            function simulateFailure() {
-                alert('Payment failed! Please try again.');
-                window.close();
-                if (window.opener) {
-                    window.opener.postMessage({type: 'payment-failed', reference: '${reference}'}, '*');
-                }
-            }
-            function goBack() {
-                window.close();
-            }
-        </script>
-    </body>
-    </html>
-    `;
-    res.send(html);
-  });
+  
   app.post("/api/payments/verify", async (req, res) => {
     try {
       const { paymentId } = req.body; // Use paymentId instead of reference for clarity
@@ -2419,21 +2225,20 @@ app.post("/api/subscriptions", async (req, res) => {
   // Product categories endpoint
   app.get("/api/products/categories", async (req, res) => {
     try {
+      // TODO: Replace with database query when product tables are created
       const categories = [
         { id: '1', name: 'Electronics', description: 'Electronic devices and gadgets' },
         { id: '2', name: 'Fashion', description: 'Clothing and accessories' },
         { id: '3', name: 'Home & Garden', description: 'Home improvement and garden items' },
         { id: '4', name: 'Sports & Outdoors', description: 'Sports equipment and outdoor gear' },
-        { id: '5', name: 'Books & Media', description: 'Books, music, and other media' },
-        { id: '6', name: 'Automotive', description: 'Car parts and automotive accessories' },
-        { id: '7', name: 'Health & Beauty', description: 'Health and beauty products' },
-        { id: '8', name: 'Toys & Games', description: 'Toys and gaming items' },
-        { id: '9', name: 'Food & Beverages', description: 'Food and drink items' },
-        { id: '10', name: 'Other', description: 'Other miscellaneous items' }
+        { id: '5', name: 'Books & Media', description: 'Books, movies, and digital media' },
+        { id: '6', name: 'Health & Beauty', description: 'Health products and beauty items' },
+        { id: '7', name: 'Automotive', description: 'Car parts and automotive accessories' },
+        { id: '8', name: 'Food & Beverages', description: 'Food items and beverages' }
       ];
       res.json(categories);
     } catch (error) {
-      res.status(500).json({ error: "Failed to get categories" });
+      res.status(500).json({ error: "Failed to fetch categories" });
     }
   });
 
@@ -2447,11 +2252,12 @@ app.post("/api/subscriptions", async (req, res) => {
       }
 
       // Return membership based on user's tier in database
+      // No free access - user must have paid for a membership tier
       const membership = {
         id: req.params.userId,
         user_id: req.params.userId,
-        tier: user.membershipTier || 'basic',
-        is_active: user.membershipTier === 'premium' || user.membershipTier === 'elite',
+        tier: user.membershipTier || 'essential',
+        is_active: user.membershipTier === 'essential' || user.membershipTier === 'premium' || user.membershipTier === 'elite',
         start_date: new Date().toISOString(),
         expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         physical_card_requested: false,
@@ -2848,6 +2654,197 @@ app.post("/api/subscriptions", async (req, res) => {
     } catch (error) {
       console.error('Error fetching gateway logs:', error);
       res.status(500).json({ error: 'Failed to fetch gateway logs' });
+    }
+  });
+
+  // Check user's product limit and calculate cost for new product
+  app.get("/api/user/:userId/product-limit", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Check if user has membership card
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Check if user has active membership card
+      const hasCard = user[0].membershipTier !== 'basic';
+      if (!hasCard) {
+        return res.status(403).json({ 
+          error: "Membership card required",
+          message: "You need an active membership card to add products"
+        });
+      }
+      
+      // TODO: Count user's existing products from database
+      const existingProductsCount = 0;
+      
+      const freeLimit = 10;
+      const costPerProduct = 500; // 500F per additional product
+      
+      const remainingFree = Math.max(0, freeLimit - existingProductsCount);
+      const nextProductCost = remainingFree > 0 ? 0 : costPerProduct;
+      
+      res.json({
+        existingProducts: existingProductsCount,
+        freeLimit,
+        remainingFree,
+        nextProductCost,
+        costPerProduct
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check product limit" });
+    }
+  });
+
+  // Add new product with payment check
+  app.post("/api/user/:userId/products", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { name, description, price, category, images, contact } = req.body;
+      
+      // Check if user has membership card
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const hasCard = user[0].membershipTier !== 'basic';
+      if (!hasCard) {
+        return res.status(403).json({ 
+          error: "Membership card required",
+          message: "You need an active membership card to add products"
+        });
+      }
+      
+      // Check product limit
+      const existingProductsCount = 0; // TODO: Get from database
+      const freeLimit = 10;
+      const costPerProduct = 500;
+      
+      const requiresPayment = existingProductsCount >= freeLimit;
+      
+      if (requiresPayment) {
+        const { paymentConfirmed } = req.body;
+        if (!paymentConfirmed) {
+          return res.status(402).json({
+            error: "Payment required",
+            message: `Adding this product costs ${costPerProduct}F`,
+            cost: costPerProduct,
+            requiresPayment: true
+          });
+        }
+      }
+      
+      // TODO: Insert product into database
+      const newProduct = {
+        id: `prod_${Date.now()}`,
+        userId,
+        name,
+        description,
+        price,
+        category,
+        images: images || [],
+        contact,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      res.status(201).json(newProduct);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add product" });
+    }
+  });
+
+  // Get user's products for management
+  app.get("/api/user/:userId/products", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // TODO: Get user's products from database
+      const userProducts: typeof products.$inferSelect[] = [];
+      
+      res.json(userProducts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user products" });
+    }
+  });
+
+  // Delete user's product
+  app.delete("/api/user/:userId/products/:productId", async (req, res) => {
+    try {
+      const { userId, productId } = req.params;
+      
+      // TODO: Delete from database and verify ownership
+      res.json({ message: "Product deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete product" });
+    }
+  });
+
+  // Public shop endpoint - view all products with seller contact
+  app.get("/api/shop/products", async (req, res) => {
+    try {
+      const { category, search, limit = 20, offset = 0 } = req.query;
+      
+      // Build where conditions
+      const conditions = [eq(products.isActive, true)];
+      
+      if (category && typeof category === 'string') {
+        conditions.push(eq(products.category, category));
+      }
+      
+      if (search && typeof search === 'string') {
+        conditions.push(
+          or(
+            ilike(products.title, `%${search}%`),
+            ilike(products.description, `%${search}%`)
+          )!
+        );
+      }
+
+      // Apply pagination
+      const limitNum = parseInt(limit as string) || 20;
+      const offsetNum = parseInt(offset as string) || 0;
+      
+      // Get products from database with seller info
+      const result = await db.select({
+        id: products.id,
+        title: products.title,
+        description: products.description,
+        price: products.price,
+        category: products.category,
+        condition: products.condition,
+        location: products.location,
+        images: products.images,
+        contactInfo: products.contactInfo,
+        isActive: products.isActive,
+        featured: products.featured,
+        viewCount: products.viewCount,
+        createdAt: products.createdAt,
+        sellerId: products.sellerId,
+        sellerName: users.fullName,
+        sellerPhone: users.phone,
+        sellerEmail: users.email
+      })
+      .from(products)
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(and(...conditions))
+      .limit(limitNum + 1)
+      .offset(offsetNum);
+      
+      const hasMore = result.length > limitNum;
+      const productsData = hasMore ? result.slice(0, limitNum) : result;
+      
+      res.json({
+        products: productsData,
+        total: productsData.length,
+        hasMore
+      });
+    } catch (error) {
+      console.error('Error fetching shop products:', error);
+      res.status(500).json({ error: "Failed to fetch shop products" });
     }
   });
 

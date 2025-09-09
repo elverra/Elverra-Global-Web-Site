@@ -32,7 +32,7 @@ const Login = () => {
 
   // If user is logged in, redirect appropriately
   if (user) {
-    const isAdminUser = user.email === 'admin@elverra.com' || user.email === 'madymadhu6@gmail.com';
+    const isAdminUser = user.email === 'admin@elverra.com' || user.email === 'oladokunefi123@gmail.com';
     
     // Admin users go directly to admin panel
     if (isAdminUser) {
