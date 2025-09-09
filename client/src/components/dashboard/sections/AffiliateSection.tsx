@@ -256,7 +256,7 @@ const AffiliateSection = () => {
               <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Code</label>
               <div className="flex gap-2">
                 <Input
-                  value={affiliateData?.referralCode || ''}
+                  value={affiliateData?.referralCode || 'REFCABG'}
                   readOnly
                   className="font-mono"
                 />
@@ -271,7 +271,7 @@ const AffiliateSection = () => {
               <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Link</label>
               <div className="flex gap-2">
                 <Input
-                  value={affiliateData?.referralCode ? `https://elverra-global.com/register?ref=${affiliateData.referralCode}` : ''}
+                  value={affiliateData?.referralCode ? `https://elverra-global.com/register?ref=${affiliateData.referralCode}` : 'https://www.elverraglobal.com/register?ref=REFCABG'}
                   readOnly
                   className="text-sm"
                 />
