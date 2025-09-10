@@ -5,9 +5,10 @@ import { validateRequest } from 'server/middleware/validateRequest';
 import { z } from 'zod';
 
 const router = Router();
+const authRouter = Router();
 
-// Routes protégées par authentification
-router.use(authMiddleware);
+// Apply auth middleware to all routes that need it
+authRouter.use(authMiddleware);
 
 // Schémas de validation
 const initiatePaymentSchema = z.object({
@@ -25,27 +26,27 @@ const cancelSubscriptionSchema = z.object({
   subscriptionId: z.string().uuid()
 });
 
-// Routes de paiement
-router.post(
+// Protected payment routes
+authRouter.post(
   '/initiate',
   validateRequest({ body: initiatePaymentSchema }),
   paymentController.initiatePayment
 );
 
-router.get(
+authRouter.get(
   '/verify/:paymentId',
   validateRequest({ params: verifyPaymentSchema }),
   paymentController.verifyPayment
 );
 
-router.post(
+authRouter.post(
   '/subscriptions/:subscriptionId/cancel',
   validateRequest({ params: cancelSubscriptionSchema }),
   paymentController.cancelSubscription
 );
 
-// Routes pour Orange Money
-router.post(
+// Orange Money routes
+authRouter.post(
   '/initiate-orange-money',
   validateRequest({
     body: z.object({
@@ -59,8 +60,8 @@ router.post(
   paymentController.initiateOrangeMoneyPayment
 );
 
-// Routes pour CinetPay
-router.post(
+// CinetPay routes
+authRouter.post(
   '/initiate-cinetpay',
   validateRequest({
     body: z.object({
@@ -72,13 +73,12 @@ router.post(
   paymentController.initiateCinetPayPayment
 );
 
-// Callback pour Orange Money (pas d'authentification requise)
+// Mount all authenticated routes
+router.use(authRouter);
+
+// Public endpoints (no auth required)
 router.post('/orange-callback', paymentController.handleOrangeMoneyCallback);
-
-// Webhook CinetPay (pas d'authentification requise)
 router.post('/cinetpay-webhook', paymentController.handleCinetPayWebhook);
-
-// Webhook (pas d'authentification requise)
 router.post('/webhook', paymentController.handleWebhook);
 
 export default router;

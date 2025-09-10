@@ -68,6 +68,20 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
           amount,
           membershipTier: plan,
           description: `Abonnement ${plan} - Elverra Global`,
+          metadata: {
+            name: user.fullName?.split(' ')[0] || 'Client',
+            surname: user.fullName?.split(' ').slice(1).join(' ') || 'Elverra',
+            email: user.email,
+            phone: user.phone || '+22300000000',
+            address: user.address || '',
+            city: user.city || '',
+            country: user.country || 'ML',
+            state: user.state || 'ML',
+            zipCode: user.zipCode || '',
+            subscriptionId: subscriptionData.id,
+            plan,
+            userId: user.id
+          }
         };
       } else {
         // Pour Orange Money et SAMA Money
@@ -89,28 +103,39 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
       }
 
     // In handlePayment
-const res = await fetch(endpoint, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(paymentData),
-});
+    const token = localStorage.getItem('token');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` })
+    };
 
-const data = await res.json();
-if (data.success && (data.payment_url || data.paymentUrl)) {
-  const paymentUrl = data.payment_url || data.paymentUrl;
-  console.log("Opening payment in new tab:", paymentUrl);
-  console.log("Payment response data:", data);
-  window.open(paymentUrl, "_blank");
-  setPaymentInitiated(true);
-  // Use paymentId first, then fallback to reference or transactionId
-  const pollId = data.paymentId || data.transactionId || data.reference || data.paymentAttemptId;
-  console.log("Using payment ID for polling:", pollId);
-  setPaymentReference(pollId);
-  toast.success("Payment initiated! Please complete the payment in the new tab.");
-  return;
-}
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(paymentData),
+    });
 
-      throw new Error(data.message || 'Payment initiation failed');
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || 'Échec de l\'initiation du paiement');
+    }
+
+    const data = await res.json();
+    if (data.success && (data.payment_url || data.paymentUrl)) {
+      const paymentUrl = data.payment_url || data.paymentUrl;
+      console.log("Opening payment in new tab:", paymentUrl);
+      console.log("Payment response data:", data);
+      window.open(paymentUrl, "_blank");
+      setPaymentInitiated(true);
+      // Use paymentId first, then fallback to reference or transactionId
+      const pollId = data.paymentId || data.transactionId || data.reference || data.paymentAttemptId;
+      console.log("Using payment ID for polling:", pollId);
+      setPaymentReference(pollId);
+      toast.success("Payment initiated! Please complete the payment in the new tab.");
+      return;
+    } else {
+      throw new Error(data.message || 'Échec de l\'initiation du paiement');
+    }
     } catch (err: any) {
       setError(err.message || 'Unexpected error occurred');
       toast.error(err.message || 'Unexpected error occurred');
@@ -133,7 +158,10 @@ if (data.success && (data.payment_url || data.paymentUrl)) {
         const response = await fetch('/api/payments/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paymentId: paymentReference }),
+          body: JSON.stringify({ 
+            paymentId: paymentReference,
+            gateway: selectedGateway // Ajout du gateway pour identifier CinetPay
+          }),
         });
         const data = await response.json();
         console.log('Payment verification response:', data);
@@ -159,7 +187,7 @@ if (data.success && (data.payment_url || data.paymentUrl)) {
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
-  }, [paymentInitiated, paymentReference, onSuccess]);
+  }, [paymentInitiated, paymentReference, onSuccess, selectedGateway]);
 
   if (!isOpen) return null;
 
