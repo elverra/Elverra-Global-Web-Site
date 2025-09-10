@@ -1,4 +1,12 @@
-import { Request, Response } from 'express';
+import { Request, Response, RequestHandler } from 'express';
+
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: string;
+    }
+  }
+}
 import { orangeMoneyService } from '../services/payment/orangeMoneyService';
 import { cinetpayService } from '../services/payment/cinetpayService';
 import { AuthRequest } from '../middleware/authMiddleware';
@@ -118,17 +126,42 @@ class PaymentController {
    */
   async handleWebhook(req: Request, res: Response) {
     try {
+      // Check if the request body is HTML (starts with <!DOCTYPE or <html)
+      if (typeof req.body === 'string' && (req.body.startsWith('<!DOCTYPE') || req.body.startsWith('<html'))) {
+        console.error('Received HTML error page instead of JSON:', req.body.substring(0, 500));
+        return res.status(400).json({ 
+          error: 'Invalid webhook payload: Received HTML error page',
+          details: 'The webhook endpoint received an HTML error page instead of the expected JSON payload.'
+        });
+      }
+
       const signature = req.headers['x-orange-signature'] as string;
       const payload = req.body;
       
       if (!signature) {
-        return res.status(400).json({ error: 'Missing signature' });
+        console.warn('Webhook called without signature');
+        return res.status(400).json({ 
+          error: 'Missing signature',
+          details: 'The request is missing the x-orange-signature header.'
+        });
       }
 
-      // Valider le schéma du payload
+      // Log raw body for debugging (first 500 chars to avoid logging too much)
+      console.log('Webhook received:', {
+        headers: req.headers,
+        body: JSON.stringify(payload).substring(0, 500)
+      });
+
+      // Validate payload schema
       const webhookSchema = z.object({
-        order_id: z.string(),
-        status: z.string(),
+        order_id: z.string({
+          required_error: 'order_id is required',
+          invalid_type_error: 'order_id must be a string'
+        }),
+        status: z.string({
+          required_error: 'status is required',
+          invalid_type_error: 'status must be a string'
+        }),
         tx_id: z.string().optional(),
         tx_amount: z.string().optional(),
         tx_currency: z.string().optional(),
@@ -137,16 +170,35 @@ class PaymentController {
 
       const validationResult = webhookSchema.safeParse(payload);
       if (!validationResult.success) {
-        console.error('Invalid webhook payload:', validationResult.error);
-        return res.status(400).json({ error: 'Invalid payload' });
+        console.error('Invalid webhook payload:', {
+          error: validationResult.error,
+          payload: payload
+        });
+        return res.status(400).json({ 
+          error: 'Invalid payload',
+          details: validationResult.error.errors,
+          received: payload
+        });
       }
 
-      // Traiter le webhook avec le service Orange Money
-      await orangeMoneyService.handleWebhook(validationResult.data, signature);
+      // Process the webhook with Orange Money service
+      try {
+        await orangeMoneyService.handleWebhook(validationResult.data, signature);
+        return res.status(200).json({ success: true });
+      } catch (serviceError) {
+        console.error('Error in Orange Money webhook handler:', serviceError);
+        return res.status(500).json({
+          error: 'Error processing webhook',
+          details: serviceError instanceof Error ? serviceError.message : 'Unknown error'
+        });
+      }
       
-      return res.status(200).json({ success: true });
     } catch (error) {
-      console.error('Webhook processing error:', error);
+      console.error('Unexpected error in webhook handler:', {
+        error,
+        body: req.body,
+        headers: req.headers
+      });
       return res.status(500).json({
         success: false,
         error: 'Error processing webhook',
@@ -311,6 +363,14 @@ class PaymentController {
    * Initie un paiement CinetPay
    */
   async initiateCinetPayPayment(req: AuthRequest, res: Response) {
+    // Check if CinetPay service is available
+    if (!cinetpayService) {
+      return res.status(503).json({
+        success: false,
+        message: 'CinetPay service is currently unavailable. Please try another payment method.',
+      });
+    }
+
     try {
       const { amount, membershipTier, description } = req.body as {
         amount: number;
@@ -449,18 +509,68 @@ class PaymentController {
    * Gère le webhook de notification de CinetPay
    */
   async handleCinetPayWebhook(req: Request, res: Response) {
+    // Vérifier si le corps de la requête est du HTML (page d'erreur)
+    if (typeof req.body === 'string' && (req.body.startsWith('<!DOCTYPE') || req.body.startsWith('<html'))) {
+      console.error('Reçu une page d\'erreur HTML au lieu de JSON:', req.body.substring(0, 500));
+      return res.status(400).json({ 
+        error: 'Invalid webhook payload: Received HTML error page',
+        details: 'Le webhook a reçu une page d\'erreur HTML au lieu du payload JSON attendu.'
+      });
+    }
+
     try {
+      // Journalisation du webhook reçu pour le débogage
+      console.log('Webhook CinetPay reçu:', {
+        headers: req.headers,
+        body: req.body,
+        rawBody: req.rawBody ? req.rawBody.substring(0, 500) + '...' : 'Non disponible'
+      });
+
       const { payment_token: paymentToken } = req.body as { payment_token?: string };
 
       if (!paymentToken) {
-        console.error('Missing payment token in webhook');
-        return res.status(400).json({ error: 'Missing payment token' });
+        console.error('Token de paiement manquant dans le webhook:', {
+          body: req.body,
+          headers: req.headers
+        });
+        return res.status(400).json({ 
+          success: false,
+          error: 'Token de paiement manquant',
+          details: 'Le paramètre payment_token est requis dans le corps de la requête.'
+        });
       }
 
-      console.log('Processing CinetPay webhook for token:', paymentToken);
+      console.log('Traitement du webhook CinetPay pour le token:', paymentToken);
 
-      // Verify payment with CinetPay
-      const paymentInfo = await cinetpayService.verifyPayment(paymentToken);
+      // Vérifier que le service CinetPay est disponible
+      if (!cinetpayService) {
+        console.error('CinetPay service is not initialized');
+        return res.status(500).json({
+          success: false,
+          error: 'Service de paiement indisponible',
+          details: 'Le service CinetPay n\'est pas correctement initialisé.'
+        });
+      }
+
+      // Vérifier le paiement avec CinetPay
+      let paymentInfo;
+      try {
+        paymentInfo = await cinetpayService.verifyPayment(paymentToken);
+        console.log('Réponse de CinetPay:', JSON.stringify(paymentInfo, null, 2));
+      } catch (error) {
+        console.error('Erreur lors de la vérification du paiement CinetPay:', {
+          error,
+          paymentToken,
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        
+        return res.status(500).json({
+          success: false,
+          error: 'Échec de la vérification du paiement',
+          details: error instanceof Error ? error.message : 'Erreur inconnue',
+          code: 'CINETPAY_VERIFICATION_ERROR'
+        });
+      }
 
       // Find the payment attempt using transactionId which stores the payment token
       const [paymentAttempt] = await db

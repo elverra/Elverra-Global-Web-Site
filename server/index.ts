@@ -4,6 +4,7 @@ import express, { NextFunction, type Request, Response } from "express";
 import http from 'http';
 import { registerRoutes } from "./routes.js";
 import paymentRoutes from "./routes/paymentRoutes";
+import samaMoneyRoutes from "./routes/samaMoneyRoutes";
 import { log, serveStatic, setupVite } from "./vite.js";
 
 // Load environment variables from .env file
@@ -51,19 +52,19 @@ app.use((req, res, next) => {
         logLine = logLine.slice(0, 79) + "…";
       }
 
-      log(logLine);
+      if (logLine) {
+        log(logLine);
+      }
     }
   });
 
   next();
 });
 
-(async () => {
-  // Enregistrer les routes existantes
-  registerRoutes(app);
-  
-  // Enregistrer les routes de paiement
-  app.use('/api', paymentRoutes);
+// Register API routes
+registerRoutes(app);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/payments/sama", samaMoneyRoutes);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -122,5 +123,4 @@ app.use((req, res, next) => {
     };
     
     startServer();
-  }
-})();
+  };

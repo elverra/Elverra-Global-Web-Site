@@ -16,11 +16,26 @@ class CinetPayService {
   private config: CinetPayConfig;
 
   constructor() {
+    // Log environment variables for debugging (without sensitive data)
+    const config = {
+      hasApiKey: !!process.env.CINETPAY_API_KEY,
+      hasSiteId: !!process.env.CINETPAY_SITE_ID,
+      appUrl: process.env.APP_URL,
+      paymentUrl: process.env.CINETPAY_PAYMENT_URL || 'default',
+      nodeEnv: process.env.NODE_ENV
+    };
+    
+    console.log('CinetPay Config:', JSON.stringify(config, null, 2));
+    
+    if (!process.env.CINETPAY_API_KEY || !process.env.CINETPAY_SITE_ID) {
+      console.warn('⚠️ CinetPay API key or Site ID is missing. CinetPay payments will not work.');
+    }
+
     this.config = {
       apiKey: process.env.CINETPAY_API_KEY || '',
       siteId: process.env.CINETPAY_SITE_ID || '',
-      notifyUrl: `${process.env.APP_URL}/api/payments/cinetpay-webhook`,
-      returnUrl: `${process.env.APP_URL}/my-account?payment=success`,
+      notifyUrl: `${process.env.APP_URL || 'http://localhost:5000'}/api/payments/cinetpay-webhook`,
+      returnUrl: `${process.env.APP_URL || 'http://localhost:5000'}/my-account?payment=success`,
       paymentUrl: process.env.CINETPAY_PAYMENT_URL || 'https://api-checkout.cinetpay.com/v2/payment'
     };
   }
@@ -56,7 +71,7 @@ class CinetPayService {
     try {
       const transactionId = `ELVERRA-${Date.now()}`;
       
-      // Prepare payload according to CinetPay documentation
+      // Prepare payload according to CinetPay official documentation v2
       const payload = {
         apikey: this.config.apiKey,
         site_id: this.config.siteId,
@@ -66,24 +81,18 @@ class CinetPayService {
         description: params.description || 'Elverra Global Payment',
         notify_url: this.config.notifyUrl,
         return_url: this.config.returnUrl,
-        channels: 'MOBILE_MONEY', // Use MOBILE_MONEY as per documentation
-        metadata: params.userId,
+        channels: 'ALL', // Support all payment methods
         lang: 'FR',
         customer_id: params.userId,
-        customer_name: params.metadata?.name || 'Client',
-        customer_surname: params.metadata?.surname || 'Elverra',
-        customer_email: params.metadata?.email || '',
-        customer_phone_number: params.metadata?.phone || '',
-        customer_address: params.metadata?.address || '',
-        customer_city: params.metadata?.city || '',
-        customer_country: params.metadata?.country || 'ML',
-        customer_state: params.metadata?.state || 'ML',
-        customer_zip_code: params.metadata?.zipCode || '',
-        invoice_data: {
-          'Service': 'Abonnement Elverra',
-          'Référence': transactionId,
-        },
-        ...(params.metadata || {})
+        customer_name: 'Client',
+        customer_surname: 'Elverra',
+        customer_email: 'contact@elverra.com',
+        customer_phone_number: '+22373402073',
+        customer_address: 'Bamako',
+        customer_city: 'Bamako',
+        customer_country: 'ML',
+        customer_state: 'ML',
+        customer_zip_code: '00000'
       };
       
       console.log('Envoi de la requête à CinetPay:', JSON.stringify(payload, null, 2));
@@ -93,7 +102,8 @@ class CinetPayService {
         url: 'https://api-checkout.cinetpay.com/v2/payment',
         headers: { 
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'User-Agent': 'Elverra-Global-Web-Site/1.0'
         },
         data: JSON.stringify(payload),
         timeout: 10000 // 10 seconds timeout
@@ -105,24 +115,62 @@ class CinetPayService {
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
+          console.log(`Attempt ${attempt} - Sending request to CinetPay API`);
+          console.log('Request config:', {
+            url: config.url,
+            method: config.method,
+            headers: config.headers,
+            data: JSON.parse(config.data as string)
+          });
+          
+          console.log('Sending request to CinetPay API:', {
+            url: config.url,
+            method: config.method,
+            headers: config.headers,
+            data: payload
+          });
+          
           const response = await axios(config);
           
           // Check if response is HTML error page
-          if (typeof response.data === 'string' && response.data.startsWith('<!DOCTYPE')) {
-            throw new Error(`CinetPay returned HTML error page: ${response.data.substring(0, 100)}...`);
+          if (typeof response.data === 'string' && (response.data.startsWith('<!DOCTYPE') || response.data.includes('html'))) {
+            const errorHtml = response.data;
+            console.error('CinetPay returned HTML error page. Status:', response.status);
+            console.error('Response headers:', response.headers);
+            console.error('Response body (first 1000 chars):', errorHtml.substring(0, 1000));
+            
+            // Try to extract error message from HTML
+            const errorMatch = errorHtml.match(/<title>(.*?)<\/title>/i) || 
+                             errorHtml.match(/<h1>(.*?)<\/h1>/i) ||
+                             errorHtml.match(/<p[^>]*>(.*?)<\/p>/i);
+            const errorMessage = errorMatch ? 
+              `CinetPay Error: ${errorMatch[1]}` : 
+              'CinetPay API returned an HTML error page';
+              
+            throw new Error(errorMessage);
           }
           
-          console.log('Réponse de CinetPay:', JSON.stringify(response.data, null, 2));
+          console.log('CinetPay API Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            data: response.data
+          });
           
-          // Validate API response structure
-          if (response.data?.data?.payment_url) {
+          // Validate API response structure according to official docs
+          if (response.data?.code === "201" && response.data?.data?.payment_url) {
             return {
               paymentUrl: response.data.data.payment_url,
               paymentToken: response.data.data.payment_token || transactionId
             };
           }
           
-          throw new Error('Invalid CinetPay response: ' + JSON.stringify(response.data));
+          // Handle error responses from CinetPay
+          if (response.data?.code && response.data?.code !== "201") {
+            throw new Error(`CinetPay API Error [${response.data.code}]: ${response.data.message || response.data.description}`);
+          }
+          
+          throw new Error('Invalid CinetPay response structure: ' + JSON.stringify(response.data));
         } catch (error: unknown) {
           lastError = error;
           
@@ -232,4 +280,43 @@ class CinetPayService {
   }
 }
 
-export const cinetpayService = new CinetPayService();
+// Declare the cinetpayService variable after the class definition
+let cinetpayService: CinetPayService;
+
+// Function to initialize CinetPay service
+export function initializeCinetPayService() {
+  try {
+    const requiredVars = {
+      CINETPAY_API_KEY: process.env.CINETPAY_API_KEY,
+      CINETPAY_SITE_ID: process.env.CINETPAY_SITE_ID,
+      APP_URL: process.env.APP_URL || 'http://localhost:5000' // Default to localhost if not set
+    };
+
+    // Set default APP_URL if not provided
+    if (!process.env.APP_URL) {
+      process.env.APP_URL = requiredVars.APP_URL;
+      console.warn('APP_URL not set, using default:', requiredVars.APP_URL);
+    }
+
+    const missingVars = Object.entries(requiredVars)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingVars.length === 0) {
+      cinetpayService = new CinetPayService();
+      console.log('CinetPay service initialized successfully');
+      return true;
+    } else {
+      console.warn('CinetPay service not initialized - missing required environment variables:', missingVars);
+      return false;
+    }
+  } catch (error) {
+    console.error('Failed to initialize CinetPay service:', error);
+    return false;
+  }
+}
+
+// Initialize the service immediately
+initializeCinetPayService();
+
+export { cinetpayService };

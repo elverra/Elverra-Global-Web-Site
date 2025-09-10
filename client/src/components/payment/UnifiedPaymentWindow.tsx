@@ -24,9 +24,11 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
   const [selectedGateway, setSelectedGateway] = useState<string>(preSelectedService || 'orange_money');
   const [paymentInitiated, setPaymentInitiated] = useState(false);
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
   const { user } = useAuth();
   const navigate = useNavigate();
-
 
   const paymentGateways = [
     { id: 'orange_money', name: '🍊 Orange Money' },
@@ -34,13 +36,27 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
     { id: 'cinetpay', name: '📱 CinetPay Mobile Money' },
   ];
 
+  // Show phone input when Sama Money is selected
+  useEffect(() => {
+    setShowPhoneInput(selectedGateway === 'sama_money');
+    setPhoneError('');
+  }, [selectedGateway]);
 
-
+  const validatePhoneNumber = (phone: string): boolean => {
+    const phoneRegex = /^(?:(?:\+221|00221|221)?[76]\d{7}|(?:\+225|00225|225)?[0-9]{10})$/;
+    return phoneRegex.test(phone);
+  };
 
   const handlePayment = async () => {
     if (!user) {
       toast.error('Please log in to complete payment');
       navigate('/login');
+      return;
+    }
+
+    // Validate phone number for Sama Money
+    if (selectedGateway === 'sama_money' && !validatePhoneNumber(phoneNumber)) {
+      setPhoneError('Please enter a valid phone number (e.g., 7XXXXXXXX for Senegal or 0XXXXXXXXX for Côte d\'Ivoire)');
       return;
     }
 
@@ -93,12 +109,17 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
           userId: user.id,
           amount,
           currency: 'OUV',
-          phone: user.phone || '+2237701100100',
+          phone: selectedGateway === 'sama_money' ? phoneNumber : (user.phone || '+2237701100100'),
           email: user.email,
           name: user.fullName || user.email?.split('@')[0] || 'User',
           reference,
           subscriptionId: subscriptionData.id,
-          metadata: { plan, userId: user.id },
+          metadata: { 
+            plan, 
+            userId: user.id,
+            paymentMethod: selectedGateway,
+            phoneNumber: selectedGateway === 'sama_money' ? phoneNumber : (user.phone || '')
+          },
         };
       }
 
@@ -239,18 +260,45 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
               </div>
 
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Payment Method</label>
-                <Select value={selectedGateway} onValueChange={setSelectedGateway}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose payment gateway" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {paymentGateways.map(g => (
-                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Select Payment Method</label>
+                  <Select value={selectedGateway} onValueChange={setSelectedGateway}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose payment gateway" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentGateways.map(g => (
+                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {showPhoneInput && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="phoneNumber">
+                      Phone Number for Sama Money
+                    </label>
+                    <input
+                      id="phoneNumber"
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => {
+                        setPhoneNumber(e.target.value);
+                        if (phoneError) setPhoneError('');
+                      }}
+                      placeholder="e.g., 7XXXXXXXX (Senegal) or 0XXXXXXXXX (Côte d'Ivoire)"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                    {phoneError && (
+                      <p className="text-sm text-red-600">{phoneError}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Enter your phone number in international format (e.g., 7XXXXXXXX for Senegal or 0XXXXXXXXX for Côte d'Ivoire)
+                    </p>
+                  </div>
+                )}
               </div>
 
               {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700">{error}</div>}

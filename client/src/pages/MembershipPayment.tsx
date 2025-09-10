@@ -80,7 +80,7 @@ const MembershipPayment = () => {
   useEffect(() => {
     if (paymentStatus === 'success') {
       setPaymentComplete(true);
-      toast.success('Payment successful! Your membership is being activated.');
+      toast.success('Payment successful! Your subscription is being activated.');
       refetchMembership();
     } else if (paymentStatus === 'cancelled') {
       toast.error('Payment was cancelled. Please try again.');
@@ -88,7 +88,7 @@ const MembershipPayment = () => {
 
     const isNewRegistration = searchParams.get('new') === 'true';
     if (isNewRegistration) {
-      toast.success('Please complete your membership payment to activate your account');
+      toast.success('Please complete your card purchase payment to activate your account');
     }
   }, [searchParams, paymentStatus, refetchMembership]);
 
@@ -184,9 +184,9 @@ const MembershipPayment = () => {
             <CheckCircle className="h-24 w-24 text-green-500 mx-auto" />
             <h1 className="text-4xl font-bold text-gray-900">Payment Successful!</h1>
             <p className="text-lg text-gray-600">
-              Welcome to Elverra Global {cardType === 'child' ? childCard.name : allPlans[selectedTier as keyof typeof allPlans]?.name} membership!
+              Welcome to Elverra Global {cardType === 'child' ? childCard.name : allPlans[selectedTier as keyof typeof allPlans]?.name} subscription!
             </p>
-            <p className="text-gray-600">You will receive your digital membership card via email within 24 hours.</p>
+            <p className="text-gray-600">You will receive your digital subscription card via email within 24 hours.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild className="bg-purple-600 hover:bg-purple-700">
                 <Link to="/dashboard">Go to Dashboard</Link>
@@ -207,7 +207,7 @@ const MembershipPayment = () => {
         <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Checking membership status...</p>
+            <p className="text-gray-600">Checking subscription status...</p>
           </div>
         </div>
       </Layout>
@@ -231,7 +231,7 @@ const MembershipPayment = () => {
             </p>
             {user && (
               <p className="text-sm text-purple-600 mt-2">
-                Welcome back! Complete your membership to access all features.
+                Welcome back! Complete your card purchase to access all features.
               </p>
             )}
           </div>

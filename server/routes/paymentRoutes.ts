@@ -1,11 +1,11 @@
-import { Router } from 'express';
+import express, { Request, Response, Router } from 'express';
 import { paymentController } from 'server/controllers/paymentController';
 import { authMiddleware } from 'server/middleware/authMiddleware';
 import { validateRequest } from 'server/middleware/validateRequest';
 import { z } from 'zod';
 
-const router = Router();
-const authRouter = Router();
+const router: Router = Router();
+const authRouter: Router = Router();
 
 // Apply auth middleware to all routes that need it
 authRouter.use(authMiddleware);
@@ -76,9 +76,16 @@ authRouter.post(
 // Mount all authenticated routes
 router.use(authRouter);
 
+// Configure JSON body parser for webhooks
+const jsonParser = express.json({
+  verify: (req: Request & { rawBody?: string }, res: Response, buf: Buffer) => {
+    req.rawBody = buf.toString('utf-8');
+  }
+});
+
 // Public endpoints (no auth required)
-router.post('/orange-callback', paymentController.handleOrangeMoneyCallback);
-router.post('/cinetpay-webhook', paymentController.handleCinetPayWebhook);
-router.post('/webhook', paymentController.handleWebhook);
+router.post('/orange-callback', jsonParser, paymentController.handleOrangeMoneyCallback);
+router.post('/cinetpay-webhook', jsonParser, paymentController.handleCinetPayWebhook);
+router.post('/webhook', jsonParser, paymentController.handleWebhook);
 
 export default router;
