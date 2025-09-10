@@ -43,6 +43,7 @@ const Header = () => {
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const isAdminUser = user?.email === 'admin@elverra.com' || user?.email === 'oladokunefi123@gmail.com';
 
   useEffect(() => {
     const fetchLogo = async () => {
@@ -351,13 +352,26 @@ const Header = () => {
                     className="flex items-center space-x-2"
                   >
                     <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">{t("nav.account")}</span>
+                    <span className="hidden sm:inline">
+                      {isAdminUser ? 'Admin' : t("nav.account")}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
                   className="w-56 bg-white border shadow-lg"
                 >
+                  {isAdminUser && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="flex items-center">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Admin Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard" className="flex items-center">
                       <Settings className="h-4 w-4 mr-2" />

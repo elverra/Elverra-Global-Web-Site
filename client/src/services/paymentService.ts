@@ -99,6 +99,12 @@ class PaymentService {
         body: JSON.stringify(payload)
       });
 
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Expected JSON but received: ${text.substring(0, 100)}`);
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Erreur lors de l\'initiation du paiement CinetPay');

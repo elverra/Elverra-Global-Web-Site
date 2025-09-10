@@ -536,7 +536,7 @@ app.post("/api/subscriptions", async (req, res) => {
     const imageMap: Record<string, string> = {
       'Restaurant': 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400',
       'Electronics Store': 'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=400',
-      'Fashion Retail': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400',
+      'Fashion Retail': 'https://images.unsplash.com/photo-1441986300917-6c6c332eeece?w=400',
       'Healthcare': 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400',
       'Education': 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400',
       'Hotel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400',
@@ -988,7 +988,25 @@ app.post("/api/subscriptions", async (req, res) => {
       
       const user = await storage.createUser({
         ...userData,
-        password: hashedPassword
+        password: hashedPassword,
+        isEmailVerified: false,
+        isPhoneVerified: false,
+        totalCreditsEarned: '0',
+        totalCreditsSpent: '0',
+        currentCredits: '0',
+        totalCommissionsEarned: '0',
+        totalCommissionsPaid: '0',
+        availableCommissions: '0',
+        loginCount: 0,
+        fullName: userData.firstName + " " + userData.lastName,
+        email: userData.email,
+        phone: userData.phone,
+        address: userData.address,
+        city: userData.city,
+        country: userData.country,
+        postalCode: userData.postalCode,
+        profilePictureUrl: userData.profilePicture,
+        bio: userData.bio
       });
   
       // Generate referral code for new user

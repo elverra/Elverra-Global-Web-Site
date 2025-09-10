@@ -79,7 +79,7 @@ const Login = () => {
                   <Tabs defaultValue="email" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="email" data-testid="tab-email-login">Email & Password</TabsTrigger>
-                      <TabsTrigger value="phone" data-testid="tab-phone-login">Phone & OTP</TabsTrigger>
+                      <TabsTrigger value="phone" data-testid="tab-phone-logi n">Phone & OTP</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="email" className="space-y-4 mt-6">
