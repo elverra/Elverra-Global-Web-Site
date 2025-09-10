@@ -11,6 +11,7 @@ import { sendWelcomeEmail } from "./emailService.js";
 import { otpService } from "./otpService.js";
 import projectRoutes from "./routes/projects.js";
 import { affiliateRouter } from "./routes/affiliateRoutes.js";
+import membershipRouter from "./routes/membershipRoutes.js";
 
 // Schema imports
 import { 
@@ -54,7 +55,10 @@ export function registerRoutes(app: Express): void {
   app.use('/api/projects', projectRoutes);
   
   // Mount affiliate routes
-  app.use('/api/affiliates', affiliateRouter);
+  app.use("/api/affiliates", affiliateRouter);
+  
+  // Membership routes
+  app.use("/api/memberships", membershipRouter);
 
   // Ô Secours Token System Routes
   
@@ -679,62 +683,7 @@ app.post("/api/subscriptions", async (req, res) => {
     }
   });
 
-  app.get("/api/admin/discounts", async (req, res) => {
-    try {
-      // Return the same discount data but with admin fields
-      const discounts = [
-        {
-          id: "d1",
-          title: "Coffee Corner Special",
-          description: "15% off all coffee and pastries. Perfect for your morning boost!",
-          merchantId: "m1",
-          merchantName: "Café Bella Vista",
-          sectorId: "1",
-          sectorName: "Food & Drink",
-          discountPercentage: 15,
-          minOrderAmount: 0,
-          maxDiscountAmount: 10000,
-          validFrom: "2025-01-01T00:00:00Z",
-          validUntil: "2025-12-31T23:59:59Z",
-          usageLimit: null,
-          usageCount: 45,
-          isFeatured: false,
-          isActive: true,
-          termsAndConditions: "Valid for dine-in and takeaway. One per customer per day.",
-          imageUrl: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600",
-          createdAt: "2025-01-01T00:00:00Z",
-          updatedAt: "2025-01-15T10:30:00Z"
-        },
-        {
-          id: "d2",
-          title: "Tech Hub Electronics Discount",
-          description: "30% off on smartphones, laptops, and accessories for premium members.",
-          merchantId: "m2", 
-          merchantName: "Digital World Electronics",
-          sectorId: "2",
-          sectorName: "Technology",
-          discountPercentage: 30,
-          minOrderAmount: 100000,
-          maxDiscountAmount: 150000,
-          validFrom: "2025-01-01T00:00:00Z",
-          validUntil: "2025-11-30T23:59:59Z",
-          usageLimit: 100,
-          usageCount: 23,
-          isFeatured: true,
-          isActive: true,
-          termsAndConditions: "Valid on purchases above 100,000 CFA. Warranty included.",
-          imageUrl: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600",
-          createdAt: "2025-01-01T00:00:00Z",
-          updatedAt: "2025-01-20T14:15:00Z"
-        }
-      ];
-      
-      res.json(discounts);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch discounts" });
-    }
-  });
-
+ 
   app.post("/api/admin/discounts", async (req, res) => {
     try {
       const {

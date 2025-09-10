@@ -1,225 +1,122 @@
-import { useState, useEffect } from 'react';
-import Layout from '@/components/layout/Layout';
+import React, { useState, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
-import ModernDashboard from '@/components/dashboard/ModernDashboard';
-import DashboardStats from '@/components/dashboard/DashboardStats';
-import MembershipStatus from '@/components/dashboard/MembershipStatus';
-import MemberDigitalCard from '@/components/dashboard/MemberDigitalCard';
-import QuickLinks from '@/components/dashboard/QuickLinks';
-import JobCenter from '@/components/dashboard/JobCenter';
-import ProjectsAndScholarships from '@/components/dashboard/ProjectsAndScholarships';
-import CompetitionParticipation from '@/components/dashboard/CompetitionParticipation';
-import DiscountUsage from '@/components/dashboard/DiscountUsage';
-import PaymentHistory from '@/components/dashboard/PaymentHistory';
-import CurrencyConverterWidget from '@/components/dashboard/CurrencyConverterWidget';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Users, Star, TrendingUp, Briefcase, Crown } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useJobApplications } from '@/hooks/useJobs';
 import { useMembership } from '@/hooks/useMembership';
-import { useNavigate } from 'react-router-dom';
+import Layout from '@/components/layout/Layout';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import MembershipStatusWidget from '@/components/membership/MembershipStatus';
-
-// Global cache for agent data to prevent repeated API calls and 404 errors
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const agentCache = new Map<string, { data: any | null; timestamp: number }>();
-const agentPromises = new Map<string, Promise<any | null>>();
-
-interface MembershipCheckProps {
-  children: React.ReactNode;
-}
-
-const MembershipCheck = ({ children }: MembershipCheckProps) => {
-  const { user } = useAuth();
-  const { membership, loading, getMembershipAccess } = useMembership();
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 py-8">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Check if user has active membership
-  const access = getMembershipAccess();
-  if (!access.hasActiveMembership) {
-    return <Navigate to="/membership-payment" replace />;
-  }
-
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+// Composant de vérification d'adhésion temporaire
+const MembershipCheck: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Vérification basique de l'adhésion
+  const { membership } = useMembership();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Rediriger vers la page de paiement si pas d'adhésion active
+    if (membership && !membership.is_active) {
+      navigate('/membership-payment');
+      return;
+    }
+  }, [membership, navigate]);
+  
   return <>{children}</>;
 };
 
-const Dashboard = () => {
+// Lazy load dashboard components for better performance
+const ModernDashboard = React.lazy(() => import('@/components/dashboard/ModernDashboard'));
+const DashboardStats = React.lazy(() => import('@/components/dashboard/DashboardStats'));
+const MemberDigitalCard = React.lazy(() => import('@/components/dashboard/MemberDigitalCard'));
+const QuickLinks = React.lazy(() => import('@/components/dashboard/QuickLinks'));
+const JobCenter = React.lazy(() => import('@/components/dashboard/JobCenter'));
+const ProjectsAndScholarships = React.lazy(() => import('@/components/dashboard/ProjectsAndScholarships'));
+const DiscountUsage = React.lazy(() => import('@/components/dashboard/DiscountUsage'));
+const PaymentHistory = React.lazy(() => import('@/components/dashboard/PaymentHistory'));
+
+// Error boundary for dashboard components
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Dashboard Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Une erreur est survenue lors du chargement du tableau de bord. Veuillez réessayer.
+            </AlertDescription>
+          </Alert>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+interface DashboardProps {}
+
+const Dashboard: React.FC<DashboardProps> = () => {
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useUserProfile();
-  const { membership, getMembershipAccess } = useMembership();
-  const { getUserApplications } = useJobApplications();
-  // EMERGENCY FIX: Removed useJobBookmarks to stop infinite calls
-  const bookmarks: string[] = [];
-  const [userRole, setUserRole] = useState<'user' | 'agent' | 'admin'>('user');
-  const navigate = useNavigate();
+  const { 
+    membership, 
+    loading: membershipLoading, 
+    error: membershipError,
+    getMembershipAccess 
+  } = useMembership();
   
-  const [applications, setApplications] = useState<any[]>([]);
-  const [stats, setStats] = useState({
-    totalApplications: 0,
-    pendingApplications: 0,
-    interviewsScheduled: 0,
-    savedJobs: 0
-  });
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
+  const [userRole, setUserRole] = useState<string>('user');
+  
+  // Check membership access
+  const access = getMembershipAccess();
+  
+  // Redirect to membership payment if no active membership
   useEffect(() => {
-    if (user) {
-      fetchUserData();
-      determineUserRole();
+    if (!authLoading && !membershipLoading && !access.hasActiveMembership) {
+      navigate('/membership-payment', { replace: true });
     }
-  }, [user]);
+  }, [access.hasActiveMembership, authLoading, membershipLoading, navigate]);
 
-  const determineUserRole = async () => {
-    if (!user) return;
-
-    try {
-      // Check cache first
-      const cached = agentCache.get(user.id);
-      if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-        if (cached.data) {
-          setUserRole('agent');
-        }
-        return;
-      }
-
-      // Check if there's already a promise in flight
-      let promise = agentPromises.get(user.id);
-      if (!promise) {
-        promise = (async () => {
-          const response = await fetch(`/api/agents/${user.id}`);
-          
-          if (response.ok) {
-            const agentData = await response.json();
-            return agentData;
-          } else if (response.status === 404) {
-            // User is not an agent, cache null to prevent repeated 404s
-            return null;
-          } else {
-            throw new Error('Failed to fetch agent data');
-          }
-        })();
-        agentPromises.set(user.id, promise);
-      }
-
-      const agentData = await promise;
-      
-      // Cache the result (including null for non-agents)
-      agentCache.set(user.id, { data: agentData, timestamp: Date.now() });
-      agentPromises.delete(user.id);
-      
-      if (agentData) {
-        setUserRole('agent');
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking agent status:', error);
-      agentPromises.delete(user.id);
-      // Cache null to prevent repeated failed requests
-      agentCache.set(user.id, { data: null, timestamp: Date.now() });
+  // Handle errors
+  useEffect(() => {
+    if (membershipError) {
+      setError('Erreur lors du chargement de votre adhésion. Veuillez réessayer plus tard.');
+    } else {
+      setError(null);
     }
+  }, [membershipError]);
 
-    // Check if user is admin (you can add admin role logic here)
-    // For now, checking if user email contains 'admin'
-    if (user.email?.includes('admin')) {
-      setUserRole('admin');
-      return;
-    }
-
-    setUserRole('user');
-  };
-
-  const fetchUserData = async () => {
-    if (!user) return;
-
-    try {
-      // Fetch applications
-      const applicationsData = await getUserApplications();
-      setApplications(applicationsData.slice(0, 5)); // Show only recent 5
-
-      // Calculate stats
-      const pending = applicationsData.filter((app: any) => app.status === 'pending').length;
-      const interviews = applicationsData.filter((app: any) => app.status === 'interview').length;
-      
-      // Get saved jobs count from bookmarks hook
-      const savedJobsCount = bookmarks?.length || 0;
-
-      setStats({
-        totalApplications: applicationsData.length,
-        pendingApplications: pending,
-        interviewsScheduled: interviews,
-        savedJobs: savedJobsCount
-      });
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
-  };
-
-  // Mock data for components that need props
-  const mockCompetitions = [
-    { id: '1', name: 'Tech Innovation Challenge', date: '2024-01-15', status: 'Participated' },
-    { id: '2', name: 'Business Plan Competition', date: '2024-02-20', status: 'Voted' }
-  ];
-
-  const mockDiscountUsage = [
-    { id: '1', date: '2024-01-10', merchant: 'Tech Store', discount: '10%', saved: 'CFA 2,500' },
-    { id: '2', date: '2024-01-05', merchant: 'Restaurant Mali', discount: '15%', saved: 'CFA 1,800' }
-  ];
-
-  const mockPayments = [
-    { id: 'PAY001', date: '2024-01-01', description: 'Monthly Membership', amount: 'CFA 5,000', status: 'Paid' as const },
-    { id: 'PAY002', date: '2023-12-01', description: 'Monthly Membership', amount: 'CFA 5,000', status: 'Paid' as const }
-  ];
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'interview':
-        return <Badge className="bg-blue-500">Interview</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-500">Pending</Badge>;
-      case 'rejected':
-        return <Badge variant="destructive">Rejected</Badge>;
-      case 'accepted':
-        return <Badge className="bg-green-500">Accepted</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-    
-    if (diffInDays === 0) return 'Today';
-    if (diffInDays === 1) return '1 day ago';
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} week${Math.floor(diffInDays / 7) > 1 ? 's' : ''} ago`;
-    return `${Math.floor(diffInDays / 30)} month${Math.floor(diffInDays / 30) > 1 ? 's' : ''} ago`;
-  };
-
-  if (authLoading || profileLoading) {
+  // Show loading state
+  if (authLoading || profileLoading || membershipLoading) {
     return (
       <Layout>
         <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 py-8">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            <div className="flex flex-col items-center justify-center h-64 space-y-4">
+              <Loader2 className="h-12 w-12 text-purple-600 animate-spin" />
+              <p className="text-purple-800 font-medium">Chargement de votre tableau de bord...</p>
             </div>
           </div>
         </div>
@@ -227,23 +124,105 @@ const Dashboard = () => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  // Show error state
+  if (error) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erreur</AlertTitle>
+            <AlertDescription>
+              {error}
+              <div className="mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.reload()}
+                  className="mr-2"
+                >
+                  Réessayer
+                </Button>
+                <Button onClick={() => navigate('/')}>
+                  Retour à l'accueil
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
+    );
   }
 
-  // Redirect to appropriate dashboard based on role
-  if (userRole === 'agent') {
-    return <Navigate to="/affiliate-dashboard" replace />;
-  }
-
-  if (userRole === 'admin') {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
-
+  // Show dashboard content
   return (
-    <MembershipCheck>
-      <ModernDashboard />
-    </MembershipCheck>
+    <Layout>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 py-8">
+        <div className="container mx-auto px-4">
+          <ErrorBoundary>
+            <React.Suspense 
+              fallback={
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                </div>
+              }
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column */}
+                <div className="lg:col-span-2 space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Bienvenue, {profile?.full_name || 'Membre'}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ModernDashboard />
+                    </CardContent>
+                  </Card>
+                  
+                  <DashboardStats stats={{
+                    totalApplications: 0,
+                    pendingApplications: 0,
+                    interviewsScheduled: 0,
+                    savedJobs: 0
+                  }} />
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Centre d'emploi</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <JobCenter applications={[]} />
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Right Column */}
+                <div className="space-y-6">
+                  <MembershipStatusWidget />
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Liens rapides</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <QuickLinks />
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Historique des paiements</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <PaymentHistory payments={[]} />
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </React.Suspense>
+          </ErrorBoundary>
+        </div>
+      </div>
+    </Layout>
   );
 };
 

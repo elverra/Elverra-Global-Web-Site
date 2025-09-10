@@ -74,7 +74,12 @@ export const useMembership = () => {
       setLoading(true);
       
       // Create and store the fetch promise
-      const fetchPromise = fetch(`/api/memberships/${user.id}`)
+      const fetchPromise = fetch('/api/memberships/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      })
         .then(async (response) => {
           if (response.ok) {
             const data = await response.json();
@@ -84,7 +89,8 @@ export const useMembership = () => {
             membershipCache[user.id] = null;
             return null;
           } else {
-            throw new Error('Failed to fetch membership');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to fetch membership');
           }
         });
 
@@ -97,6 +103,7 @@ export const useMembership = () => {
       delete fetchPromises[user.id];
       
     } catch (err) {
+      console.error('Error in fetchMembership:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch membership');
       console.error('Error fetching membership:', err);
       // Clean up failed promise
