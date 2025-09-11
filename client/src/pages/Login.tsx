@@ -16,10 +16,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMembership } from "@/hooks/useMembership";
 
 const Login = () => {
-  const { user, loading, signIn } = useAuth();
+  const {
+    user,
+    loading,
+    signIn,
+  } = useAuth();
+
   const { membership, loading: membershipLoading } = useMembership();
 
-  // Show loading spinner while checking authentication
+  // Affichage du spinner pendant le chargement
   if (loading || membershipLoading) {
     return (
       <Layout>
@@ -30,20 +35,18 @@ const Login = () => {
     );
   }
 
-  // If user is logged in, redirect appropriately
+  // Redirection selon le rôle ou l’état de l’utilisateur
   if (user) {
     const isAdminUser = user.email === 'admin@elverra.com' || user.email === 'oladokunefi123@gmail.com';
     
-    // Admin users go directly to admin panel
     if (isAdminUser) {
       return <Navigate to="/admin/dashboard" replace />;
     }
-    
-    // If user has active membership, go to dashboard
-    if (membership && membership.is_active) {
+
+    if (membership?.is_active) {
       return <Navigate to="/dashboard" replace />;
     }
-    // If user is logged in but no active membership, redirect to payment page
+
     return <Navigate to="/membership-payment" replace />;
   }
 
@@ -79,7 +82,7 @@ const Login = () => {
                   <Tabs defaultValue="email" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="email" data-testid="tab-email-login">Email & Password</TabsTrigger>
-                      <TabsTrigger value="phone" data-testid="tab-phone-logi n">Phone & OTP</TabsTrigger>
+                      <TabsTrigger value="phone" data-testid="tab-phone-login">Phone & OTP</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="email" className="space-y-4 mt-6">
@@ -88,12 +91,11 @@ const Login = () => {
                     
                     <TabsContent value="phone" className="space-y-4 mt-6">
                       <PhoneLogin
-                        onLoginSuccess={(user, roles) => {
-                          // Handle successful phone login
-                          window.location.reload(); // This will trigger the auth hooks to update
+                        onLoginSuccess={() => {
+                          // Recharge la page pour mettre à jour le contexte Auth
+                          window.location.reload();
                         }}
                         onSwitchToEmail={() => {
-                          // Switch to email tab - handled by parent
                           const emailTab = document.querySelector('[value="email"]') as HTMLElement;
                           emailTab?.click();
                         }}

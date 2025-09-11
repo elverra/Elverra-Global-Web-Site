@@ -2941,13 +2941,13 @@ app.post("/api/subscriptions", async (req, res) => {
         featured: products.featured,
         viewCount: products.viewCount,
         createdAt: products.createdAt,
-        sellerId: products.sellerId,
+        storeId: products.storeId,
         sellerName: users.fullName,
         sellerPhone: users.phone,
         sellerEmail: users.email
       })
       .from(products)
-      .leftJoin(users, eq(products.sellerId, users.id))
+      .leftJoin(users, eq(products.storeId, users.id))
       .where(and(...conditions))
       .limit(limitNum + 1)
       .offset(offsetNum);

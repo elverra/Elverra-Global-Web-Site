@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMembership } from '@/hooks/useMembership';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -11,21 +10,21 @@ import MembershipStatusWidget from '@/components/membership/MembershipStatus';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 // Composant de vérification d'adhésion temporaire
-const MembershipCheck: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Vérification basique de l'adhésion
-  const { membership } = useMembership();
-  const navigate = useNavigate();
+// const MembershipCheck: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+//   // Vérification basique de l'adhésion
+//   const { membership } = useMembership();
+//   const navigate = useNavigate();
   
-  useEffect(() => {
-    // Rediriger vers la page de paiement si pas d'adhésion active
-    if (membership && !membership.is_active) {
-      navigate('/membership-payment');
-      return;
-    }
-  }, [membership, navigate]);
+//   useEffect(() => {
+//     // Rediriger vers la page de paiement si pas d'adhésion active
+//     if (membership && !membership.is_active) {
+//       navigate('/membership-payment');
+//       return;
+//     }
+//   }, [membership, navigate]);
   
-  return <>{children}</>;
-};
+//   return <>{children}</>;
+// };
 
 // Lazy load dashboard components for better performance
 const ModernDashboard = React.lazy(() => import('@/components/dashboard/ModernDashboard'));
@@ -74,8 +73,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 interface DashboardProps {}
 
 const Dashboard: React.FC<DashboardProps> = () => {
-  const { user, loading: authLoading } = useAuth();
-  const { profile, loading: profileLoading } = useUserProfile();
+  const { user, loading } = useAuth();
   const { 
     membership, 
     loading: membershipLoading, 
@@ -93,36 +91,36 @@ const Dashboard: React.FC<DashboardProps> = () => {
   const access = getMembershipAccess();
   
   // Redirect to membership payment if no active membership
-  useEffect(() => {
-    if (!authLoading && !membershipLoading && !access.hasActiveMembership) {
-      navigate('/membership-payment', { replace: true });
-    }
-  }, [access.hasActiveMembership, authLoading, membershipLoading, navigate]);
+  // useEffect(() => {
+  //   if (!authLoading && !membershipLoading && !access.hasActiveMembership) {
+  //     navigate('/membership-payment', { replace: true });
+  //   }
+  // }, [access.hasActiveMembership, authLoading, membershipLoading, navigate]);
 
   // Handle errors
-  useEffect(() => {
-    if (membershipError) {
-      setError('Erreur lors du chargement de votre adhésion. Veuillez réessayer plus tard.');
-    } else {
-      setError(null);
-    }
-  }, [membershipError]);
+  // useEffect(() => {
+  //   if (membershipError) {
+  //     setError('Erreur lors du chargement de votre adhésion. Veuillez réessayer plus tard.');
+  //   } else {
+  //     setError(null);
+  //   }
+  // }, [membershipError]);
 
   // Show loading state
-  if (authLoading || profileLoading || membershipLoading) {
-    return (
-      <Layout>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 py-8">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col items-center justify-center h-64 space-y-4">
-              <Loader2 className="h-12 w-12 text-purple-600 animate-spin" />
-              <p className="text-purple-800 font-medium">Chargement de votre tableau de bord...</p>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  // if (authLoading || profileLoading || membershipLoading) {
+  //   return (
+  //     <Layout>
+  //       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 py-8">
+  //         <div className="container mx-auto px-4">
+  //           <div className="flex flex-col items-center justify-center h-64 space-y-4">
+  //             <Loader2 className="h-12 w-12 text-purple-600 animate-spin" />
+  //             <p className="text-purple-800 font-medium">Chargement de votre tableau de bord...</p>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </Layout>
+  //   );
+  // }
 
   // Show error state
   if (error) {
@@ -171,7 +169,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
                 <div className="lg:col-span-2 space-y-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Bienvenue, {profile?.full_name || 'Membre'}</CardTitle>
+                      <CardTitle>Bienvenue, {user?.fullName || 'Membre'}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ModernDashboard />
