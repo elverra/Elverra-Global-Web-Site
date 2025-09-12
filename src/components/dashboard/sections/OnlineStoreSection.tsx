@@ -6,36 +6,50 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { 
-  Store,
   Search,
   ShoppingCart,
   Heart,
   Star,
   PlusCircle,
-  Package,
   MessageCircle,
-  TrendingUp,
   Eye,
   MapPin,
   Filter,
   Flag
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/hooks/use-toast';
 
 const OnlineStoreSection = () => {
   const { user } = useAuth();
-  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [priceRange, setPriceRange] = useState('all');
   const [products, setProducts] = useState<any[]>([]);
   const [myProducts, setMyProducts] = useState<any[]>([]);
-  const [messages, setMessages] = useState<any[]>([]);
   const [wishlist, setWishlist] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myShop, setMyShop] = useState<any | null>(null);
+  const [shopName, setShopName] = useState('');
+  const [shopDescription, setShopDescription] = useState('');
+  const [shopLocation, setShopLocation] = useState('');
+  const [shopContact, setShopContact] = useState('');
+  const [activeTab, setActiveTab] = useState<'wishlist' | 'my-products' | 'messages' | 'my-shop'>('my-products');
+  const hasShop = !!myShop;
+  const [savingShop, setSavingShop] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newProdName, setNewProdName] = useState('');
+  const [newProdPrice, setNewProdPrice] = useState('');
+  const [newProdCategory, setNewProdCategory] = useState('');
+  const [newProdImages, setNewProdImages] = useState(''); // comma-separated URLs
+  const [creatingProduct, setCreatingProduct] = useState(false);
+  const [shopImageUrl, setShopImageUrl] = useState('');
+  const [newProdFiles, setNewProdFiles] = useState<File[]>([]);
+  const [shopImageFile, setShopImageFile] = useState<File | null>(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   // Temporarily allow access without membership checks
   const isSeller = true;
@@ -44,7 +58,7 @@ const OnlineStoreSection = () => {
     fetchProducts();
     if (isSeller && user?.id) {
       fetchMyProducts();
-      fetchMessages();
+      fetchMyShop();
     }
     if (user?.id) {
       fetchWishlist();
@@ -53,53 +67,204 @@ const OnlineStoreSection = () => {
 
   const fetchProducts = async () => {
     try {
-      const data = [
-        {
-          id: 1,
-          title: 'Samsung Galaxy A15',
-          description: 'Smartphone with great battery life',
-          image: 'https://picsum.photos/seed/phone/600/400',
-          category: 'Electronics',
-          price: 150000,
-          seller: 'Elverra Store',
-          rating: 4.5,
-          reviews: 124,
-          location: 'Bamako',
-          inStock: true,
-          condition: 'New',
-          wishlist: false,
-        },
-      ];
-      setProducts(data);
+      if (!user?.id || !myShop?.id) { setProducts([]); return; }
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('shop_id', myShop.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setProducts((data as any[])?.map(row => ({
+        id: row.id,
+        title: row.name || row.title || row.product_name || 'Untitled',
+        description: row.description || row.details || '',
+        image: (Array.isArray(row.images) && row.images[0]) ? row.images[0] : (row.image_url || 'https://placehold.co/600x400'),
+        category: row.category || 'Uncategorized',
+        price: Number(row.price) || 0,
+        seller: shopName || 'My Shop',
+        rating: 0,
+        reviews: 0,
+        location: row.location || '',
+        inStock: row.is_active ?? true,
+        condition: 'New',
+        wishlist: false,
+      })) || []);
     } catch (error) {
       console.error('Error fetching products:', error);
       toast({ title: 'Error', description: 'Failed to load products', variant: 'destructive' });
     }
   };
 
-  const fetchMyProducts = async () => {
+  const uploadFilesToStorage = async (bucket: string, files: File[]): Promise<string[]> => {
+    const urls: string[] = [];
+    for (const file of files) {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${user?.id || 'anon'}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, { upsert: false, contentType: file.type || undefined });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
+      if (pub?.publicUrl) urls.push(pub.publicUrl);
+    }
+    return urls;
+  };
+
+  const fetchMyShop = async () => {
     if (!user?.id) return;
     try {
-      const data = [
-        { id: 100, title: 'Handmade Bag', category: 'Fashion', price: 25000, stock: 12, views: 320, inquiries: 5, status: 'active' },
-      ];
-      setMyProducts(data);
-    } catch (error) {
-      console.error('Error fetching my products:', error);
+      const { data, error } = await supabase
+        .from('shops')
+        .select('id, name, description, slug')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error; // ignore No rows
+      setMyShop(data || null);
+      if (data) {
+        setShopName(data.name || '');
+        setShopDescription(data.description || '');
+        // If your schema doesn't have 'location', keep local state as-is
+        // If your schema doesn't have 'contact', keep local state as-is
+      }
+      // If no shop, focus My Shop tab
+      if (!data) setActiveTab('my-shop');
+    } catch (e) {
+      console.error('Error fetching my shop:', e);
     }
   };
 
-  const fetchMessages = async () => {
+  const saveShop = async () => {
     if (!user?.id) return;
+    if (!shopName.trim()) {
+      toast({ title: 'Validation', description: 'Please enter a shop name', variant: 'destructive' });
+      return;
+    }
     try {
-      const data = [
-        { id: 'msg-1', buyer: 'Alice', productTitle: 'Handmade Bag', date: '2025-09-10', status: 'unread', message: 'Is this still available?' },
-      ];
-      setMessages(data);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
+      setSavingShop(true);
+      let baseSlug = shopName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      if (!baseSlug) baseSlug = `shop-${Date.now()}`;
+      let attempt = 0;
+      const maxAttempts = 3;
+      // Do not include optional fields that are not present in schema
+      let allowContact = false;
+      let allowLocation = false;
+      while (attempt < maxAttempts) {
+        const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
+        try {
+          // Upload shop image if provided
+          let imageUrl = shopImageUrl.trim();
+          if (shopImageFile) {
+            try {
+              const [url] = await uploadFilesToStorage('shop-images', [shopImageFile]);
+              if (url) imageUrl = url;
+            } catch (upErr) {
+              console.error('Shop image upload failed:', upErr);
+            }
+          }
+          const payload: any = { name: shopName.trim(), description: shopDescription.trim(), slug };
+          if (imageUrl) payload.image_url = imageUrl;
+          if (shopImageUrl.trim()) payload.image_url = shopImageUrl.trim();
+          if (myShop?.id) {
+            const { data, error } = await supabase
+              .from('shops')
+              .update(payload)
+              .eq('id', myShop.id)
+              .select('*')
+              .maybeSingle();
+            if (error) throw error;
+            setMyShop(data);
+          } else {
+            const { data, error } = await supabase
+              .from('shops')
+              .insert([{ owner_id: user.id, ...payload }])
+              .select('*')
+              .maybeSingle();
+            if (error) throw error;
+            setMyShop(data);
+            setActiveTab('my-products');
+          }
+          toast({ title: 'Saved', description: 'Your shop has been saved.' });
+          await Promise.all([fetchProducts(), fetchMyShop()]);
+          break; // success
+        } catch (e: any) {
+          console.error('Supabase save shop error:', e);
+          // Handle missing 'contact' column gracefully by retrying without it
+          if (e?.code === 'PGRST204' && /'contact' column/i.test(e?.message || '')) {
+            allowContact = false; // drop contact from payload and retry same slug
+            continue;
+          }
+          // Handle missing 'location' column gracefully by retrying without it
+          if (e?.code === 'PGRST204' && /'location' column/i.test(e?.message || '')) {
+            allowLocation = false;
+            continue;
+          }
+          // Handle missing image_url gracefully
+          if (e?.code === '42703' && /image_url/i.test(e?.message || '')) {
+            // remove image_url from payload on next loop
+            shopImageUrl && setShopImageUrl('');
+            continue;
+          }
+          // Unique violation on slug -> retry with suffix
+          if (e?.code === '23505' || /duplicate key|unique constraint/i.test(e?.message || '')) {
+            attempt += 1;
+            if (attempt >= maxAttempts) {
+              throw e;
+            }
+            continue;
+          }
+          if (e?.code === '42501' || /rls|policy|permission/i.test(e?.message || '')) {
+            toast({ title: 'Permission', description: 'Cannot save shop due to database policies. Please ensure RLS allows owner_id writes.', variant: 'destructive' });
+          }
+          throw e;
+        }
+      }
+    } catch (e: any) {
+      console.error('Save shop error:', e);
+      toast({ title: 'Error', description: e?.message || 'Failed to save shop', variant: 'destructive' });
+    }
+    finally {
+      setSavingShop(false);
     }
   };
+
+  const fetchMyProducts = async () => {
+    try {
+      if (!myShop?.id) { setMyProducts([]); return; }
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('shop_id', myShop.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setMyProducts((data || []).map((row: any) => ({
+        id: row.id,
+        title: row.name || row.title || row.product_name || 'Untitled',
+        category: row.category || 'Uncategorized',
+        price: Number(row.price) || 0,
+        stock: 0,
+        views: 0,
+        inquiries: 0,
+        status: row.is_active ? 'active' : 'inactive',
+      })));
+    } catch (error) {
+      console.error('Error fetching my products:', error);
+      toast({ title: 'Error', description: 'Failed to load my products', variant: 'destructive' });
+    }
+  };
+
+  const deleteProduct = async (id: string) => {
+    try {
+      const confirmDel = window.confirm('Delete this product?');
+      if (!confirmDel) return;
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Deleted', description: 'Product has been deleted.' });
+      await fetchMyProducts();
+    } catch (e: any) {
+      console.error('Delete product error:', e);
+      toast({ title: 'Error', description: e?.message || 'Failed to delete product', variant: 'destructive' });
+    }
+  };
+
+  // messages feature removed
 
   const fetchWishlist = async () => {
     if (!user?.id) return;
@@ -158,152 +323,121 @@ const OnlineStoreSection = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Online Store</h2>
         {isSeller && (
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setActiveTab('my-products'); setAddOpen(true); }}>
             <PlusCircle className="h-4 w-4 mr-2" />
             Add Product
           </Button>
         )}
       </div>
 
-      <Tabs defaultValue="browse" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="browse">Browse Products</TabsTrigger>
-          <TabsTrigger value="wishlist">Wishlist</TabsTrigger>
-          {isSeller && <TabsTrigger value="my-products">My Products</TabsTrigger>}
-          {isSeller && <TabsTrigger value="messages">Messages</TabsTrigger>}
+      <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full">
+        <TabsList className={`grid w-full ${hasShop ? 'grid-cols-3' : 'grid-cols-1'}`}>
+          {hasShop && <TabsTrigger value="wishlist">Wishlist</TabsTrigger>}
+          {hasShop && <TabsTrigger value="my-products">My Products</TabsTrigger>}
+          <TabsTrigger value="my-shop">My Shop</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="browse" className="space-y-6">
-          {/* Search and Filters */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search products..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category === 'all' ? 'All Categories' : category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={priceRange} onValueChange={setPriceRange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Price Range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {priceRanges.map(range => (
-                        <SelectItem key={range.value} value={range.value}>
-                          {range.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <Button variant="outline" onClick={() => {
-                    setSearchTerm('');
-                    setSelectedCategory('all');
-                    setPriceRange('all');
-                  }}>
-                    <Filter className="h-4 w-4 mr-2" />
-                    Clear Filters
-                  </Button>
-                </div>
+        {/* Add Product Modal */}
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Product</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Name</label>
+                <Input value={newProdName} onChange={(e) => setNewProdName(e.target.value)} placeholder="Product name" />
               </div>
-            </CardContent>
-          </Card>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Price (CFA)</label>
+                <Input type="number" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} placeholder="e.g., 25000" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">Category</label>
+                <Input value={newProdCategory} onChange={(e) => setNewProdCategory(e.target.value)} placeholder="e.g., Fashion" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">Image URLs (comma separated)</label>
+                <Input value={newProdImages} onChange={(e) => setNewProdImages(e.target.value)} placeholder="https://... , https://..." />
+                <p className="text-xs text-gray-500">Add one or more image URLs separated by commas. We’ll store them in the images array or image_url.</p>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">Upload Images (from your computer)</label>
+                <Input type="file" accept="image/*" multiple onChange={(e) => setNewProdFiles(Array.from(e.target.files || []))} />
+                <p className="text-xs text-gray-500">You can upload multiple images. They will be uploaded to storage and their URLs saved.</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddOpen(false)} disabled={creatingProduct || uploadingImages}>Cancel</Button>
+              <Button onClick={async () => {
+                try {
+                  if (!myShop?.id) { toast({ title: 'No shop', description: 'Create your shop first', variant: 'destructive' }); return; }
+                  if (!newProdName.trim() || !newProdPrice.trim()) { toast({ title: 'Validation', description: 'Name and price are required', variant: 'destructive' }); return; }
+                  setCreatingProduct(true);
+                  setUploadingImages(true);
+                  const manualUrls = newProdImages.split(',').map(s => s.trim()).filter(Boolean);
+                  const uploadedUrls = newProdFiles.length ? await uploadFilesToStorage('product-images', newProdFiles) : [];
+                  setUploadingImages(false);
+                  const imagesArr = [...manualUrls, ...uploadedUrls];
+                  const basePayload: any = { shop_id: myShop.id, price: Number(newProdPrice), category: newProdCategory.trim() || null, is_active: true };
+                  if (imagesArr.length) basePayload.images = imagesArr;
+                  {
+                    const { error } = await supabase
+                      .from('products')
+                      .insert([{ ...basePayload, name: newProdName.trim() }]);
+                    if (!error) { ok = true; }
+                    else { err = error; }
+                  }
+                  // Retry with 'title' if name column missing
+                  if (!ok && (err?.code === '42703' || /column\s+products\.name\s+does\s+not\s+exist/i.test(err?.message || ''))) {
+                    const { error: e2 } = await supabase
+                      .from('products')
+                      .insert([{ ...basePayload, title: newProdName.trim() }]);
+                    if (!e2) { ok = true; err = null; }
+                    else { err = e2; }
+                  }
+                  // If images array column doesn't exist, try image_url
+                  if (!ok && (err?.code === '42703' && /images/i.test(err?.message || ''))) {
+                    delete basePayload.images;
+                    if (imagesArr.length) basePayload.image_url = imagesArr[0];
+                    const { error: e3 } = await supabase
+                      .from('products')
+                      .insert([{ ...basePayload, title: newProdName.trim() }]);
+                    if (!e3) { ok = true; err = null; }
+                    else { err = e3; }
+                  }
+                  // If other columns like category or is_active don't exist, retry minimal payload
+                  if (!ok && (err?.code === '42703' && /(category|is_active)/i.test(err?.message || ''))) {
+                    const minimal: any = { shop_id: myShop.id, price: Number(newProdPrice) };
+                    const { error: e4 } = await supabase
+                      .from('products')
+                      .insert([{ ...minimal, title: newProdName.trim() }]);
+                    if (!e4) { ok = true; err = null; }
+                    else { err = e4; }
+                  }
+                  if (!ok && err) throw err;
+                  toast({ title: 'Created', description: 'Product added successfully' });
+                  setAddOpen(false);
+                  setNewProdName('');
+                  setNewProdPrice('');
+                  setNewProdCategory('');
+                  setNewProdImages('');
+                  setNewProdFiles([]);
+                  await fetchMyProducts();
+                } catch (e: any) {
+                  console.error('Create product error:', e);
+                  toast({ title: 'Error', description: e?.message || 'Failed to create product', variant: 'destructive' });
+                } finally {
+                  setCreatingProduct(false);
+                }
+              }} disabled={creatingProduct} className="bg-blue-600 hover:bg-blue-700">
+                {creatingProduct || uploadingImages ? 'Creating...' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-          {/* Product Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <Card key={product.id} className="hover:shadow-lg transition-shadow">
-                <div className="relative">
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    className="w-full h-48 object-cover rounded-t-lg"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-                    onClick={() => toggleWishlist(product.id)}
-                  >
-                    <Heart className={`h-4 w-4 ${product.wishlist ? 'fill-current text-red-500' : ''}`} />
-                  </Button>
-                  <Badge className="absolute top-2 left-2 bg-green-600">
-                    {product.condition}
-                  </Badge>
-                </div>
-                
-                <CardContent className="p-4">
-                  <h4 className="font-semibold mb-2 line-clamp-1">{product.title}</h4>
-                  <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
-                  
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-3 w-3 ${
-                            i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                          }`}
-                        />
-                      ))}
-                      <span className="ml-1 text-xs text-gray-600">({product.reviews})</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-1 text-gray-500 text-xs mb-3">
-                    <MapPin className="h-3 w-3" />
-                    <span>{product.location}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-lg font-bold text-blue-600">
-                        CFA {product.price.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500">{product.seller}</p>
-                    </div>
-                    <Badge variant={product.inStock ? "default" : "secondary"}>
-                      {product.inStock ? 'In Stock' : 'Out of Stock'}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button size="sm" className="flex-1" disabled={!product.inStock}>
-                      <ShoppingCart className="h-3 w-3 mr-1" />
-                      Buy
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => contactSeller(product.id)}>
-                      <MessageCircle className="h-3 w-3" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => reportListing(product.id)}>
-                      <Flag className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
 
+        {hasShop ? (
         <TabsContent value="wishlist" className="space-y-6">
           <Card>
             <CardHeader>
@@ -339,17 +473,14 @@ const OnlineStoreSection = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        ) : null}
 
-        {isSeller && (
+        {hasShop ? (
           <TabsContent value="my-products" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>My Products ({myProducts.length})</span>
-                  <Button size="sm">
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Product
-                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -397,7 +528,7 @@ const OnlineStoreSection = () => {
                           <td className="py-4 px-4">
                             <div className="flex gap-1">
                               <Button size="sm" variant="outline">Edit</Button>
-                              <Button size="sm" variant="outline">Promote</Button>
+                              <Button size="sm" variant="outline" onClick={() => toast({ title: 'Coming soon', description: 'Promotion feature arriving soon' })}>Promote</Button>
                             </div>
                           </td>
                         </tr>
@@ -408,43 +539,65 @@ const OnlineStoreSection = () => {
               </CardContent>
             </Card>
           </TabsContent>
-        )}
+        ) : null}
+
+        {/* Messages tab removed per request */}
 
         {isSeller && (
-          <TabsContent value="messages" className="space-y-6">
+          <TabsContent value="my-shop" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Buyer Messages ({messages.filter(m => m.status === 'unread').length} unread)</CardTitle>
+                <CardTitle>My Shop</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`border rounded-lg p-4 ${
-                        message.status === 'unread' ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-semibold">{message.buyer}</p>
-                          <p className="text-sm text-gray-600">About: {message.productTitle}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">{message.date}</p>
-                          {message.status === 'unread' && (
-                            <Badge className="bg-blue-600">New</Badge>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-gray-700 mb-3">{message.message}</p>
-                      <div className="flex gap-2">
-                        <Button size="sm">Reply</Button>
-                        <Button size="sm" variant="outline">Mark as Read</Button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Shop Name</label>
+                    <Input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="e.g., Elverra Store" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Location</label>
+                    <Input value={shopLocation} onChange={(e) => setShopLocation(e.target.value)} placeholder="City, Country" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium">Description</label>
+                    <Textarea value={shopDescription} onChange={(e) => setShopDescription(e.target.value)} placeholder="Describe your shop" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium">Contact</label>
+                    <Input value={shopContact} onChange={(e) => setShopContact(e.target.value)} placeholder="Email or Phone" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium">Shop Image (upload) or URL</label>
+                    <Input type="file" accept="image/*" onChange={(e) => setShopImageFile((e.target.files && e.target.files[0]) || null)} />
+                    <Input className="mt-2" value={shopImageUrl} onChange={(e) => setShopImageUrl(e.target.value)} placeholder="https://... (optional)" />
+                    <p className="text-xs text-gray-500">We will prefer uploaded image; otherwise, we’ll use the URL if provided.</p>
+                  </div>
                 </div>
+                <div className="flex justify-end mt-4">
+                  <Button className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60" onClick={saveShop} disabled={savingShop}>
+                    {savingShop ? 'Saving...' : 'Save Shop'}
+                  </Button>
+                </div>
+
+                {myShop && (
+                  <div className="mt-6 p-4 border rounded-lg flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Public URL</p>
+                      <a className="text-blue-600 underline break-all" href={`/shop/${myShop.slug}`} target="_blank" rel="noreferrer">
+                        {`${window.location.origin}/shop/${myShop.slug}`}
+                      </a>
+                    </div>
+                    <div className="text-center">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(`${window.location.origin}/shop/${myShop.slug}`)}`}
+                        alt="Shop QR Code"
+                        className="w-24 h-24"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Scan to open shop</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

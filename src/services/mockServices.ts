@@ -1,3 +1,13 @@
+export interface Shop {
+  id: string;
+  userId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  location?: string;
+  contact?: string;
+  createdAt: string;
+}
 // Mock services to replace API calls - designed for easy Supabase migration
 // All functions return promises to simulate async operations
 
@@ -50,6 +60,8 @@ export interface Product {
   isActive: boolean;
   userId: string;
   createdAt?: string;
+  shopId?: string;
+  shopSlug?: string;
 }
 
 export interface Job {
@@ -80,6 +92,7 @@ let mockProducts: Product[] = [];
 let mockJobs: Job[] = [];
 let mockSubscriptions: Subscription[] = [];
 let mockTokenBalances: TokenBalance[] = [];
+let mockShops: Shop[] = [];
 
 // Auth Services
 export const authService = {
@@ -131,6 +144,49 @@ export const authService = {
   }
 };
 
+// Shop Services (top-level)
+export const shopService = {
+  async getMyShop(userId: string): Promise<{ success: boolean; data?: Shop | null; error?: string }> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const shop = mockShops.find(s => s.userId === userId) || null;
+    return { success: true, data: shop };
+  },
+
+  async createOrUpdateShop(userId: string, payload: { name: string; description?: string; location?: string; contact?: string }): Promise<{ success: boolean; data?: Shop; error?: string }> {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    if (!payload.name || !userId) return { success: false, error: 'Missing required fields' };
+    const slug = payload.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    let shop = mockShops.find(s => s.userId === userId);
+    if (shop) {
+      Object.assign(shop, { ...payload, slug });
+    } else {
+      shop = {
+        id: `shop_${Date.now()}`,
+        userId,
+        name: payload.name,
+        slug,
+        description: payload.description,
+        location: payload.location,
+        contact: payload.contact,
+        createdAt: new Date().toISOString(),
+      };
+      mockShops.push(shop);
+    }
+    return { success: true, data: shop };
+  },
+
+  async getShopBySlug(slug: string): Promise<{ success: boolean; data?: Shop | null; error?: string }> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const shop = mockShops.find(s => s.slug === slug) || null;
+    return { success: true, data: shop };
+  },
+
+  async listShops(): Promise<{ success: boolean; data?: Shop[]; error?: string }> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return { success: true, data: mockShops };
+  }
+};
+
 // Payment Services
 export const paymentService = {
   async processPayment(_amount: number, _membershipTier: string): Promise<PaymentResponse> {
@@ -172,24 +228,51 @@ export const tokenService = {
     return { success: true, data: balances };
   },
 
-  async purchaseTokens(userId: string, tokenType: string, amount: number): Promise<{ success: boolean; paymentUrl?: string; error?: string }> {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Simulate token purchase
-    const newBalance: TokenBalance = {
-      id: `balance_${Date.now()}`,
-      userId,
-      tokenType,
-      balance: amount,
-      value: getTokenValue(tokenType)
-    };
-    
-    mockTokenBalances.push(newBalance);
-    
-    return { 
-      success: true, 
-      paymentUrl: '/payment/success?type=tokens' 
-    };
+  async purchaseTokens(
+    userId: string,
+    tokenType: string,
+    amount: number,
+    paymentMethod: 'orange_money' | 'sama_money' | 'cash',
+    options?: { phone?: string }
+  ): Promise<{ success: boolean; paymentUrl?: string; transactionId?: string; error?: string }> {
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1200));
+
+    // Validate inputs
+    if (!userId || !tokenType || !amount || amount <= 0) {
+      return { success: false, error: 'Invalid purchase parameters' };
+    }
+
+    const tokenValue = getTokenValue(tokenType);
+    const totalAmount = amount * tokenValue;
+
+    // Simulate payment flows per method
+    if (paymentMethod === 'orange_money' || paymentMethod === 'sama_money') {
+      if (!options?.phone) {
+        return { success: false, error: 'Phone number required for Mobile Money' };
+      }
+      // Simulate creating a pending payment and redirect URL
+      const txId = `txn_${paymentMethod}_${Date.now()}`;
+      const paymentUrl = `/mock-pay/${paymentMethod}?tx=${encodeURIComponent(txId)}&amount=${totalAmount}`;
+
+      // We do NOT immediately update token balances here; would be done on webhook/callback in real app.
+      return { success: true, transactionId: txId, paymentUrl };
+    }
+
+    if (paymentMethod === 'cash') {
+      // Immediate confirmation flow. Update token balances right away.
+      const newBalance: TokenBalance = {
+        id: `balance_${Date.now()}`,
+        userId,
+        tokenType,
+        balance: amount,
+        value: tokenValue
+      };
+      mockTokenBalances.push(newBalance);
+      return { success: true, transactionId: `txn_cash_${Date.now()}` };
+    }
+
+    return { success: false, error: 'Unsupported payment method' };
   },
 
   async getSubscriptions(userId: string): Promise<{ success: boolean; data?: Subscription[]; error?: string }> {
@@ -202,10 +285,19 @@ export const tokenService = {
 
 // Product Services
 export const productService = {
-  async getProducts(): Promise<{ success: boolean; data?: Product[]; error?: string }> {
+  async getProducts(filters?: { shopSlug?: string; userId?: string; category?: string }): Promise<{ success: boolean; data?: Product[]; error?: string }> {
     await new Promise(resolve => setTimeout(resolve, 700));
-    
-    return { success: true, data: mockProducts.filter(p => p.isActive) };
+    let data = mockProducts.filter(p => p.isActive);
+    if (filters?.shopSlug) {
+      data = data.filter(p => p.shopSlug === filters.shopSlug);
+    }
+    if (filters?.userId) {
+      data = data.filter(p => p.userId === filters.userId);
+    }
+    if (filters?.category) {
+      data = data.filter(p => p.category === filters.category);
+    }
+    return { success: true, data };
   },
 
   async getUserProducts(userId: string): Promise<{ success: boolean; data?: Product[]; error?: string }> {
@@ -227,6 +319,14 @@ export const productService = {
     mockProducts.push(newProduct);
     
     return { success: true, product: newProduct };
+  },
+
+  async updateProduct(productId: string, updates: Partial<Product>): Promise<{ success: boolean; product?: Product; error?: string }> {
+    await new Promise(resolve => setTimeout(resolve, 700));
+    const idx = mockProducts.findIndex(p => p.id === productId);
+    if (idx === -1) return { success: false, error: 'Product not found' };
+    mockProducts[idx] = { ...mockProducts[idx], ...updates };
+    return { success: true, product: mockProducts[idx] };
   },
 
   async deleteProduct(productId: string): Promise<{ success: boolean; error?: string }> {

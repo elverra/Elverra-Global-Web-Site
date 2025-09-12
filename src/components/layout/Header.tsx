@@ -33,7 +33,9 @@ const Header = () => {
   const isSuperAdmin = userRole === 'SUPERADMIN';
   const isSupport = userRole === 'SUPPORT';
   const isPartner = userRole === 'PARTNER';
-  const isRegularUser = !!user && !isSuperAdmin && !isSupport && !isPartner;
+  // Treat a user as a regular user only when the role is explicitly 'USER'.
+  // This avoids showing regular-user items while the role is still loading (userRole === null).
+  const isRegularUser = !!user && userRole === 'USER';
 
   const handleSignOut = async () => {
     await signOut();
@@ -145,7 +147,7 @@ const Header = () => {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/services/o-secours">Ô Secours</Link>
+                  <Link to="/services/o-secours-info">Ô Secours</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/services/credit-system">Credit System</Link>

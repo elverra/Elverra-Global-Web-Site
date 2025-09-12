@@ -11,7 +11,7 @@ interface User {
 // Global cache for user role data
 const userRoleCache = new Map<string, { role: string; isAdmin: boolean; timestamp: number }>();
 const userRolePromises = new Map<string, Promise<{ role: string; isAdmin: boolean }>>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 30 * 1000; // 30 seconds to reflect role updates faster
 
 interface AuthContextType {
   user: User | null;
@@ -30,7 +30,7 @@ interface AuthContextType {
   verifyOtpEmail: (email: string, token: string) => Promise<{ data: any; error: string | null }>;
   sendMagicLink: (email: string, redirectPath?: string) => Promise<{ data: any; error: string | null }>;
   signOut: () => Promise<void>;
-  checkUserRole: () => Promise<void>;
+  checkUserRole: (force?: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,15 +62,44 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   const sendMagicLink = async (email: string, redirectPath = '/dashboard') => {
     try {
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const appUrl = (import.meta as any)?.env?.VITE_APP_URL || window.location.origin;
+      const emailRedirectTo = `${appUrl}${redirectPath}`;
+
+      // Attempt 1: Should create user + explicit redirect
+      let resp = await supabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: window.location.origin + redirectPath,
+          emailRedirectTo,
         },
       });
-      if (error) return { data: null, error: error.message };
-      return { data, error: null };
+      if (!resp.error) return { data: resp.data, error: null };
+
+      console.warn('sendMagicLink attempt1 failed:', resp.error?.message || resp.error);
+
+      // Attempt 2: Existing users only (common when project disallows creation via magic link)
+      resp = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo,
+        },
+      });
+      if (!resp.error) return { data: resp.data, error: null };
+
+      console.warn('sendMagicLink attempt2 failed, retrying without emailRedirectTo (use Site URL):', resp.error?.message || resp.error);
+
+      // Attempt 3: Let Supabase use configured Site URL (helps when redirect not whitelisted)
+      resp = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+        },
+      });
+      if (!resp.error) return { data: resp.data, error: null };
+
+      console.error('sendMagicLink final error:', resp.error);
+      return { data: null, error: resp.error.message };
     } catch (err: any) {
       return { data: null, error: err?.message || 'Failed to send magic link' };
     }
@@ -79,16 +108,35 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const fetchUserRoleFromAPI = async (): Promise<{ role: string; isAdmin: boolean }> => {
     try {
       if (!user?.id) return { role: 'USER', isAdmin: false };
-      const { data, error } = await supabase
+
+      // Attempt 1: Use RPC with SECURITY DEFINER (recommended to avoid RLS 403)
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_role');
+        if (!rpcError && rpcData) {
+          const role = (String(rpcData) || 'USER').toUpperCase();
+          const isAdmin = role === 'SUPERADMIN' || role === 'SUPPORT';
+          return { role, isAdmin };
+        }
+        if (rpcError) {
+          console.warn('get_user_role RPC failed, falling back to table select:', rpcError.message || rpcError);
+        }
+      } catch (e) {
+        console.warn('RPC get_user_role threw, falling back to table select', e);
+      }
+
+      // Attempt 2: Direct table select (requires RLS policy allowing user_id = auth.uid())
+      const { data, error, status } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .single();
+
       if (error) {
-        console.error('Error checking user role:', error);
+        console.error('Error checking user role (table select):', { error, status });
         return { role: 'USER', isAdmin: false };
       }
-      const role = (data?.role as string) || 'USER';
+
+      const role = ((data?.role as string) || 'USER').toUpperCase();
       const isAdmin = role === 'SUPERADMIN' || role === 'SUPPORT';
       return { role, isAdmin };
     } catch (error) {
@@ -117,7 +165,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const checkUserRole = async () => {
+  const checkUserRole = async (force: boolean = false) => {
     if (!user) {
       setUserRole(null);
       setIsAdmin(false);
@@ -129,12 +177,14 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     const cacheKey = user.id;
     const now = Date.now();
 
-    // Check cache first
-    const cached = userRoleCache.get(cacheKey);
-    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-      setUserRole(cached.role);
-      setIsAdmin(cached.isAdmin);
-      return;
+    // Check cache first (unless force refresh)
+    if (!force) {
+      const cached = userRoleCache.get(cacheKey);
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        setUserRole(cached.role);
+        setIsAdmin(cached.isAdmin);
+        return;
+      }
     }
 
     // Check if there's already a pending request
@@ -353,6 +403,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      if (user?.id) userRoleCache.delete(user.id);
       setUser(null);
       setUserRole(null);
       setIsAdmin(false);

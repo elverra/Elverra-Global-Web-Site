@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Filter, MapPin, Phone, Mail, Eye, Plus, Star, MessageSquare } from 'lucide-react';
+import { Search, MapPin, Phone, Mail, Eye, Plus, Star, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import MembershipGuard from '@/components/membership/MembershipGuard';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabaseClient';
 
 interface Product {
   id: string;
@@ -68,17 +70,31 @@ const OnlineStore = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = null;
-      const result = await response.json();
-      
-      if (!response.ok) throw new Error(result.error || 'Failed to fetch products');
-      
-      // Transform the data to match our interface
-      const transformedData = (result || []).map((product: any) => ({
-        ...product,
-        images: Array.isArray(product.images) ? product.images as string[] : []
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, description, price, category, images, location, created_at')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const transformedData: Product[] = (data || []).map((row: any) => ({
+        id: row.id,
+        title: row.name,
+        description: row.description || '',
+        price: Number(row.price) || 0,
+        currency: 'CFA',
+        category: row.category || 'Uncategorized',
+        condition: 'New',
+        location: row.location || '',
+        contact_phone: undefined,
+        contact_email: undefined,
+        images: Array.isArray(row.images) ? row.images : [],
+        views: 0,
+        created_at: row.created_at,
+        user_id: '',
+        reviews: [],
+        average_rating: undefined,
       }));
-      
       setProducts(transformedData);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -90,11 +106,13 @@ const OnlineStore = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = null;
-      const result = await response.json();
-      
-      if (!response.ok) throw new Error(result.error || 'Failed to fetch categories');
-      setCategories(result || []);
+      const { data, error } = await supabase
+        .from('products')
+        .select('category')
+        .neq('category', null);
+      if (error) throw error;
+      const unique = Array.from(new Set((data || []).map((r: any) => r.category))).filter(Boolean) as string[];
+      setCategories(unique.map(c => ({ id: c, name: c })));
     } catch (error) {
       console.error('Error fetching categories:', error);
     }

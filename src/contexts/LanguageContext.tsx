@@ -217,34 +217,44 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const t = (key: string, values?: Record<string, any>): string => {
+    const translation: any = translations[language];
+
+    // 1) Prefer direct flat key lookup (supports dotted keys stored flat)
+    if (Object.prototype.hasOwnProperty.call(translation, key)) {
+      let direct: any = translation[key];
+      if (typeof direct !== 'string') {
+        console.warn(`Translation value is not a string for key: ${key}`);
+        return key;
+      }
+      if (values) {
+        Object.keys(values).forEach(k => {
+          direct = direct.replace(new RegExp(`{{${k}}}`, 'g'), String(values[k]));
+        });
+      }
+      return direct;
+    }
+
+    // 2) Fallback: nested traversal if translations are structured hierarchically
     const keys = key.split('.');
-    const translation = translations[language];
-    
-    // Safely navigate the nested translation object
     let value: any = translation;
     for (const k of keys) {
       if (value && typeof value === 'object' && k in value) {
         value = value[k];
       } else {
         console.warn(`Translation key not found: ${key}`);
-        return key; // Return the key if translation not found
+        return key;
       }
     }
-    
-    // Ensure we have a string at the end
     if (typeof value !== 'string') {
       console.warn(`Translation value is not a string for key: ${key}`);
       return key;
     }
-
-    // Handle interpolation if values are provided
     let result = value;
     if (values) {
       Object.keys(values).forEach(k => {
         result = result.replace(new RegExp(`{{${k}}}`, 'g'), String(values[k]));
       });
     }
-    
     return result;
   };
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { productService } from '@/services/mockServices';
+import { supabase } from '@/lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,31 +21,30 @@ interface Product {
   createdAt: string;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  description: string;
-}
+type Category = string;
 
 export default function PublicShop() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [shops, setShops] = useState<{ id: string; name: string; slug: string; description?: string }[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedShop, setSelectedShop] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, selectedCategory, searchQuery]);
+  }, [currentPage, selectedCategory, searchQuery, selectedShop]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       await Promise.all([
+        fetchShops(),
+        fetchCategories(),
         fetchProducts(),
-        fetchCategories()
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -56,19 +55,39 @@ export default function PublicShop() {
 
   const fetchProducts = async () => {
     try {
-      const result = await productService.getProducts();
-      
-      if (result.success) {
-        let filteredProducts = result.data || [];
+      let filteredProducts: Product[] = [] as any;
+      if (selectedShop !== 'all') {
+        const { data: shop } = await supabase
+          .from('shops')
+          .select('id, slug')
+          .eq('slug', selectedShop)
+          .maybeSingle();
+        if (shop?.id) {
+          const { data } = await supabase
+            .from('products')
+            .select('id, name, description, price, category, images, contact, seller_name, location, is_active, created_at')
+            .eq('shop_id', shop.id)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+          filteredProducts = (data as any) || [];
+        }
+      } else {
+        const { data } = await supabase
+          .from('products')
+          .select('id, name, description, price, category, images, contact, seller_name, location, is_active, created_at')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        filteredProducts = (data as any) || [];
+      }
         
         // Apply filters
         if (selectedCategory !== 'all') {
-          filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
+          filteredProducts = filteredProducts.filter((p: any) => p.category === selectedCategory);
         }
         
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
-          filteredProducts = filteredProducts.filter(p => 
+          filteredProducts = filteredProducts.filter((p: any) => 
             p.name.toLowerCase().includes(query) ||
             p.description.toLowerCase().includes(query)
           );
@@ -81,7 +100,6 @@ export default function PublicShop() {
         
         setProducts(paginatedProducts as any);
         setHasMore(endIndex < filteredProducts.length);
-      }
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -89,17 +107,26 @@ export default function PublicShop() {
 
   const fetchCategories = async () => {
     try {
-      // Mock categories - will be replaced with Supabase
-      const mockCategories: Category[] = [
-        { id: 'electronics', name: 'Electronics', description: 'Electronic devices and gadgets' },
-        { id: 'clothing', name: 'Clothing', description: 'Fashion and apparel' },
-        { id: 'food', name: 'Food & Beverages', description: 'Food items and drinks' },
-        { id: 'books', name: 'Books', description: 'Books and educational materials' },
-        { id: 'home', name: 'Home & Garden', description: 'Home improvement and garden items' }
-      ];
-      setCategories(mockCategories);
+      const { data } = await supabase
+        .from('products')
+        .select('category')
+        .neq('category', null);
+      const unique = Array.from(new Set((data || []).map((r: any) => r.category))).filter(Boolean) as string[];
+      setCategories(unique);
     } catch (error) {
       console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchShops = async () => {
+    try {
+      const { data } = await supabase
+        .from('shops')
+        .select('id, name, slug, description')
+        .order('created_at', { ascending: false });
+      setShops((data as any) || []);
+    } catch (error) {
+      console.error('Error fetching shops:', error);
     }
   };
 
@@ -110,6 +137,11 @@ export default function PublicShop() {
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
+    setCurrentPage(1);
+  };
+
+  const handleShopChange = (slug: string) => {
+    setSelectedShop(slug);
     setCurrentPage(1);
   };
 
@@ -174,8 +206,24 @@ export default function PublicShop() {
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full md:w-64">
+                <Select value={selectedShop} onValueChange={handleShopChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Shops" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Shops</SelectItem>
+                    {shops.map((s) => (
+                      <SelectItem key={s.slug} value={s.slug}>
+                        {s.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -189,6 +237,30 @@ export default function PublicShop() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Shops Directory */}
+        {shops.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-3">Shops</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {shops.slice(0, 9).map((s) => (
+                <Card key={s.slug} className="hover:shadow transition">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base">{s.name}</CardTitle>
+                        {s.description && (
+                          <p className="text-sm text-gray-600 line-clamp-2">{s.description}</p>
+                        )}
+                      </div>
+                      <a className="text-blue-600 underline text-sm" href={`/shop/${s.slug}`}>Visit</a>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Products Grid */}
         {products.length > 0 ? (

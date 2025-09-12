@@ -20,7 +20,7 @@ import { toast } from "@/hooks/use-toast";
 
 const LoginForm = () => {
   const navigate = useNavigate();
-  const { sendMagicLink, signInWithPassword } = useAuth();
+  const { sendMagicLink, signInWithPassword, checkUserRole } = useAuth();
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -118,6 +118,8 @@ const LoginForm = () => {
           setLoading(false);
           return;
         }
+        // Force refresh role so header/dashboard reflects correct paths immediately
+        await checkUserRole(true);
         toast({ title: 'Login successful', description: 'Redirecting to your dashboard...' });
         navigate('/dashboard');
       }

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useNavigate } from 'react-router-dom';
+import TokenPurchase from '@/components/tokens/TokenPurchase';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -123,9 +123,10 @@ const OSecoursSection = () => {
   const { user } = useAuth();
   const { membership } = useMembership();
   const { t } = useLanguage();
-  const navigate = useNavigate();
+  // No navigation needed in this section for now
 
-  const isEligible = ['essential', 'premium', 'elite'].includes(membership?.tier || '');
+  // Temporarily allow all users to access Ô Secours without requiring a specific card tier
+  const isEligible = true;
   const selectedTokenData = TOKEN_TYPES.find(t => t.id === selectedToken);
   const totalPrice = selectedTokenData ? parseInt(purchaseAmount || '0') * selectedTokenData.price : 0;
 
@@ -441,47 +442,7 @@ const OSecoursSection = () => {
     };
   };
 
-  if (!isEligible) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">{t('osecours_services')}</h2>
-          <Badge className="bg-red-100 text-red-800">{t('not_eligible')}</Badge>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('access_denied')}</CardTitle>
-            <CardDescription>{t('access_denied_message')}</CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button
-              className="bg-orange-600 hover:bg-orange-700"
-              onClick={() => navigate('/dashboard/subscription')}
-            >
-              {t('upgrade_subscription')}
-            </Button>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('available_services_preview')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {TOKEN_TYPES.map(service => (
-                <div key={service.id} className="border rounded-lg p-4 opacity-60">
-                  <div className="text-2xl mb-3">{service.icon}</div>
-                  <h4 className="font-semibold mb-2">{service.name}</h4>
-                  <p className="text-sm text-gray-600 mb-2">{service.description}</p>
-                  <p className="text-xs text-gray-500">{t('price_per_token')}: CFA {service.price.toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Eligibility gate temporarily disabled; show full section for all users
 
   return (
     <div className="space-y-6">
@@ -838,68 +799,8 @@ const OSecoursSection = () => {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="tokenType">{t('token_type')}</Label>
-                  <Select value={selectedToken} onValueChange={setSelectedToken}>
-                    <SelectTrigger id="tokenType" aria-label={t('select_token_type')}>
-                      <SelectValue placeholder={t('select_token_type')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TOKEN_TYPES.map(token => (
-                        <SelectItem key={token.id} value={token.id}>
-                          {token.icon} {token.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="amount">{t('amount')}</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={purchaseAmount}
-                    onChange={e => setPurchaseAmount(e.target.value)}
-                    min={MIN_PURCHASE_PER_SERVICE}
-                    max={MAX_MONTHLY_PURCHASE_PER_SERVICE}
-                    placeholder={t('enter_amount')}
-                    aria-label={t('enter_amount')}
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('amount_range', { min: MIN_PURCHASE_PER_SERVICE, max: MAX_MONTHLY_PURCHASE_PER_SERVICE })}
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="phoneNumber">{t('phone_number')}</Label>
-                  <Input
-                    id="phoneNumber"
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={e => setPhoneNumber(e.target.value)}
-                    placeholder={t('enter_phone_number')}
-                    aria-label={t('enter_phone_number')}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className="text-sm font-medium">
-                    {t('total')}: CFA {totalPrice.toLocaleString()}
-                  </p>
-                  <Button onClick={handlePurchase} disabled={isPurchasing} aria-label={t('buy_now')}>
-                    {isPurchasing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        {t('processing')}
-                      </>
-                    ) : (
-                      <>
-                        <Coins className="h-4 w-4 mr-2" />
-                        {t('buy_now')}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
+              {/* Embedded TokenPurchase component handles payment method selection and flow */}
+              <TokenPurchase onPurchaseSuccess={fetchData} />
             </CardContent>
           </Card>
         </TabsContent>

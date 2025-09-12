@@ -72,7 +72,6 @@ import RegistrationThankYou from '@/pages/RegistrationThankYou';
 import EBooks from '@/pages/EBooks';
 import MembershipSelection from '@/pages/MembershipSelection';
 import PaymentStatus from '@/pages/PaymentStatus';
-import OSecours from './components/tokens/OSecours';
 import PaydayAdvance from './pages/services/PaydayAdvance';
 import OnlineStore from './pages/services/OnlineStore';
 import SchoolFees from './pages/services/secours/SchoolFees';
@@ -90,6 +89,7 @@ import CreditAccount from './pages/services/CreditAccount';
 import Services from './pages/services';
 import Discounts from './pages/Discounts';
 import TestPage from './pages/TestPage';
+import ShopDetail from './pages/ShopDetail';
 
 // Add the new route to the existing routes array
 const routes = [
@@ -266,10 +266,6 @@ const routes = [
     element: <AffiliateDistributors />,
   },
   {
-    path: '/services/o-secours',
-    element: <OSecours />,
-  },
-  {
     path: '/services/payday-advance',
     element: <PaydayAdvance />,
   },
@@ -280,6 +276,10 @@ const routes = [
   {
     path: '/shop',
     element: <PublicShop />,
+  },
+  {
+    path: '/shop/:slug',
+    element: <ShopDetail />,
   },
   {
     path: '/dashboard/shop',
