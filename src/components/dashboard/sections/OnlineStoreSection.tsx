@@ -101,7 +101,16 @@ const OnlineStoreSection = () => {
       const ext = file.name.split('.').pop() || 'jpg';
       const path = `${user?.id || 'anon'}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, { upsert: false, contentType: file.type || undefined });
-      if (upErr) throw upErr;
+      if (upErr) {
+        // If the storage bucket doesn't exist or is misconfigured, do not block the flow.
+        // Continue without images and surface a helpful message.
+        const msg = String(upErr?.message || '').toLowerCase();
+        if (msg.includes('bucket not found') || msg.includes('not found')) {
+          toast({ title: 'Storage bucket missing', description: `The storage bucket "${bucket}" does not exist. Upload skipped.`, variant: 'destructive' });
+          return [];
+        }
+        throw upErr;
+      }
       const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
       if (pub?.publicUrl) urls.push(pub.publicUrl);
     }
@@ -380,6 +389,9 @@ const OnlineStoreSection = () => {
                   const imagesArr = [...manualUrls, ...uploadedUrls];
                   const basePayload: any = { shop_id: myShop.id, price: Number(newProdPrice), category: newProdCategory.trim() || null, is_active: true };
                   if (imagesArr.length) basePayload.images = imagesArr;
+                  // Track success and last error for retry logic across schema variations
+                  let ok = false;
+                  let err: any = null;
                   {
                     const { error } = await supabase
                       .from('products')
