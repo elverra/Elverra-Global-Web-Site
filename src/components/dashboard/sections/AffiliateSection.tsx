@@ -276,7 +276,7 @@ const AffiliateSection = () => {
               <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Link</label>
               <div className="flex gap-2">
                 <Input
-                  value={affiliateData?.referralCode ? `https://elverra-global.com/register?ref=${affiliateData.referralCode}` : 'Loading...'}
+                  value={affiliateData?.referralCode ? `http://localhost:5173/register?ref=${affiliateData.referralCode}` : 'Loading...'}
                   readOnly
                   className="text-sm"
                 />
@@ -395,45 +395,7 @@ const AffiliateSection = () => {
         </CardContent>
       </Card>
 
-      {/* Leaderboard */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5" />
-            Affiliate Leaderboard
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {leaderboard.map((leader) => (
-              <div
-                key={leader.rank}
-                className={`flex items-center justify-between p-4 rounded-lg border ${
-                  leader.name === 'You' ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                    leader.rank === 1 ? 'bg-yellow-400 text-white' :
-                    leader.rank === 2 ? 'bg-gray-400 text-white' :
-                    leader.rank === 3 ? 'bg-orange-400 text-white' :
-                    'bg-gray-200 text-gray-700'
-                  }`}>
-                    {leader.rank}
-                  </div>
-                  <div>
-                    <p className="font-semibold">{leader.name}</p>
-                    <p className="text-sm text-gray-600">{leader.referrals} referrals</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-green-600">CFA {leader.earnings.toLocaleString()}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+     
     </div>
   );
 };

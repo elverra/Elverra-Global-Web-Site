@@ -1,27 +1,27 @@
 import { useState, useEffect } from "react";
-// uuid n'est plus nécessaire car géré par le service mock
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { discountService } from "@/services/mockServices";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Plus, ArrowLeft, Upload, Star } from "lucide-react";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import { useNavigate } from "react-router-dom";
+import { Pencil, Trash2, Plus, Star, ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+// import { ObjectUploader } from "@/components/ObjectUploader";
 
 // Interfaces pour les données de discount
 interface Sector {
-  id: string;
+  id: string | number;
   name: string;
   description: string;
   is_active: boolean;
@@ -30,137 +30,225 @@ interface Sector {
 interface Merchant {
   id: string;
   name: string;
-  sector_id: string;
+  sector_id: string | number;
   sector?: { name: string };
   discount_percentage: number;
   location?: string;
+  location_map_url?: string;
   contact_phone?: string;
   contact_email?: string;
   description?: string;
   website?: string;
   logo_url?: string;
+  cover_image_url?: string;
+  advantages?: string; // markdown/long text
+  gallery_urls?: string[]; // image gallery
+  is_featured?: boolean;
+  is_active?: boolean;
+  created_at?: string;
   rating?: number;
-  is_active: boolean;
-  featured: boolean;
 }
 
-// Les interfaces sont maintenant importées depuis @/mocks/data/sectors
-
 export default function DiscountManagement() {
-  const [sectors, setSectors] = useState<Sector[]>([]);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [editingSector, setEditingSector] = useState<Sector | null>(null);
-  const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
-  const [showSectorDialog, setShowSectorDialog] = useState(false);
-  const [showMerchantDialog, setShowMerchantDialog] = useState(false);
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState<{ logo?: boolean; gallery?: boolean; cover?: boolean }>({});
+  // dialogs & forms
+  const [showSectorDialog, setShowSectorDialog] = useState(false);
+  const [editingSector, setEditingSector] = useState<Sector | null>(null);
+  const [sectorForm, setSectorForm] = useState<{ name: string; description: string; is_active: boolean }>({ name: '', description: '', is_active: true });
+  const [sectorSaving, setSectorSaving] = useState(false);
 
-  const [sectorForm, setSectorForm] = useState({
-    name: "",
-    description: "",
-    is_active: true,
-  });
-
-  const [merchantForm, setMerchantForm] = useState<Omit<Merchant, 'id' | 'sector'> & { sector: { name: string } }>({
+  const [showMerchantDialog, setShowMerchantDialog] = useState(false);
+  const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
+  const [merchantForm, setMerchantForm] = useState<any>({
     name: '',
     sector_id: '',
-    sector: { name: '' },
     discount_percentage: 0,
     location: '',
+    location_map_url: '',
     contact_phone: '',
     contact_email: '',
     description: '',
     website: '',
     logo_url: '',
+    cover_image_url: '',
+    advantages: '',
+    gallery_urls: [],
     rating: 0,
     is_active: true,
-    featured: false
+    is_featured: false,
   });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    // Only load after auth has resolved and user has required admin role
+    if (!authLoading && isAdmin) {
+      load();
+    }
+  }, [authLoading, isAdmin]);
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    await Promise.all([fetchSectors(), fetchMerchants()]);
-    setIsLoading(false);
-  };
-
-  const fetchSectors = async () => {
+  const load = async () => {
     try {
-      const data = await discountService.getSectors();
-      setSectors(data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load sectors",
-        variant: "destructive",
-      });
+      setLoading(true);
+      const [merch, sect] = await Promise.all([
+        supabase.from('discount_merchants').select('id,name,sector_id,discount_percentage,location,location_map_url,contact_phone,contact_email,description,website,logo_url,cover_image_url,advantages,gallery_urls,is_featured,is_active,created_at').order('created_at',{ascending:false}),
+        supabase.from('discount_sectors').select('id,name,description,is_active')
+      ]);
+      if (merch.error) throw merch.error;
+      if (sect.error) throw sect.error;
+      setMerchants(merch.data as any || []);
+      setSectors((sect.data as any) || []);
+    } catch (e:any) {
+      console.error('Load discounts admin error:', e);
+      toast({ title:'Error', description: e.message || 'Failed to load data', variant:'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchMerchants = async () => {
-    try {
-      const data = await discountService.getMerchants();
-      setMerchants(data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load merchants",
-        variant: "destructive",
-      });
-    }
+  // Storage helper
+  const uploadToBucket = async (file: File, path: string): Promise<string> => {
+    const { error } = await supabase.storage.from('discounts').upload(path, file, { upsert: false, contentType: file.type || undefined });
+    if (error) throw error;
+    const { data } = supabase.storage.from('discounts').getPublicUrl(path);
+    return data.publicUrl;
   };
+
+ 
 
   const handleSectorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = editingSector && editingSector.id
-        ? await discountService.updateSector(editingSector.id, sectorForm)
-        : await discountService.createSector(sectorForm);
-
-      if (response) {
-        toast({
-          title: `Sector ${editingSector ? 'updated' : 'created'} successfully`,
-          variant: 'default',
-        });
-        fetchSectors();
-        setShowSectorDialog(false);
-        resetSectorForm();
+      setSectorSaving(true);
+      if (editingSector?.id) {
+        const { error } = await supabase.from('discount_sectors').update({
+          name: sectorForm.name,
+          description: sectorForm.description,
+          is_active: sectorForm.is_active,
+        }).eq('id', editingSector.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('discount_sectors').insert([{ 
+          name: sectorForm.name, description: sectorForm.description, is_active: sectorForm.is_active 
+        }]);
+        if (error) throw error;
       }
+      toast({ title: `Sector ${editingSector ? 'updated' : 'created'} successfully` });
+      await load();
+      setShowSectorDialog(false);
+      setSectorForm({ name:'', description:'', is_active:true });
+      setEditingSector(null);
     } catch (error) {
       toast({
         title: 'Error',
         description: `Failed to ${editingSector ? 'update' : 'create'} sector`,
         variant: 'destructive',
       });
+    } finally {
+      setSectorSaving(false);
     }
   };
 
   const handleMerchantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const merchantData = {
-        ...merchantForm,
-        rating: merchantForm.rating || 0,
-      };
-      
-      const response = editingMerchant && editingMerchant.id
-        ? await discountService.updateMerchant(editingMerchant.id, merchantData)
-        : await discountService.createMerchant(merchantData);
-      
-      if (response) {
-        toast({ 
-          title: "Success", 
-          description: `Merchant ${editingMerchant ? 'updated' : 'created'} successfully` 
-        });
-        fetchMerchants();
-        setShowMerchantDialog(false);
-        resetMerchantForm();
+      if (!merchantForm.name || !merchantForm.sector_id || !merchantForm.discount_percentage) {
+        toast({ title:'Validation', description:'Name, sector and percentage are required', variant:'destructive' });
+        return;
       }
+      if (editingMerchant?.id) {
+        const payload: any = {
+          name: merchantForm.name,
+          sector_id: Number(merchantForm.sector_id),
+          discount_percentage: merchantForm.discount_percentage,
+          location: merchantForm.location || null,
+          location_map_url: merchantForm.location_map_url || null,
+          contact_phone: merchantForm.contact_phone || null,
+          contact_email: merchantForm.contact_email || null,
+          description: merchantForm.description || null,
+          website: merchantForm.website || null,
+          logo_url: merchantForm.logo_url || null,
+          cover_image_url: merchantForm.cover_image_url || null,
+          advantages: merchantForm.advantages || null,
+          gallery_urls: Array.isArray(merchantForm.gallery_urls) ? merchantForm.gallery_urls : null,
+          is_active: merchantForm.is_active,
+          is_featured: merchantForm.is_featured,
+        };
+        const { error } = await supabase.from('discount_merchants').update(payload).eq('id', editingMerchant.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from('discount_merchants').insert([{ 
+          name: merchantForm.name,
+          sector_id: Number(merchantForm.sector_id),
+          discount_percentage: merchantForm.discount_percentage,
+          location: merchantForm.location || null,
+          location_map_url: merchantForm.location_map_url || null,
+          contact_phone: merchantForm.contact_phone || null,
+          contact_email: merchantForm.contact_email || null,
+          description: merchantForm.description || null,
+          website: merchantForm.website || null,
+          logo_url: merchantForm.logo_url || null,
+          cover_image_url: merchantForm.cover_image_url || null,
+          advantages: merchantForm.advantages || null,
+          gallery_urls: Array.isArray(merchantForm.gallery_urls) ? merchantForm.gallery_urls : null,
+          is_active: merchantForm.is_active,
+          is_featured: merchantForm.is_featured,
+        }]).select('id').single();
+        if (error) throw error;
+        // Optional: handle logoFile/coverFile upload after creation and update logo_url/cover
+        if (logoFile) {
+          const ext = (logoFile.name.split('.').pop()||'png').toLowerCase();
+          const url = await uploadToBucket(logoFile, `merchants/${data.id}/logo.${ext}`);
+          await supabase.from('discount_merchants').update({ logo_url: url }).eq('id', data.id);
+          setMerchantForm((prev:any)=>({ ...prev, logo_url: url }));
+        }
+        if (coverFile) {
+          const ext = (coverFile.name.split('.').pop()||'jpg').toLowerCase();
+          const url = await uploadToBucket(coverFile, `merchants/${data.id}/cover.${ext}`);
+          await supabase.from('discount_merchants').update({ cover_image_url: url }).eq('id', data.id);
+        }
+        // Upload queued advantages file if any
+        const pendingAdv: File | undefined = (window as any).pendingAdvantagesFile;
+        if (pendingAdv) {
+          try {
+            const ext = (pendingAdv.name.split('.').pop()||'bin').toLowerCase();
+            const url = await uploadToBucket(pendingAdv, `merchants/${data.id}/advantages.${ext}`);
+            await supabase.from('discount_merchants').update({ advantages: url }).eq('id', data.id);
+            setMerchantForm((prev:any)=>({ ...prev, advantages: url }));
+          } finally {
+            (window as any).pendingAdvantagesFile = undefined;
+          }
+        }
+        // Upload any queued gallery files and persist URLs
+        if (galleryFiles.length > 0) {
+          const uploaded: string[] = [];
+          for (let i = 0; i < galleryFiles.length; i++) {
+            const gf = galleryFiles[i];
+            const ext = (gf.name.split('.').pop()||'jpg').toLowerCase();
+            const path = `merchants/${data.id}/gallery/${Date.now()}_${i}.${ext}`;
+            const url = await uploadToBucket(gf, path);
+            uploaded.push(url);
+          }
+          const current = Array.isArray(merchantForm.gallery_urls) ? merchantForm.gallery_urls : [];
+          const finalUrls = [...current, ...uploaded];
+          await supabase.from('discount_merchants').update({ gallery_urls: finalUrls }).eq('id', data.id);
+          setMerchantForm((prev:any)=>({ ...prev, gallery_urls: finalUrls }));
+          setGalleryFiles([]);
+        }
+      }
+      toast({ title:'Success', description:`Merchant ${editingMerchant ? 'updated' : 'created'} successfully` });
+      await load();
+      setShowMerchantDialog(false);
+      setEditingMerchant(null);
+      setMerchantForm({ name:'', sector_id:'', discount_percentage:0, location:'', location_map_url:'', contact_phone:'', contact_email:'', description:'', website:'', logo_url:'', cover_image_url:'', advantages:'', gallery_urls:[], is_active:true, is_featured:false, rating:0 });
     } catch (error) {
       console.error('Error saving merchant:', error);
       toast({
@@ -171,16 +259,19 @@ export default function DiscountManagement() {
     }
   };
 
-  const deleteSector = async (id: string) => {
+  const deleteSector = async (id: string | number) => {
     if (!window.confirm('Are you sure you want to delete this sector?')) return;
-    
+
     try {
-      await discountService.deleteSector(id);
-      setSectors(sectors.filter(s => s.id !== id));
-      
+      const { error } = await supabase.from('discount_sectors').delete().eq('id', id);
+      if (error) throw error;
+      // Normalize to string for safe comparison across string | number ids
+      const idStr = String(id);
+      setSectors(prev => prev.filter(s => String(s.id) !== idStr));
+
       // Also remove any merchants in this sector
-      setMerchants(merchants.filter(m => m.sector_id !== id));
-      
+      setMerchants(prev => prev.filter(m => String(m.sector_id) !== idStr));
+
       toast({
         title: "Success",
         description: "Sector deleted successfully",
@@ -198,8 +289,9 @@ export default function DiscountManagement() {
     if (!window.confirm('Are you sure you want to delete this merchant?')) return;
     
     try {
-      await discountService.deleteMerchant(id);
-      setMerchants(merchants.filter(m => m.id !== id));
+      const { error } = await supabase.from('discount_merchants').delete().eq('id', id);
+      if (error) throw error;
+      setMerchants(prev => prev.filter(m => m.id !== id));
       
       toast({
         title: "Success",
@@ -223,17 +315,19 @@ export default function DiscountManagement() {
     setMerchantForm({
       name: "",
       sector_id: "",
-      sector: { name: '' },
       discount_percentage: 0,
       location: "",
+      location_map_url: "",
       contact_phone: "",
       contact_email: "",
       description: "",
       website: "",
       logo_url: "",
+      cover_image_url: "",
+      advantages: "",
       rating: 0,
       is_active: true,
-      featured: false,
+      is_featured: false,
     });
     setEditingMerchant(null);
   };
@@ -253,17 +347,21 @@ export default function DiscountManagement() {
       setEditingMerchant(merchant);
       setMerchantForm({
         name: merchant.name,
-        sector_id: merchant.sector_id,
-        sector: { name: merchant.sector?.name || '' },
+        sector_id: String(merchant.sector_id ?? ''),
         discount_percentage: merchant.discount_percentage,
         location: merchant.location || "",
+        location_map_url: merchant.location_map_url || "",
         contact_phone: merchant.contact_phone || "",
         contact_email: merchant.contact_email || "",
         description: merchant.description || "",
         website: merchant.website || "",
         logo_url: merchant.logo_url || "",
-        is_active: merchant.is_active,
-        featured: merchant.featured,
+        cover_image_url: merchant.cover_image_url || "",
+        advantages: merchant.advantages || "",
+        gallery_urls: Array.isArray(merchant.gallery_urls) ? merchant.gallery_urls : [],
+        is_active: merchant.is_active ?? true,
+        is_featured: merchant.is_featured ?? false,
+        rating: merchant.rating || 0,
       });
     } else {
       resetMerchantForm();
@@ -271,7 +369,7 @@ export default function DiscountManagement() {
     setShowMerchantDialog(true);
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <ProtectedRoute requireAdmin={true}>
         <Layout>
@@ -349,8 +447,8 @@ export default function DiscountManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={merchant.featured ? "default" : "outline"}>
-                          {merchant.featured ? "Featured" : "Regular"}
+                        <Badge variant={merchant.is_featured ? "default" : "outline"}>
+                          {merchant.is_featured ? "Featured" : "Regular"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -443,6 +541,11 @@ export default function DiscountManagement() {
             <DialogTitle>
               {editingSector ? "Edit Sector" : "Add New Sector"}
             </DialogTitle>
+            <DialogDescription>
+              {editingSector
+                ? "Update the sector details. These changes will reflect on all associated merchants."
+                : "Create a new sector to categorize your discount merchants."}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSectorSubmit} className="space-y-4">
             <div>
@@ -471,7 +574,10 @@ export default function DiscountManagement() {
               <Label htmlFor="sector-active">Active</Label>
             </div>
             <div className="flex space-x-2">
-              <Button type="submit">{editingSector ? "Update" : "Create"}</Button>
+              <Button type="submit" disabled={sectorSaving}>
+                {sectorSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {sectorSaving ? (editingSector ? 'Updating...' : 'Creating...') : (editingSector ? "Update" : "Create")}
+              </Button>
               <Button type="button" variant="outline" onClick={() => setShowSectorDialog(false)}>
                 Cancel
               </Button>
@@ -487,9 +593,14 @@ export default function DiscountManagement() {
             <DialogTitle>
               {editingMerchant ? "Edit Merchant" : "Add New Merchant"}
             </DialogTitle>
+            <DialogDescription>
+              {editingMerchant
+                ? "Modify merchant information, discount, and visibility settings."
+                : "Fill out the merchant details and assign it to a sector."}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleMerchantSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="merchant-name">Name</Label>
                 <Input
@@ -510,7 +621,7 @@ export default function DiscountManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     {sectors.filter(s => s.is_active).map((sector) => (
-                      <SelectItem key={sector.id} value={sector.id}>
+                      <SelectItem key={String(sector.id)} value={String(sector.id)}>
                         {sector.name}
                       </SelectItem>
                     ))}
@@ -535,6 +646,15 @@ export default function DiscountManagement() {
                   id="merchant-location"
                   value={merchantForm.location}
                   onChange={(e) => setMerchantForm({ ...merchantForm, location: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="merchant-location-map">Location Map URL (Google Maps)</Label>
+                <Input
+                  id="merchant-location-map"
+                  placeholder="https://maps.google.com/?q=..."
+                  value={merchantForm.location_map_url}
+                  onChange={(e) => setMerchantForm({ ...merchantForm, location_map_url: e.target.value })}
                 />
               </div>
               <div>
@@ -571,8 +691,39 @@ export default function DiscountManagement() {
                 onChange={(e) => setMerchantForm({ ...merchantForm, description: e.target.value })}
               />
             </div>
+            <div>
+              <Label htmlFor="merchant-advantages">Advantages (text or URL)</Label>
+              <Textarea
+                id="merchant-advantages"
+                placeholder="Ex: -10% sur présentation de la carte, etc."
+                value={merchantForm.advantages}
+                onChange={(e) => setMerchantForm({ ...merchantForm, advantages: e.target.value })}
+              />
+              <div className="mt-2 flex items-center gap-3">
+                <Input type="file" accept="image/*,application/pdf" onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  try {
+                    if (editingMerchant?.id) {
+                      const ext = (f.name.split('.').pop()||'bin').toLowerCase();
+                      const url = await uploadToBucket(f, `merchants/${editingMerchant.id}/advantages.${ext}`);
+                      await supabase.from('discount_merchants').update({ advantages: url }).eq('id', editingMerchant.id);
+                      setMerchantForm((prev:any)=>({ ...prev, advantages: url }));
+                      toast({ title:'Uploaded', description:'Advantages file uploaded' });
+                    } else {
+                      // For new merchant, queue by uploading after creation via galleryFiles or set a temp URL
+                      // Simpler: upload to a temp path then move after creation is not supported; we’ll upload after create when id known.
+                      (window as any).pendingAdvantagesFile = f; // temp stash
+                      toast({ title:'Ready', description:'Advantages file will be uploaded after creation' });
+                    }
+                  } catch (err:any) {
+                    toast({ title:'Upload error', description: err.message || 'Failed to upload advantages file', variant:'destructive' });
+                  }
+                }} />
+              </div>
+            </div>
             
-            {/* Logo Upload Section */}
+            {/* Logo Upload Section (Supabase Storage) */}
             <div>
               <Label>Logo/Image Upload</Label>
               <div className="space-y-2">
@@ -586,26 +737,99 @@ export default function DiscountManagement() {
                     <span className="text-sm text-gray-600">Current logo</span>
                   </div>
                 )}
-                <ObjectUploader
-                  onGetUploadParameters={async () => {
-                    // Mock upload parameters for frontend-only operation
-                    return { method: 'PUT', url: '/api/mock-upload' };
-                  }}
-                  onComplete={(uploadedUrl) => {
-                    setMerchantForm({ ...merchantForm, logo_url: uploadedUrl });
-                    toast({
-                      title: "Success",
-                      description: "Logo uploaded successfully",
-                    });
-                  }}
-                  maxFileSize={5242880} // 5MB
-                  accept="image/*"
-                >
-                  <div className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    <span>Upload Logo</span>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      setUploading((u) => ({ ...u, logo: true }));
+                      try {
+                        if (editingMerchant?.id) {
+                          const ext = (f.name.split('.').pop()||'png').toLowerCase();
+                          const url = await uploadToBucket(f, `merchants/${editingMerchant.id}/logo.${ext}`);
+                          await supabase.from('discount_merchants').update({ logo_url: url }).eq('id', editingMerchant.id);
+                          setMerchantForm((prev:any)=>({ ...prev, logo_url: url }));
+                          toast({ title: 'Success', description: 'Logo uploaded successfully' });
+                        } else {
+                          setLogoFile(f);
+                          toast({ title: 'Ready', description: 'Logo will be uploaded after creation' });
+                        }
+                      } catch (err:any) {
+                        toast({ title:'Upload error', description: err.message || 'Failed to upload logo', variant:'destructive' });
+                      } finally {
+                        setUploading((u) => ({ ...u, logo: false }));
+                      }
+                    }}
+                  />
+                  {uploading.logo && <Loader2 className="h-4 w-4 animate-spin text-gray-500" />}
+                </div>
+              </div>
+            </div>
+
+            {/* Gallery Upload Section (Supabase Storage) */}
+            <div>
+              <Label>Gallery Images</Label>
+              <div className="space-y-2">
+                {Array.isArray(merchantForm.gallery_urls) && merchantForm.gallery_urls.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {merchantForm.gallery_urls.map((url: string, idx: number) => (
+                      <div key={idx} className="relative border rounded p-1">
+                        <img src={url} alt={`Gallery ${idx+1}`} className="w-full h-24 object-cover rounded" />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="absolute top-1 right-1 h-6 px-2 text-xs"
+                          onClick={async () => {
+                            const next = merchantForm.gallery_urls.filter((_: string, i: number) => i !== idx);
+                            setMerchantForm({ ...merchantForm, gallery_urls: next });
+                            if (editingMerchant?.id) {
+                              await supabase.from('discount_merchants').update({ gallery_urls: next }).eq('id', editingMerchant.id);
+                            }
+                          }}
+                        >Remove</Button>
+                      </div>
+                    ))}
                   </div>
-                </ObjectUploader>
+                )}
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length === 0) return;
+                      setUploading((u) => ({ ...u, gallery: true }));
+                      try {
+                        if (editingMerchant?.id) {
+                          const uploaded: string[] = [];
+                          for (let i = 0; i < files.length; i++) {
+                            const f = files[i];
+                            const ext = (f.name.split('.').pop()||'jpg').toLowerCase();
+                            const path = `merchants/${editingMerchant.id}/gallery/${Date.now()}_${i}.${ext}`;
+                            const url = await uploadToBucket(f, path);
+                            uploaded.push(url);
+                          }
+                          const next = [...(merchantForm.gallery_urls || []), ...uploaded];
+                          setMerchantForm({ ...merchantForm, gallery_urls: next });
+                          await supabase.from('discount_merchants').update({ gallery_urls: next }).eq('id', editingMerchant.id);
+                          toast({ title:'Success', description:'Images added to gallery' });
+                        } else {
+                          setGalleryFiles((prev) => [...prev, ...files]);
+                          toast({ title:'Ready', description:'Gallery images will be uploaded after creation' });
+                        }
+                      } catch (err:any) {
+                        toast({ title:'Upload error', description: err.message || 'Failed to upload images', variant:'destructive' });
+                      } finally {
+                        setUploading((u) => ({ ...u, gallery: false }));
+                      }
+                    }}
+                  />
+                  {uploading.gallery && <Loader2 className="h-4 w-4 animate-spin text-gray-500" />}
+                </div>
               </div>
             </div>
 
@@ -654,8 +878,8 @@ export default function DiscountManagement() {
               <div className="flex items-center space-x-2">
                 <Switch
                   id="merchant-featured"
-                  checked={merchantForm.featured}
-                  onCheckedChange={(checked) => setMerchantForm({ ...merchantForm, featured: checked })}
+                  checked={merchantForm.is_featured}
+                  onCheckedChange={(checked) => setMerchantForm({ ...merchantForm, is_featured: checked })}
                 />
                 <Label htmlFor="merchant-featured">Featured</Label>
               </div>

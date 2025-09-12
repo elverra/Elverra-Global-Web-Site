@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import PremiumBanner from "@/components/layout/PremiumBanner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, MapPin, Store, Percent, Star, Loader2 } from "lucide-react";
-import { useDiscounts, useDiscountUsage } from "@/hooks/useDiscounts";
+import { useDiscountUsage } from "@/hooks/useDiscounts";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import MembershipGuard from "@/components/membership/MembershipGuard";
 import { useMembership } from "@/hooks/useMembership";
+import { supabase } from "@/lib/supabaseClient";
 
 const Discounts = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,44 +32,76 @@ const Discounts = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { getMembershipAccess } = useMembership();
-  const { merchants, sectors, fetchMerchants, getSectors, getLocations } =
-    useDiscounts();
   const { recordDiscountUsage } = useDiscountUsage();
 
-  // Fetch data from new APIs
+  // Fetch data from Supabase (public)
   useEffect(() => {
     const fetchDiscountData = async () => {
       try {
         setLoading(true);
+        // Sectors
+        const { data: sectorsData, error: sectorsErr } = await supabase
+          .from("discount_sectors")
+          .select("id,name,description,is_active")
+          .eq("is_active", true)
+          .order("name");
+        if (sectorsErr) throw sectorsErr;
+        const sectors = sectorsData || [];
+        setDiscountSectors(sectors);
+        const sectorMap = new Map<string, string>(sectors.map((s: any) => [String(s.id), s.name]));
 
-        // Fetch discount sectors
-        const sectorsResponse = await fetch("/api/discounts/sectors");
-        if (sectorsResponse.ok) {
-          const sectorsData = await sectorsResponse.json();
-          setDiscountSectors(sectorsData);
-        }
+        // Featured merchants
+        const { data: featuredData, error: featErr } = await supabase
+          .from("discount_merchants")
+          .select("id,name,merchant:name,discount_percentage,location,description,website,logo_url,cover_image_url,is_featured,is_active,sector_id")
+          .eq("is_featured", true)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+        if (featErr) throw featErr;
+        // Normalize for UI where needed
+        setFeaturedDiscounts(
+          (featuredData || []).map((m: any) => ({
+            id: m.id,
+            title: m.name,
+            merchant: m.name,
+            sector_id: m.sector_id,
+            sector: sectorMap.get(String(m.sector_id)) || undefined,
+            discount_percentage: m.discount_percentage,
+            location: m.location,
+            description: m.description,
+            image_url: m.cover_image_url || m.logo_url,
+            rating: m.rating,
+          }))
+        );
 
-        // Fetch featured discounts
-        const featuredResponse = await fetch("/api/discounts/featured");
-        if (featuredResponse.ok) {
-          const featuredData = await featuredResponse.json();
-          setFeaturedDiscounts(featuredData);
-        }
-
-        // Fetch all discounts
-        const discountsResponse = await fetch("/api/discounts");
-        if (discountsResponse.ok) {
-          const discountsData = await discountsResponse.json();
-          setAllDiscounts(discountsData);
-        }
-      } catch (error) {
+        // All merchants
+        const { data: merchantsData, error: merchErr } = await supabase
+          .from("discount_merchants")
+          .select("id,name,merchant:name,discount_percentage,location,description,website,logo_url,cover_image_url,is_featured,is_active,sector_id")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+        if (merchErr) throw merchErr;
+        setAllDiscounts(
+          (merchantsData || []).map((m: any) => ({
+            id: m.id,
+            title: m.name,
+            merchant: m.name,
+            sector_id: m.sector_id,
+            sector: sectorMap.get(String(m.sector_id)) || undefined,
+            discount_percentage: m.discount_percentage,
+            location: m.location,
+            description: m.description,
+            image_url: m.cover_image_url || m.logo_url,
+            rating: m.rating,
+          }))
+        );
+      } catch (error: any) {
         console.error("Error fetching discount data:", error);
-        toast.error("Failed to load discount data");
+        toast.error(error.message || "Failed to load discount data");
       } finally {
         setLoading(false);
       }
     };
-
     fetchDiscountData();
   }, []);
 
@@ -78,24 +110,20 @@ const Discounts = () => {
   };
 
   const handleSearch = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (searchTerm) params.append("search", searchTerm);
-      if (sectorFilter !== "all") params.append("sector", sectorFilter);
-      if (locationFilter !== "all") params.append("location", locationFilter);
-
-      const response = await fetch(`/api/discounts?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAllDiscounts(data);
-      }
-    } catch (error) {
-      console.error("Error searching discounts:", error);
-      toast.error("Search failed");
-    } finally {
-      setLoading(false);
-    }
+    // Client-side filter for simplicity
+    const base = [...allDiscounts];
+    const filtered = base.filter((d) => {
+      const matchesSearch = !searchTerm ||
+        d.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.merchant?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.location?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSector = sectorFilter === "all" || String(d.sector_id) === sectorFilter || d.sector === sectorFilter;
+      const locTail = d.location?.split(",").pop()?.trim();
+      const matchesLocation = locationFilter === "all" || locTail === locationFilter;
+      return matchesSearch && matchesSector && matchesLocation;
+    });
+    setAllDiscounts(filtered);
   };
 
   const handleClaimDiscount = async (discount: any) => {
@@ -279,7 +307,8 @@ const Discounts = () => {
                   {featuredDiscounts.map((discount) => (
                     <Card
                       key={discount.id}
-                      className="overflow-hidden hover:shadow-xl transition-shadow"
+                      className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
+                      onClick={() => navigate(`/discounts/${discount.id}`)}
                     >
                       <div className="relative">
                         <img
@@ -332,11 +361,11 @@ const Discounts = () => {
                           </p>
                         )}
                         <Button
-                          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                          onClick={() => handleClaimDiscount(discount)}
+                          className="w-full"
+                          variant="outline"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/discounts/${discount.id}`); }}
                         >
-                          <Percent className="h-4 w-4 mr-2" />
-                          Claim Featured Discount
+                          View details
                         </Button>
                       </CardContent>
                     </Card>
@@ -407,10 +436,11 @@ const Discounts = () => {
                         )}
                         <Button
                           size="sm"
-                          className="w-full bg-purple-600 hover:bg-purple-700"
-                          onClick={() => handleClaimDiscount(discount)}
+                          variant="outline"
+                          className="w-full"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/discounts/${discount.id}`); }}
                         >
-                          Claim Discount
+                          View details
                         </Button>
                       </CardContent>
                     </Card>

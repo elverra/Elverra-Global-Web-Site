@@ -4,34 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { 
-  Search,
-  ShoppingCart,
   Heart,
-  Star,
   PlusCircle,
   MessageCircle,
-  Eye,
-  MapPin,
-  Filter,
-  Flag
+  Eye
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/hooks/use-toast';
+ 
 
 const OnlineStoreSection = () => {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [priceRange, setPriceRange] = useState('all');
+  
   const [products, setProducts] = useState<any[]>([]);
   const [myProducts, setMyProducts] = useState<any[]>([]);
+  const [myProductsLoading, setMyProductsLoading] = useState(false);
   const [wishlist, setWishlist] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [myShop, setMyShop] = useState<any | null>(null);
   const [shopName, setShopName] = useState('');
   const [shopDescription, setShopDescription] = useState('');
@@ -44,12 +36,30 @@ const OnlineStoreSection = () => {
   const [newProdName, setNewProdName] = useState('');
   const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('');
-  const [newProdImages, setNewProdImages] = useState(''); // comma-separated URLs
+  const [newProdDescription, setNewProdDescription] = useState('');
+  const [newProdStock, setNewProdStock] = useState('');
+  const [newProdContactPhone, setNewProdContactPhone] = useState('');
+  const [newProdContactWhatsapp, setNewProdContactWhatsapp] = useState('');
   const [creatingProduct, setCreatingProduct] = useState(false);
-  const [shopImageUrl, setShopImageUrl] = useState('');
   const [newProdFiles, setNewProdFiles] = useState<File[]>([]);
-  const [shopImageFile, setShopImageFile] = useState<File | null>(null);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [shopImageUrl, setShopImageUrl] = useState('');
+  const [shopImageFile, setShopImageFile] = useState<File | null>(null);
+  // Edit product modal state (must be inside component)
+  const [editOpen, setEditOpen] = useState(false);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editStock, setEditStock] = useState('');
+  const [editContactPhone, setEditContactPhone] = useState('');
+  const [editContactWhatsapp, setEditContactWhatsapp] = useState('');
+  const [savingProduct, setSavingProduct] = useState(false);
+  // Confirm delete product dialog
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Temporarily allow access without membership checks
   const isSeller = true;
@@ -95,11 +105,12 @@ const OnlineStoreSection = () => {
     }
   };
 
-  const uploadFilesToStorage = async (bucket: string, files: File[]): Promise<string[]> => {
+  const uploadFilesToStorage = async (bucket: string, files: File[], pathPrefix?: string): Promise<string[]> => {
     const urls: string[] = [];
     for (const file of files) {
       const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${user?.id || 'anon'}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const base = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `${pathPrefix ? `${pathPrefix}/` : ''}${base}`;
       const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, { upsert: false, contentType: file.type || undefined });
       if (upErr) {
         // If the storage bucket doesn't exist or is misconfigured, do not block the flow.
@@ -122,7 +133,7 @@ const OnlineStoreSection = () => {
     try {
       const { data, error } = await supabase
         .from('shops')
-        .select('id, name, description, slug')
+        .select('id, name, description, slug, image_url, contact, location')
         .eq('owner_id', user.id)
         .maybeSingle();
       if (error && error.code !== 'PGRST116') throw error; // ignore No rows
@@ -130,8 +141,9 @@ const OnlineStoreSection = () => {
       if (data) {
         setShopName(data.name || '');
         setShopDescription(data.description || '');
-        // If your schema doesn't have 'location', keep local state as-is
-        // If your schema doesn't have 'contact', keep local state as-is
+        if (data.location) setShopLocation(data.location);
+        if (data.contact) setShopContact(data.contact);
+        if (data.image_url) setShopImageUrl(data.image_url);
       }
       // If no shop, focus My Shop tab
       if (!data) setActiveTab('my-shop');
@@ -153,58 +165,57 @@ const OnlineStoreSection = () => {
       let attempt = 0;
       const maxAttempts = 3;
       // Do not include optional fields that are not present in schema
-      let allowContact = false;
-      let allowLocation = false;
       while (attempt < maxAttempts) {
         const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
         try {
-          // Upload shop image if provided
+          let currentShopId = myShop?.id || null;
+          // 1) Ensure shop exists (create first if missing, without image_url)
+          if (!currentShopId) {
+            const createPayload: any = { name: shopName.trim(), description: shopDescription.trim(), slug, owner_id: user.id };
+            const { data: created, error: createErr } = await supabase
+              .from('shops')
+              .insert([createPayload])
+              .select('id, name, description, slug')
+              .maybeSingle();
+            if (createErr) throw createErr;
+            currentShopId = created?.id || null;
+            if (!currentShopId) throw new Error('Failed to create shop');
+            setMyShop(created);
+          } else {
+            // If shop exists, update basic fields (without image_url yet)
+            const baseUpdate: any = { name: shopName.trim(), description: shopDescription.trim(), slug };
+            const { error: upBaseErr } = await supabase
+              .from('shops')
+              .update(baseUpdate)
+              .eq('id', currentShopId);
+            if (upBaseErr) throw upBaseErr;
+          }
+
+          // 2) Upload banner (if any) now that we have a real shop ID, then update image_url
           let imageUrl = shopImageUrl.trim();
-          if (shopImageFile) {
+          if (shopImageFile && currentShopId) {
             try {
-              const [url] = await uploadFilesToStorage('shop-images', [shopImageFile]);
+              const [url] = await uploadFilesToStorage('shop-images', [shopImageFile], `shops/${currentShopId}/banner`);
               if (url) imageUrl = url;
-            } catch (upErr) {
+            } catch (upErr: any) {
               console.error('Shop image upload failed:', upErr);
+              toast({ title: 'Image upload failed', description: upErr?.message || 'Could not upload shop image. Please check that the storage bucket exists.', variant: 'destructive' });
             }
           }
-          const payload: any = { name: shopName.trim(), description: shopDescription.trim(), slug };
-          if (imageUrl) payload.image_url = imageUrl;
-          if (shopImageUrl.trim()) payload.image_url = shopImageUrl.trim();
-          if (myShop?.id) {
-            const { data, error } = await supabase
+          if (imageUrl && currentShopId) {
+            const { error: imgErr } = await supabase
               .from('shops')
-              .update(payload)
-              .eq('id', myShop.id)
-              .select('*')
-              .maybeSingle();
-            if (error) throw error;
-            setMyShop(data);
-          } else {
-            const { data, error } = await supabase
-              .from('shops')
-              .insert([{ owner_id: user.id, ...payload }])
-              .select('*')
-              .maybeSingle();
-            if (error) throw error;
-            setMyShop(data);
-            setActiveTab('my-products');
+              .update({ image_url: imageUrl })
+              .eq('id', currentShopId);
+            if (imgErr) throw imgErr;
           }
+
           toast({ title: 'Saved', description: 'Your shop has been saved.' });
           await Promise.all([fetchProducts(), fetchMyShop()]);
           break; // success
         } catch (e: any) {
           console.error('Supabase save shop error:', e);
-          // Handle missing 'contact' column gracefully by retrying without it
-          if (e?.code === 'PGRST204' && /'contact' column/i.test(e?.message || '')) {
-            allowContact = false; // drop contact from payload and retry same slug
-            continue;
-          }
-          // Handle missing 'location' column gracefully by retrying without it
-          if (e?.code === 'PGRST204' && /'location' column/i.test(e?.message || '')) {
-            allowLocation = false;
-            continue;
-          }
+          // Handle missing columns gracefully (contact/location) — skip silently
           // Handle missing image_url gracefully
           if (e?.code === '42703' && /image_url/i.test(e?.message || '')) {
             // remove image_url from payload on next loop
@@ -237,6 +248,7 @@ const OnlineStoreSection = () => {
   const fetchMyProducts = async () => {
     try {
       if (!myShop?.id) { setMyProducts([]); return; }
+      setMyProductsLoading(true);
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -248,21 +260,25 @@ const OnlineStoreSection = () => {
         title: row.name || row.title || row.product_name || 'Untitled',
         category: row.category || 'Uncategorized',
         price: Number(row.price) || 0,
-        stock: 0,
+        stock: typeof row.stock === 'number' ? row.stock : 0,
         views: 0,
         inquiries: 0,
         status: row.is_active ? 'active' : 'inactive',
+        description: row.description || '',
+        contact_phone: row.contact_phone || '',
+        contact_whatsapp: row.contact_whatsapp || '',
       })));
     } catch (error) {
       console.error('Error fetching my products:', error);
       toast({ title: 'Error', description: 'Failed to load my products', variant: 'destructive' });
+    } finally {
+      setMyProductsLoading(false);
     }
   };
 
   const deleteProduct = async (id: string) => {
     try {
-      const confirmDel = window.confirm('Delete this product?');
-      if (!confirmDel) return;
+      setDeleting(true);
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
       toast({ title: 'Deleted', description: 'Product has been deleted.' });
@@ -270,6 +286,10 @@ const OnlineStoreSection = () => {
     } catch (e: any) {
       console.error('Delete product error:', e);
       toast({ title: 'Error', description: e?.message || 'Failed to delete product', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+      setConfirmDeleteOpen(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -278,45 +298,68 @@ const OnlineStoreSection = () => {
   const fetchWishlist = async () => {
     if (!user?.id) return;
     try {
-      const data: any[] = [
-        // { id: 2, title: 'Office Chair', seller: 'FurniCo', price: 55000, addedDate: '2025-09-01' }
-      ];
-      setWishlist(data);
+      // Load wishlist items for current user
+      const { data: w, error } = await supabase
+        .from('wishlists')
+        .select('id, product_id, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const productIds = (w || []).map((r: any) => r.product_id);
+      if (productIds.length === 0) { setWishlist([]); return; }
+      const { data: prods, error: pe } = await supabase
+        .from('products')
+        .select('id, name, title, price, category, images, image_url')
+        .in('id', productIds);
+      if (pe) throw pe;
+      const list = (prods || []).map((p: any) => ({
+        id: p.id,
+        title: p.name || p.title || 'Untitled',
+        seller: shopName || 'Shop',
+        price: Number(p.price) || 0,
+        image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : (p.image_url || ''),
+        addedDate: new Date().toISOString().slice(0, 10),
+      }));
+      setWishlist(list);
     } catch (error) {
       console.error('Error fetching wishlist:', error);
     } finally {
-      setLoading(false);
+      // no-op
     }
   };
 
-  const categories = ['all', 'Electronics', 'Fashion', 'Vehicles', 'Food', 'Furniture', 'Books', 'Sports'];
-  const priceRanges = [
-    { value: 'all', label: 'All Prices' },
-    { value: '0-50000', label: 'Under CFA 50,000' },
-    { value: '50000-200000', label: 'CFA 50,000 - 200,000' },
-    { value: '200000-500000', label: 'CFA 200,000 - 500,000' },
-    { value: '500000+', label: 'Over CFA 500,000' }
-  ];
+  
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    
-    let matchesPrice = true;
-    if (priceRange !== 'all') {
-      if (priceRange === '0-50000') matchesPrice = product.price < 50000;
-      else if (priceRange === '50000-200000') matchesPrice = product.price >= 50000 && product.price < 200000;
-      else if (priceRange === '200000-500000') matchesPrice = product.price >= 200000 && product.price < 500000;
-      else if (priceRange === '500000+') matchesPrice = product.price >= 500000;
+  const toggleWishlist = async (productId: string) => {
+    if (!user?.id) { toast({ title: 'Login required', description: 'Please sign in to use wishlist', variant: 'destructive' }); return; }
+    try {
+      // Check if exists
+      const { data: existing, error: ce } = await supabase
+        .from('wishlists')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('product_id', productId)
+        .maybeSingle();
+      if (ce && ce.code !== 'PGRST116') throw ce;
+      if (existing) {
+        const { error: delErr } = await supabase
+          .from('wishlists')
+          .delete()
+          .eq('id', existing.id);
+        if (delErr) throw delErr;
+        toast({ title: 'Removed', description: 'Removed from wishlist' });
+      } else {
+        const { error: insErr } = await supabase
+          .from('wishlists')
+          .insert([{ user_id: user.id, product_id: productId }]);
+        if (insErr) throw insErr;
+        toast({ title: 'Saved', description: 'Added to wishlist' });
+      }
+      await fetchWishlist();
+    } catch (e: any) {
+      console.error('Wishlist toggle error:', e);
+      toast({ title: 'Error', description: e?.message || 'Failed to update wishlist', variant: 'destructive' });
     }
-    
-    return matchesSearch && matchesCategory && matchesPrice;
-  });
-
-  const toggleWishlist = (productId: number) => {
-    // Toggle wishlist functionality
-    alert('Wishlist updated!');
   };
 
   const contactSeller = (productId: number) => {
@@ -350,6 +393,9 @@ const OnlineStoreSection = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Product</DialogTitle>
+              <DialogDescription>
+                Upload product images and provide the required fields. Images are stored in Supabase Storage.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -361,18 +407,29 @@ const OnlineStoreSection = () => {
                 <Input type="number" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} placeholder="e.g., 25000" />
               </div>
               <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">Description</label>
+                <Textarea value={newProdDescription} onChange={(e) => setNewProdDescription(e.target.value)} placeholder="Describe your product" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-medium">Category</label>
                 <Input value={newProdCategory} onChange={(e) => setNewProdCategory(e.target.value)} placeholder="e.g., Fashion" />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Stock</label>
+                <Input type="number" value={newProdStock} onChange={(e) => setNewProdStock(e.target.value)} placeholder="e.g., 25" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Contact Phone</label>
+                <Input value={newProdContactPhone} onChange={(e) => setNewProdContactPhone(e.target.value)} placeholder="e.g., +223XXXXXXXX" />
+              </div>
               <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-medium">Image URLs (comma separated)</label>
-                <Input value={newProdImages} onChange={(e) => setNewProdImages(e.target.value)} placeholder="https://... , https://..." />
-                <p className="text-xs text-gray-500">Add one or more image URLs separated by commas. We’ll store them in the images array or image_url.</p>
+                <label className="text-sm font-medium">WhatsApp Contact</label>
+                <Input value={newProdContactWhatsapp} onChange={(e) => setNewProdContactWhatsapp(e.target.value)} placeholder="e.g., +223XXXXXXXX" />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-medium">Upload Images (from your computer)</label>
                 <Input type="file" accept="image/*" multiple onChange={(e) => setNewProdFiles(Array.from(e.target.files || []))} />
-                <p className="text-xs text-gray-500">You can upload multiple images. They will be uploaded to storage and their URLs saved.</p>
+                <p className="text-xs text-gray-500">You can upload multiple images. They will be uploaded to Supabase Storage and their URLs saved.</p>
               </div>
             </div>
             <DialogFooter>
@@ -383,32 +440,65 @@ const OnlineStoreSection = () => {
                   if (!newProdName.trim() || !newProdPrice.trim()) { toast({ title: 'Validation', description: 'Name and price are required', variant: 'destructive' }); return; }
                   setCreatingProduct(true);
                   setUploadingImages(true);
-                  const manualUrls = newProdImages.split(',').map(s => s.trim()).filter(Boolean);
-                  const uploadedUrls = newProdFiles.length ? await uploadFilesToStorage('product-images', newProdFiles) : [];
+                  const uploadedUrls = newProdFiles.length ? await uploadFilesToStorage('product-images', newProdFiles, `shops/${myShop.id}/products`) : [];
                   setUploadingImages(false);
-                  const imagesArr = [...manualUrls, ...uploadedUrls];
-                  const basePayload: any = { shop_id: myShop.id, price: Number(newProdPrice), category: newProdCategory.trim() || null, is_active: true };
+                  const imagesArr = [...uploadedUrls];
+                  // Keep payload minimal to maximize compatibility across schema variations
+                  const basePayload: any = {
+                    shop_id: myShop.id,
+                    price: Number(newProdPrice),
+                    description: newProdDescription.trim() || null,
+                    category: newProdCategory.trim() || null,
+                    stock: newProdStock ? Number(newProdStock) : null,
+                    contact_phone: newProdContactPhone.trim() || null,
+                    contact_whatsapp: newProdContactWhatsapp.trim() || null,
+                  };
                   if (imagesArr.length) basePayload.images = imagesArr;
                   // Track success and last error for retry logic across schema variations
                   let ok = false;
                   let err: any = null;
                   {
+                    const nameVal = newProdName.trim();
                     const { error } = await supabase
                       .from('products')
-                      .insert([{ ...basePayload, name: newProdName.trim() }]);
+                      // Try with both name and title to satisfy NOT NULL(title) schemas
+                      .insert([{ ...basePayload, name: nameVal, title: nameVal }]);
                     if (!error) { ok = true; }
                     else { err = error; }
                   }
-                  // Retry with 'title' if name column missing
-                  if (!ok && (err?.code === '42703' || /column\s+products\.name\s+does\s+not\s+exist/i.test(err?.message || ''))) {
+                  // Retry paths for schema differences
+                  // 1) If 'title' column missing but 'name' exists → insert with only name
+                  if (
+                    !ok && (
+                      (err?.code === '42703' || err?.code === 'PGRST204') &&
+                      /title/i.test(err?.message || '')
+                    )
+                  ) {
                     const { error: e2 } = await supabase
                       .from('products')
-                      .insert([{ ...basePayload, title: newProdName.trim() }]);
+                      .insert([{ ...basePayload, name: newProdName.trim() }]);
                     if (!e2) { ok = true; err = null; }
                     else { err = e2; }
                   }
+                  // 2) If 'name' column missing but 'title' exists → insert with only title
+                  if (
+                    !ok && (
+                      (err?.code === '42703' || err?.code === 'PGRST204') &&
+                      /name/i.test(err?.message || '')
+                    )
+                  ) {
+                    const { error: eNameMissing } = await supabase
+                      .from('products')
+                      .insert([{ ...basePayload, title: newProdName.trim() }]);
+                    if (!eNameMissing) { ok = true; err = null; }
+                    else { err = eNameMissing; }
+                  }
                   // If images array column doesn't exist, try image_url
-                  if (!ok && (err?.code === '42703' && /images/i.test(err?.message || ''))) {
+                  if (
+                    !ok && (
+                      ((err?.code === '42703' || err?.code === 'PGRST204') && /images/i.test(err?.message || ''))
+                    )
+                  ) {
                     delete basePayload.images;
                     if (imagesArr.length) basePayload.image_url = imagesArr[0];
                     const { error: e3 } = await supabase
@@ -418,7 +508,11 @@ const OnlineStoreSection = () => {
                     else { err = e3; }
                   }
                   // If other columns like category or is_active don't exist, retry minimal payload
-                  if (!ok && (err?.code === '42703' && /(category|is_active)/i.test(err?.message || ''))) {
+                  if (
+                    !ok && (
+                      ((err?.code === '42703' || err?.code === 'PGRST204') && /(category|is_active|stock|contact_phone|contact_whatsapp|description)/i.test(err?.message || ''))
+                    )
+                  ) {
                     const minimal: any = { shop_id: myShop.id, price: Number(newProdPrice) };
                     const { error: e4 } = await supabase
                       .from('products')
@@ -426,13 +520,24 @@ const OnlineStoreSection = () => {
                     if (!e4) { ok = true; err = null; }
                     else { err = e4; }
                   }
+                  // 23502: NOT NULL violation on title -> ensure title is provided
+                  if (!ok && err?.code === '23502' && /title/i.test(err?.message || '')) {
+                    const { error: e5 } = await supabase
+                      .from('products')
+                      .insert([{ ...basePayload, title: newProdName.trim() }]);
+                    if (!e5) { ok = true; err = null; }
+                    else { err = e5; }
+                  }
                   if (!ok && err) throw err;
                   toast({ title: 'Created', description: 'Product added successfully' });
                   setAddOpen(false);
                   setNewProdName('');
                   setNewProdPrice('');
                   setNewProdCategory('');
-                  setNewProdImages('');
+                  setNewProdDescription('');
+                  setNewProdStock('');
+                  setNewProdContactPhone('');
+                  setNewProdContactWhatsapp('');
                   setNewProdFiles([]);
                   await fetchMyProducts();
                 } catch (e: any) {
@@ -441,8 +546,99 @@ const OnlineStoreSection = () => {
                 } finally {
                   setCreatingProduct(false);
                 }
-              }} disabled={creatingProduct} className="bg-blue-600 hover:bg-blue-700">
+              }} disabled={creatingProduct || uploadingImages} className="bg-blue-600 hover:bg-blue-700">
                 {creatingProduct || uploadingImages ? 'Creating...' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Confirm Delete Modal */}
+        <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete product</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. This will permanently remove the product from your shop.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+              <Button variant="destructive" onClick={() => deleteProduct(deleteTargetId as string)} disabled={!deleteTargetId || deleting}>
+                {deleting ? 'Deleting…' : 'Delete'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Product Modal */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Product</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Name</label>
+                <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Price (CFA)</label>
+                <Input type="number" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">Description</label>
+                <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">Category</label>
+                <Input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Stock</label>
+                <Input type="number" value={editStock} onChange={(e) => setEditStock(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Contact Phone</label>
+                <Input value={editContactPhone} onChange={(e) => setEditContactPhone(e.target.value)} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">WhatsApp Contact</label>
+                <Input value={editContactWhatsapp} onChange={(e) => setEditContactWhatsapp(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditOpen(false)} disabled={savingProduct}>Cancel</Button>
+              <Button onClick={async () => {
+                try {
+                  if (!editProductId) return;
+                  setSavingProduct(true);
+                  const payload: any = {
+                    price: editPrice ? Number(editPrice) : null,
+                    description: editDescription.trim() || null,
+                    category: editCategory.trim() || null,
+                    stock: editStock ? Number(editStock) : null,
+                    contact_phone: editContactPhone.trim() || null,
+                    contact_whatsapp: editContactWhatsapp.trim() || null,
+                    name: editName.trim() || null,
+                    title: editName.trim() || null,
+                  };
+                  const { error } = await supabase
+                    .from('products')
+                    .update(payload)
+                    .eq('id', editProductId);
+                  if (error) throw error;
+                  toast({ title: 'Saved', description: 'Product updated successfully' });
+                  setEditOpen(false);
+                  await fetchMyProducts();
+                } catch (e: any) {
+                  console.error('Update product error:', e);
+                  toast({ title: 'Error', description: e?.message || 'Failed to update product', variant: 'destructive' });
+                } finally {
+                  setSavingProduct(false);
+                }
+              }} disabled={savingProduct} className="bg-blue-600 hover:bg-blue-700">
+                {savingProduct ? 'Saving...' : 'Save'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -497,6 +693,9 @@ const OnlineStoreSection = () => {
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
+                  {myProductsLoading ? (
+                    <div className="py-10 text-center text-gray-500">Loading products…</div>
+                  ) : (
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
@@ -539,14 +738,25 @@ const OnlineStoreSection = () => {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex gap-1">
-                              <Button size="sm" variant="outline">Edit</Button>
-                              <Button size="sm" variant="outline" onClick={() => toast({ title: 'Coming soon', description: 'Promotion feature arriving soon' })}>Promote</Button>
+                              <Button size="sm" variant="outline" onClick={() => {
+                                setEditProductId(product.id);
+                                setEditName(product.title || '');
+                                setEditPrice(String(product.price || ''));
+                                setEditDescription(product.description || '');
+                                setEditCategory(product.category || '');
+                                setEditStock(String(product.stock || ''));
+                                setEditContactPhone(product.contact_phone || '');
+                                setEditContactWhatsapp(product.contact_whatsapp || '');
+                                setEditOpen(true);
+                              }}>Edit</Button>
+                              <Button size="sm" variant="destructive" onClick={() => { setDeleteTargetId(product.id); setConfirmDeleteOpen(true); }}>Delete</Button>
                             </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -583,6 +793,15 @@ const OnlineStoreSection = () => {
                     <label className="text-sm font-medium">Shop Image (upload) or URL</label>
                     <Input type="file" accept="image/*" onChange={(e) => setShopImageFile((e.target.files && e.target.files[0]) || null)} />
                     <Input className="mt-2" value={shopImageUrl} onChange={(e) => setShopImageUrl(e.target.value)} placeholder="https://... (optional)" />
+                    <div className="mt-2">
+                      {(shopImageFile || shopImageUrl) && (
+                        <img
+                          src={shopImageFile ? URL.createObjectURL(shopImageFile) : shopImageUrl}
+                          alt="Shop preview"
+                          className="w-full max-w-sm rounded border"
+                        />
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500">We will prefer uploaded image; otherwise, we’ll use the URL if provided.</p>
                   </div>
                 </div>

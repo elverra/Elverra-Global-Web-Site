@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, MapPin, Phone, Mail, Eye, Plus, Star, MessageSquare } from 'lucide-react';
+import { Search, MapPin, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import MembershipGuard from '@/components/membership/MembershipGuard';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,24 +25,14 @@ interface Product {
   category: string;
   condition: string;
   location?: string;
-  contact_phone?: string;
-  contact_email?: string;
   images: string[];
   views: number;
   created_at: string;
   user_id: string;
-  reviews?: Review[];
-  average_rating?: number;
-}
-
-interface Review {
-  id: string;
-  product_id: string;
-  user_id: string;
-  user_name: string;
-  rating: number;
-  comment: string;
-  created_at: string;
+  shop_name?: string;
+  shop_slug?: string;
+  shop_location?: string;
+  country?: string;
 }
 
 interface Category {
@@ -60,8 +50,10 @@ const OnlineStore = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [priceRange, setPriceRange] = useState<string>('all');
-  const [showReviewModal, setShowReviewModal] = useState<string | null>(null);
-  const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
+  const [selectedCountry, setSelectedCountry] = useState<string>('all');
+  const [selectedShop, setSelectedShop] = useState<string>('all');
+  const [countries, setCountries] = useState<string[]>([]);
+  const [shops, setShops] = useState<{ slug: string; name: string }[]>([]);
 
   useEffect(() => {
     fetchProducts();
@@ -71,31 +63,67 @@ const OnlineStore = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      // Try selecting related shop info if foreign key is defined
+      let rows: any[] = [];
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, price, category, images, location, created_at')
+        .select('id, name, title, description, price, category, images, image_url, created_at, shop_id, is_active, shops(name, slug, location)')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      const transformedData: Product[] = (data || []).map((row: any) => ({
-        id: row.id,
-        title: row.name,
-        description: row.description || '',
-        price: Number(row.price) || 0,
-        currency: 'CFA',
-        category: row.category || 'Uncategorized',
-        condition: 'New',
-        location: row.location || '',
-        contact_phone: undefined,
-        contact_email: undefined,
-        images: Array.isArray(row.images) ? row.images : [],
-        views: 0,
-        created_at: row.created_at,
-        user_id: '',
-        reviews: [],
-        average_rating: undefined,
-      }));
+      if (!error && data) {
+        rows = data as any[];
+      } else {
+        // Fallback without relation
+        const { data: p2, error: e2 } = await supabase
+          .from('products')
+          .select('id, name, title, description, price, category, images, image_url, created_at, shop_id, is_active')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        if (e2) throw e2;
+        // Fetch shops separately for mapping
+        const shopIds = Array.from(new Set((p2 || []).map((r: any) => r.shop_id).filter(Boolean)));
+        let shopsMap: Record<string, { name?: string; slug?: string; location?: string }> = {};
+        if (shopIds.length) {
+          const { data: shopsData } = await supabase
+            .from('shops')
+            .select('id, name, slug, location')
+            .in('id', shopIds);
+          (shopsData || []).forEach((s: any) => { shopsMap[s.id] = { name: s.name, slug: s.slug, location: s.location }; });
+        }
+        rows = (p2 || []).map((r: any) => ({ ...r, shops: shopsMap[r.shop_id] || null }));
+      }
+      const transformedData: Product[] = (rows || []).map((row: any) => {
+        const shopName = row.shops?.name || undefined;
+        const shopSlug = row.shops?.slug || undefined;
+        const shopLoc = row.shops?.location || undefined;
+        const country = shopLoc ? (shopLoc.split(',').map((s: string) => s.trim()).pop() || shopLoc) : undefined;
+        return {
+          id: row.id,
+          title: row.name || row.title,
+          description: row.description || '',
+          price: Number(row.price) || 0,
+          currency: 'CFA',
+          category: row.category || 'Uncategorized',
+          condition: 'New',
+          location: row.location || shopLoc || '',
+          images: Array.isArray(row.images) ? row.images : (row.image_url ? [row.image_url] : []),
+          views: 0,
+          created_at: row.created_at,
+          user_id: '',
+          shop_name: shopName,
+          shop_slug: shopSlug,
+          shop_location: shopLoc,
+          country,
+        };
+      });
       setProducts(transformedData);
+      // Build filter sources
+      const cats = Array.from(new Set(transformedData.map(p => p.category).filter(Boolean)));
+      setCategories(cats.map(c => ({ id: c, name: c })));
+      const uniqueCountries = Array.from(new Set(transformedData.map(p => p.country).filter(Boolean))) as string[];
+      setCountries(uniqueCountries);
+      const uniqueShops = Array.from(new Set(transformedData.map(p => (p.shop_slug && p.shop_name) ? `${p.shop_slug}:::${p.shop_name}` : null).filter(Boolean))) as string[];
+      setShops(uniqueShops.map(s => { const [slug, name] = s.split(':::'); return { slug, name }; }));
     } catch (error) {
       console.error('Error fetching products:', error);
       toast.error('Failed to load products');
@@ -105,17 +133,7 @@ const OnlineStore = () => {
   };
 
   const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('category')
-        .neq('category', null);
-      if (error) throw error;
-      const unique = Array.from(new Set((data || []).map((r: any) => r.category))).filter(Boolean) as string[];
-      setCategories(unique.map(c => ({ id: c, name: c })));
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
+    // Categories are built from loaded products now for simplicity
   };
 
   const handleViewProduct = async (productId: string) => {
@@ -138,78 +156,21 @@ const OnlineStore = () => {
                         (priceRange === 'under-10000' && product.price < 10000) ||
                         (priceRange === '10000-50000' && product.price >= 10000 && product.price <= 50000) ||
                         (priceRange === 'over-50000' && product.price > 50000);
+    const matchesCountry = selectedCountry === 'all' || product.country === selectedCountry;
+    const matchesShop = selectedShop === 'all' || product.shop_slug === selectedShop;
     
-    return matchesSearch && matchesCategory && matchesPrice;
+    return matchesSearch && matchesCategory && matchesPrice && matchesCountry && matchesShop;
   });
 
   const formatPrice = (price: number, currency: string = 'CFA') => {
     return new Intl.NumberFormat('fr-FR').format(price) + ' ' + currency;
   };
 
-  const handlePostProduct = () => {
-    if (user) {
-      navigate('/my-account?tab=products');
-    } else {
-      toast.info('Please login to post products');
-      navigate('/login');
-    }
-  };
+  // Removed post product action for public listing page
 
-  const handleReviewSubmit = async (productId: string) => {
-    if (!user) {
-      toast.info('Please login to leave a review');
-      navigate('/login');
-      return;
-    }
+  // Reviews modal removed for this page per requirement
 
-    if (reviewData.rating === 0) {
-      toast.error('Please select a rating');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/products/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product_id: productId,
-          rating: reviewData.rating,
-          comment: reviewData.comment
-        })
-      });
-
-      if (response.ok) {
-        toast.success('Review submitted successfully!');
-        setShowReviewModal(null);
-        setReviewData({ rating: 0, comment: '' });
-        fetchProducts(); // Refresh products to show new review
-      } else {
-        throw new Error('Failed to submit review');
-      }
-    } catch (error) {
-      toast.error('Failed to submit review');
-    }
-  };
-
-  const renderStars = (rating: number, interactive: boolean = false, onRate?: (rating: number) => void) => {
-    return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`w-4 h-4 ${
-              star <= rating 
-                ? 'fill-yellow-400 text-yellow-400' 
-                : 'text-gray-300'
-            } ${
-              interactive ? 'cursor-pointer hover:text-yellow-400' : ''
-            }`}
-            onClick={interactive && onRate ? () => onRate(star) : undefined}
-          />
-        ))}
-      </div>
-    );
-  };
+  // Rating UI removed
 
   if (loading) {
     return (
@@ -232,16 +193,12 @@ const OnlineStore = () => {
         <div className="py-16 bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="container mx-auto px-4">
           <div className="max-w-7xl mx-auto">
-            {/* Header with Post Product Button */}
+            {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
               <div>
                 <h1 className="text-3xl font-bold mb-2">Browse Products</h1>
                 <p className="text-gray-600">Discover items posted by Elverra Global members</p>
               </div>
-              <Button onClick={handlePostProduct} className="mt-4 sm:mt-0">
-                <Plus className="w-4 h-4 mr-2" />
-                Post Product
-              </Button>
             </div>
 
             {/* Search and Filters */}
@@ -253,7 +210,7 @@ const OnlineStore = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div className="md:col-span-2">
                     <Input
                       placeholder="Search products..."
@@ -286,6 +243,28 @@ const OnlineStore = () => {
                       <SelectItem value="over-50000">Over 50,000 CFA</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Countries</SelectItem>
+                      {countries.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedShop} onValueChange={setSelectedShop}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Shop" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Shops</SelectItem>
+                      {shops.map((s) => (
+                        <SelectItem key={s.slug} value={s.slug}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
@@ -299,15 +278,9 @@ const OnlineStore = () => {
                   </div>
                   <h3 className="text-xl font-semibold mb-2">No products found</h3>
                   <p className="text-gray-600 mb-4">
-                    {searchQuery || selectedCategory !== 'all' || priceRange !== 'all' 
-                      ? 'Try adjusting your search criteria' 
-                      : 'Be the first to post a product!'
-                    }
+                    {searchQuery || selectedCategory !== 'all' || priceRange !== 'all' || selectedCountry !== 'all' || selectedShop !== 'all'
+                      ? 'Try adjusting your search criteria' : 'No products available yet.'}
                   </p>
-                  <Button onClick={handlePostProduct}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Post First Product
-                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -329,7 +302,16 @@ const OnlineStore = () => {
                       <CardTitle className="text-lg line-clamp-2">{product.title}</CardTitle>
                       <div className="flex items-center justify-between">
                         <Badge variant="secondary">{product.category}</Badge>
-                        <Badge variant="outline">{product.condition}</Badge>
+                        {product.shop_slug && product.shop_name ? (
+                          <button
+                            onClick={() => navigate(`/shop/${product.shop_slug}`)}
+                            className="text-blue-600 text-sm hover:underline"
+                          >
+                            {product.shop_name}
+                          </button>
+                        ) : (
+                          <Badge variant="outline">{product.condition}</Badge>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -353,56 +335,8 @@ const OnlineStore = () => {
                           <Eye className="w-4 h-4 mr-1" />
                           {product.views} views
                         </div>
-                        
-                        {product.average_rating && (
-                          <div className="flex items-center gap-2">
-                            {renderStars(product.average_rating)}
-                            <span className="text-sm text-gray-500">({product.reviews?.length || 0} reviews)</span>
-                          </div>
-                        )}
                       </div>
-
-                      <div className="space-y-2">
-                        {product.contact_phone && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              handleViewProduct(product.id);
-                              window.open(`tel:${product.contact_phone}`, '_self');
-                            }}
-                          >
-                            <Phone className="w-4 h-4 mr-2" />
-                            Call Seller
-                          </Button>
-                        )}
-                        
-                        {product.contact_email && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              handleViewProduct(product.id);
-                              window.open(`mailto:${product.contact_email}`, '_self');
-                            }}
-                          >
-                            <Mail className="w-4 h-4 mr-2" />
-                            Email Seller
-                          </Button>
-                        )}
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => setShowReviewModal(product.id)}
-                        >
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          Leave Review
-                        </Button>
-                      </div>
+                      {/* Pure display page: no actions here */}
                     </CardContent>
                   </Card>
                 ))}
@@ -411,49 +345,7 @@ const OnlineStore = () => {
           </div>
           </div>
         </div>
-        
-        {/* Review Modal */}
-        {showReviewModal && (
-          <Dialog open={!!showReviewModal} onOpenChange={(open) => !open && setShowReviewModal(null)}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Leave a Review</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Rating</label>
-                  {renderStars(reviewData.rating, true, (rating) => 
-                    setReviewData(prev => ({ ...prev, rating }))
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Comment (optional)</label>
-                  <Textarea
-                    placeholder="Share your experience with this product..."
-                    value={reviewData.comment}
-                    onChange={(e) => setReviewData(prev => ({ ...prev, comment: e.target.value }))}
-                    rows={3}
-                  />
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowReviewModal(null)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => handleReviewSubmit(showReviewModal)}
-                    className="flex-1"
-                  >
-                    Submit Review
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        {/* Review modal removed */}
       </Layout>
   );
 };

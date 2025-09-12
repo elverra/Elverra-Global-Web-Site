@@ -88,6 +88,7 @@ import CreditSystem from './pages/services/CreditSystem';
 import CreditAccount from './pages/services/CreditAccount';
 import Services from './pages/services';
 import Discounts from './pages/Discounts';
+import DiscountDetail from './pages/DiscountDetail';
 import TestPage from './pages/TestPage';
 import ShopDetail from './pages/ShopDetail';
 
@@ -240,6 +241,10 @@ const routes = [
   {
     path: '/discounts',
     element: <Discounts />,
+  },
+  {
+    path: '/discounts/:id',
+    element: <DiscountDetail />,
   },
   {
     path: '/competitions',

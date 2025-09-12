@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, X } from "lucide-react";
+import { X } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
@@ -64,12 +65,12 @@ export function ObjectUploader({
 
     setIsUploading(true);
     try {
-      // Get upload parameters from backend
-      const { url } = null;
+      // Get upload parameters from caller (e.g., backend endpoint)
+      const { url, method } = await onGetUploadParameters();
 
       // Upload file directly to storage
       const uploadResponse = await fetch(url, {
-        method: "PUT",
+        method,
         body: selectedFile,
         headers: {
           'Content-Type': selectedFile.type,
