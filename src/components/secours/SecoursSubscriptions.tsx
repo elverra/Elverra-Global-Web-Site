@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useState(null);
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +9,7 @@ import { Bike, Car, Phone, GraduationCap, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const SecoursSubscriptions = () => {
-  const queryClient = useState(null);
+  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const subscriptionTypes = [
@@ -73,9 +74,7 @@ const SecoursSubscriptions = () => {
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ['secours-subscriptions'],
     queryFn: async () => {
-      const response = null;
-      if (!response.ok) throw new Error('Failed to fetch subscriptions');
-      return response.json();
+      return [] as any[];
     },
     enabled: !!user
   });
@@ -84,9 +83,7 @@ const SecoursSubscriptions = () => {
   const { data: membership } = useQuery({
     queryKey: ['user-membership'],
     queryFn: async () => {
-      const response = null;
-      if (!response.ok) throw new Error('Failed to fetch membership');
-      return response.json();
+      return { tier: 'essential' } as any;
     },
     enabled: !!user
   });

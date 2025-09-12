@@ -1,5 +1,4 @@
-
-import { useState(null);
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -10,9 +9,7 @@ const SecoursStats = () => {
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ['secours-stats'],
     queryFn: async () => {
-      const response = null;
-      if (!response.ok) throw new Error('Failed to fetch user subscriptions');
-      return response.json();
+      return [] as any[];
     }
   });
 
@@ -20,9 +17,7 @@ const SecoursStats = () => {
   const { data: transactions } = useQuery({
     queryKey: ['token-transactions-stats'],
     queryFn: async () => {
-      const response = null;
-      if (!response.ok) throw new Error('Failed to fetch token transactions');
-      return response.json();
+      return [] as any[];
     }
   });
 
@@ -30,9 +25,7 @@ const SecoursStats = () => {
   const { data: rescueStats } = useQuery({
     queryKey: ['rescue-stats'],
     queryFn: async () => {
-      const response = null;
-      if (!response.ok) throw new Error('Failed to fetch rescue requests');
-      return response.json();
+      return [] as any[];
     }
   });
 

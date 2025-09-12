@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useState(null);
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,9 +25,7 @@ const NotificationCenter = () => {
   const { data: subscriptions } = useQuery({
     queryKey: ['secours-subscriptions'],
     queryFn: async () => {
-      const response = null;
-      if (!response.ok) throw new Error('Failed to fetch user subscriptions');
-      return response.json();
+      return [] as any[];
     },
     enabled: !!user
   });
@@ -35,9 +34,7 @@ const NotificationCenter = () => {
   const { data: recentTransactions } = useQuery({
     queryKey: ['recent-token-transactions'],
     queryFn: async () => {
-      const response = null;
-      if (!response.ok) throw new Error('Failed to fetch recent transactions');
-      return response.json();
+      return [] as any[];
     },
     enabled: !!user
   });
@@ -46,9 +43,7 @@ const NotificationCenter = () => {
   const { data: recentRescueRequests } = useQuery({
     queryKey: ['recent-rescue-requests'],
     queryFn: async () => {
-      const response = null;
-      if (!response.ok) throw new Error('Failed to fetch recent rescue requests');
-      return response.json();
+      return [] as any[];
     },
     enabled: !!user
   });
@@ -59,7 +54,7 @@ const NotificationCenter = () => {
 
     // Check for low balance notifications
     if (subscriptions) {
-      subscriptions.forEach(sub => {
+      (subscriptions as any[]).forEach((sub: any) => {
         if (sub.token_balance < 30) {
           generatedNotifications.push({
             id: `low-balance-${sub.id}`,
@@ -76,7 +71,7 @@ const NotificationCenter = () => {
 
     // Add transaction notifications
     if (recentTransactions) {
-      recentTransactions.forEach(transaction => {
+      (recentTransactions as any[]).forEach((transaction: any) => {
         if (transaction.secours_subscriptions?.user_id === user?.id) {
           generatedNotifications.push({
             id: `transaction-${transaction.id}`,
@@ -93,7 +88,7 @@ const NotificationCenter = () => {
 
     // Add rescue request notifications
     if (recentRescueRequests) {
-      recentRescueRequests.forEach(request => {
+      (recentRescueRequests as any[]).forEach((request: any) => {
         if (request.secours_subscriptions?.user_id === user?.id) {
           const statusMap = {
             pending: { title: 'Rescue Request Submitted', priority: 'medium' as const },
