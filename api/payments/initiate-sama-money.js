@@ -22,16 +22,19 @@ export default async function handler(req, res) {
       });
     }
 
-    // Step 1: Auth
+    // Step 1: Get authentication token
+    const authParams = new URLSearchParams({
+      cmd: SAMA_CMD,
+      cle_publique: SAMA_CLE_PUBLIQUE
+    });
+
     const authResponse = await fetch(`${SAMA_BASE_URL}/marchand/auth`, {
       method: 'POST',
       headers: {
         'TRANSAC': SAMA_TRANSAC,
-        'cmd': SAMA_CMD,
-        'cle_publique': SAMA_CLE_PUBLIQUE,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: JSON.stringify({})
+      body: authParams.toString()
     });
 
     const authData = await authResponse.json();
@@ -51,7 +54,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Step 2: Pay
+    // Step 2: Initiate payment with Bearer token
     const payParams = new URLSearchParams({
       cmd: SAMA_CMD,
       idCommande: reference,
@@ -73,9 +76,26 @@ export default async function handler(req, res) {
 
     const payData = await payResponse.json();
     if (payData?.status !== 1) {
-      return res.status(502).json({
+      // Map SAMA Money error messages to user-friendly messages
+      const errorMsg = payData?.msg || '';
+      let userMessage = 'Échec du paiement SAMA Money';
+      
+      if (errorMsg.includes('Solde insuffisant')) {
+        userMessage = 'Solde insuffisant sur votre compte SAMA Money. Veuillez recharger votre compte et réessayer.';
+      } else if (errorMsg.includes('n\'existe pas')) {
+        userMessage = 'Ce numéro de téléphone n\'est pas enregistré sur SAMA Money.';
+      } else if (errorMsg.includes('Token')) {
+        userMessage = 'Session expirée, veuillez réessayer.';
+      } else if (errorMsg.includes('format')) {
+        userMessage = 'Format de données incorrect. Veuillez vérifier vos informations.';
+      } else if (errorMsg.includes('autorisé')) {
+        userMessage = 'Transaction non autorisée.';
+      }
+
+      return res.status(400).json({
         success: false,
-        message: 'SAMA pay failed',
+        message: userMessage,
+        errorCode: payData?.status,
         details: payData
       });
     }

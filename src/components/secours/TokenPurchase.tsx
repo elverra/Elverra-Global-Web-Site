@@ -59,41 +59,48 @@ const TokenPurchase = () => {
       const tokenValue = 250;
       const totalValue = purchaseData.tokenAmount * tokenValue;
 
-      // For Orange Money payment, initiate the payment process
+      // For mobile money payment, initiate the payment process
       if (purchaseData.paymentMethod === 'mobile_money') {
         if (!purchaseData.phoneNumber) {
-          throw new Error('Phone number is required for mobile money payment');
+          throw new Error('Numéro de téléphone requis pour le paiement mobile');
         }
 
         // Generate unique reference for payment
-        const reference = `TOKENS_${subscription.subscription_type}_${user?.id || 'temp'}_${Date.now()}`;
+        const reference = `TOKENS_${subscription.subscription_type.toUpperCase()}_${Date.now()}`;
         
-        // Use backend API for Orange Money payment
+        // Use backend API for mobile money payment
         const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin;
-        const paymentResponse = await fetch(`${backendUrl}/api/payments/initiate-orange-money`, {
+        console.log('[DEBUG] Backend URL =', backendUrl);
+        
+        const paymentResponse = await fetch(`${backendUrl}/api/payments/initiate-sama-money`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             reference,
             amount: purchaseData.tokenAmount * tokenValue,
+            phone: purchaseData.phoneNumber,
             userId: user?.id,
             metadata: {
               serviceType: subscription.subscription_type,
               tokens: purchaseData.tokenAmount
-            }
+            },
+            description: `Ô Secours token purchase - ${subscription.subscription_type}`,
+            url: window.location.origin
           })
         });
 
         if (!paymentResponse.ok) {
           const errorData = await paymentResponse.json();
-          throw new Error(errorData.error || 'Failed to initiate payment');
+          console.log('[DEBUG] SAMA Money error response:', errorData);
+          // Display user-friendly error message from backend
+          throw new Error(errorData.message || 'Échec du paiement SAMA Money');
         }
 
         const paymentData = await paymentResponse.json();
         
-        // Redirect to Orange Money payment page
-        if (paymentData.paymentUrl) {
-          window.location.href = paymentData.paymentUrl;
+        // For SAMA Money, show success message as payment is initiated via USSD/App
+        if (paymentData.success) {
+          toast.success('Demande de paiement envoyée! Vérifiez votre téléphone pour confirmer le paiement SAMA Money.');
           return paymentData;
         }
       }
@@ -123,6 +130,7 @@ const TokenPurchase = () => {
       setPaymentMethod('');
     },
     onError: (error: any) => {
+      console.log('[DEBUG] Purchase error:', error);
       toast.error(error.message || 'Failed to purchase tokens');
     }
   });
@@ -142,12 +150,18 @@ const TokenPurchase = () => {
     // For mobile money, we need phone number
     let phoneNumber: string = '';
     if (paymentMethod === 'mobile_money') {
-      const input = window.prompt('Veuillez entrer votre numéro de téléphone Orange Money:');
+      const input = window.prompt('Veuillez entrer votre numéro de téléphone SAMA Money (ex: 22370445566):');
       if (typeof input !== 'string' || input.trim() === '') {
-        toast.error('Numéro de téléphone requis pour Orange Money');
+        toast.error('Numéro de téléphone requis pour SAMA Money');
         return;
       }
       phoneNumber = input.trim();
+      
+      // Validate phone number format
+      if (!/^223\d{8}$/.test(phoneNumber)) {
+        toast.error('Format de numéro incorrect. Utilisez le format: 22370445566');
+        return;
+      }
     }
 
     purchaseTokensMutation.mutate({

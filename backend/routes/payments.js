@@ -213,18 +213,26 @@ router.post('/initiate-sama-money', async (req, res) => {
       });
     }
 
-    // Step 1: Auth
-    console.log('SAMA Auth request:', { SAMA_BASE_URL, SAMA_TRANSAC: SAMA_TRANSAC ? '***' : 'missing', SAMA_CMD, SAMA_CLE_PUBLIQUE: SAMA_CLE_PUBLIQUE ? '***' : 'missing' });
-    
-    const authResponse = await axios.post(`${SAMA_BASE_URL}/marchand/auth`, {}, {
+    // Step 1: Get authentication token
+    const authParams = new URLSearchParams({
+      cmd: SAMA_CMD,
+      cle_publique: SAMA_CLE_PUBLIQUE
+    });
+
+    console.log('SAMA Auth NEW request:', {
+      url: `${SAMA_BASE_URL}/marchand/auth`,
+      headers: { 'TRANSAC': SAMA_TRANSAC ? '***' : 'missing' },
+      body: authParams.toString()
+    });
+
+    const authResponse = await axios.post(`${SAMA_BASE_URL}/marchand/auth`, authParams, {
       headers: {
         'TRANSAC': SAMA_TRANSAC,
-        'cmd': SAMA_CMD,
-        'cle_publique': SAMA_CLE_PUBLIQUE
+        'Content-Type': 'application/x-www-form-urlencoded'
       }
     });
     
-    console.log('SAMA Auth response:', authResponse.data);
+    console.log('SAMA Auth NEW response:', authResponse.data);
 
     if (authResponse.data?.status !== 1) {
       return res.status(502).json({
@@ -242,7 +250,7 @@ router.post('/initiate-sama-money', async (req, res) => {
       });
     }
 
-    // Step 2: Pay
+    // Step 2: Initiate payment with Bearer token
     const payParams = new URLSearchParams({
       cmd: SAMA_CMD,
       idCommande: reference,
@@ -252,6 +260,12 @@ router.post('/initiate-sama-money', async (req, res) => {
       url: url || process.env.FRONTEND_URL || 'https://elverraglobal.com'
     });
 
+    console.log('SAMA Pay request:', {
+      url: `${SAMA_BASE_URL}/marchand/pay`,
+      headers: { 'Authorization': `Bearer ${samaToken.substring(0, 10)}...`, 'TRANSAC': '***' },
+      body: payParams.toString()
+    });
+
     const payResponse = await axios.post(`${SAMA_BASE_URL}/marchand/pay`, payParams, {
       headers: {
         'Authorization': `Bearer ${samaToken}`,
@@ -259,11 +273,45 @@ router.post('/initiate-sama-money', async (req, res) => {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
     });
+    
+    console.log('SAMA Pay response:', payResponse.data);
 
     if (payResponse.data?.status !== 1) {
-      return res.status(502).json({
+      // Map SAMA Money error codes to user-friendly messages
+      const errorMessages = {
+        1001: 'Vous n\'êtes pas autorisé à effectuer cette transaction',
+        1002: 'Code marchand incorrect',
+        1003: 'Codes fournis incorrects',
+        1004: 'Format du token incorrect',
+        1005: 'Format du montant incorrect',
+        1006: 'Numéro de téléphone incorrect ou inexistant sur SAMA Money',
+        1007: 'Description incorrecte',
+        1008: 'URL de callback incorrecte',
+        1009: 'Token expiré, veuillez réessayer',
+        1010: 'Ce numéro n\'est pas un client SAMA Money',
+        1011: 'Ce numéro de commande existe déjà',
+        1012: 'Utilisateur pas dans le bon groupe',
+        1013: 'Solde insuffisant sur votre compte SAMA Money',
+        1014: 'Problème de lancement USSD',
+        1015: 'Demande non envoyée, merci de recommencer'
+      };
+
+      // Check if the error message contains specific error indicators
+      const errorMsg = payResponse.data?.msg || '';
+      let userMessage = 'Échec du paiement SAMA Money';
+      
+      if (errorMsg.includes('Solde insuffisant')) {
+        userMessage = 'Solde insuffisant sur votre compte SAMA Money. Veuillez recharger votre compte et réessayer.';
+      } else if (errorMsg.includes('n\'existe pas')) {
+        userMessage = 'Ce numéro de téléphone n\'est pas enregistré sur SAMA Money.';
+      } else if (errorMsg.includes('Token')) {
+        userMessage = 'Session expirée, veuillez réessayer.';
+      }
+
+      return res.status(400).json({
         success: false,
-        message: 'SAMA pay failed',
+        message: userMessage,
+        errorCode: payResponse.data?.status,
         details: payResponse.data
       });
     }

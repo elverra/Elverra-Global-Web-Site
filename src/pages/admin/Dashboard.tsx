@@ -200,11 +200,11 @@ const AdminDashboard = () => {
      color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
     {
-      title: "E-Book library",
-      description: "Review and approve merchant applications",
+      title: "E-Book Library",
+      description: "Manage digital books and publications",
       icon: Book,
-      route: "/admin/merchant-approvals",
-      color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
+      route: "/admin/ebook-management",
+      color: "bg-green-50 hover:bg-green-100 border-green-200"
     },
     {
       title: "Actualité",

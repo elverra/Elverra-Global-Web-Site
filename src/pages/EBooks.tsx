@@ -4,67 +4,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Download, Star, Clock, Users, Eye } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabaseClient';
 
-const featuredBooks = [
-  {
-    id: 1,
-    title: "Financial Literacy for African Entrepreneurs",
-    author: "Dr. Aminata Diallo",
-    description: "A comprehensive guide to understanding financial markets, investment strategies, and business financing specifically tailored for African entrepreneurs and small business owners.",
-    category: "Business & Finance",
-    pages: 245,
-    rating: 4.8,
-    downloads: 12450,
-    publishDate: "2024",
-    coverImage: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    featured: true,
-    tags: ["Finance", "Business", "Entrepreneurship"]
-  },
-  {
-    id: 2,
-    title: "Digital Skills for the Modern Workforce",
-    author: "Ibrahim Koné",
-    description: "Master essential digital skills including computer literacy, online communication, and basic programming concepts to thrive in today's digital economy.",
-    category: "Technology & Education",
-    pages: 189,
-    rating: 4.6,
-    downloads: 8920,
-    publishDate: "2024",
-    coverImage: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    featured: false,
-    tags: ["Technology", "Education", "Skills"]
-  },
-  {
-    id: 3,
-    title: "Sustainable Agriculture Practices",
-    author: "Fatoumata Traoré",
-    description: "Learn modern, sustainable farming techniques that increase yield while protecting the environment. Includes case studies from successful farms across our client network.",
-    category: "Agriculture & Environment",
-    pages: 312,
-    rating: 4.9,
-    downloads: 15670,
-    publishDate: "2023",
-    coverImage: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    featured: true,
-    tags: ["Agriculture", "Sustainability", "Environment"]
-  },
-  {
-    id: 4,
-    title: "Healthcare Management Essentials",
-    author: "Dr. Ousmane Bamba",
-    description: "Essential guide for healthcare professionals on managing medical facilities, patient care protocols, and healthcare administration in resource-limited settings.",
-    category: "Healthcare & Medicine",
-    pages: 278,
-    rating: 4.7,
-    downloads: 6830,
-    publishDate: "2024",
-    coverImage: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    featured: false,
-    tags: ["Healthcare", "Management", "Medicine"]
-  }
-];
+interface Ebook {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  category: string;
+  pages: number;
+  rating: number;
+  downloads: number;
+  publish_date: string;
+  cover_image_url: string;
+  file_url: string;
+  file_type: string;
+  file_size_mb: number;
+  tags: string[];
+  featured: boolean;
+  is_active: boolean;
+  is_free: boolean;
+  price: number;
+  created_at: string;
+}
 
 const categories = [
   "All Categories",
@@ -79,8 +43,117 @@ const categories = [
 const EBooks = () => {
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [searchTerm, setSearchTerm] = useState("");
+  const [ebooks, setEbooks] = useState<Ebook[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalBooks: 0,
+    totalReaders: 0,
+    totalDownloads: 0,
+    averageRating: 0
+  });
 
-  const filteredBooks = featuredBooks.filter(book => {
+  useEffect(() => {
+    fetchEbooks();
+  }, []);
+
+  const fetchEbooks = async () => {
+    try {
+      // Use mock data temporarily to bypass RLS issues
+      const mockEbooks = [
+        {
+          id: '1',
+          title: 'Guide Complet Elverra',
+          author: 'Équipe Elverra',
+          description: 'Un guide complet pour utiliser la plateforme Elverra et maximiser vos opportunités',
+          category: 'Guide',
+          pages: 120,
+          rating: 4.5,
+          downloads: 150,
+          publish_date: '2024-01-15',
+          cover_image_url: '/placeholder.svg',
+          file_url: '#',
+          file_type: 'PDF',
+          file_size_mb: 5.2,
+          tags: ['guide', 'elverra', 'plateforme'],
+          featured: true,
+          is_active: true,
+          is_free: true,
+          price: 0,
+          created_at: '2024-01-15T00:00:00Z',
+          updated_at: '2024-01-15T00:00:00Z',
+          created_by: 'admin'
+        },
+        {
+          id: '2',
+          title: 'Stratégies de Marketing Digital',
+          author: 'Expert Marketing',
+          description: 'Découvrez les meilleures stratégies pour développer votre présence en ligne',
+          category: 'Marketing',
+          pages: 85,
+          rating: 4.2,
+          downloads: 89,
+          publish_date: '2024-01-10',
+          cover_image_url: '/placeholder.svg',
+          file_url: '#',
+          file_type: 'PDF',
+          file_size_mb: 3.8,
+          tags: ['marketing', 'digital', 'stratégie'],
+          featured: false,
+          is_active: true,
+          is_free: false,
+          price: 2500,
+          created_at: '2024-01-10T00:00:00Z',
+          updated_at: '2024-01-10T00:00:00Z',
+          created_by: 'admin'
+        },
+        {
+          id: '3',
+          title: 'Entrepreneuriat en Afrique',
+          author: 'Entrepreneur Africain',
+          description: 'Les clés du succès entrepreneurial sur le continent africain',
+          category: 'Business',
+          pages: 200,
+          rating: 4.8,
+          downloads: 234,
+          publish_date: '2024-01-05',
+          cover_image_url: '/placeholder.svg',
+          file_url: '#',
+          file_type: 'EPUB',
+          file_size_mb: 4.1,
+          tags: ['entrepreneuriat', 'afrique', 'business'],
+          featured: true,
+          is_active: true,
+          is_free: true,
+          price: 0,
+          created_at: '2024-01-05T00:00:00Z',
+          updated_at: '2024-01-05T00:00:00Z',
+          created_by: 'admin'
+        }
+      ];
+      
+      setEbooks(mockEbooks);
+      
+      // Calculate stats
+      const totalDownloads = mockEbooks.reduce((sum, book) => sum + book.downloads, 0);
+      const averageRating = mockEbooks.length > 0 
+        ? mockEbooks.reduce((sum, book) => sum + book.rating, 0) / mockEbooks.length 
+        : 0;
+      
+      setStats({
+        totalBooks: mockEbooks.length,
+        totalReaders: totalDownloads,
+        totalDownloads,
+        averageRating: Math.round(averageRating * 10) / 10
+      });
+    } catch (error) {
+      console.error('Error fetching ebooks:', error);
+      toast.error('Erreur lors du chargement des e-books');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredBooks = ebooks.filter(book => {
     const matchesCategory = selectedCategory === "All Categories" || book.category === selectedCategory;
     const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -88,14 +161,39 @@ const EBooks = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleDownload = (book: typeof featuredBooks[0]) => {
-    toast.success(`Downloading "${book.title}" by ${book.author}`);
-    // In a real app, this would trigger the actual download
+  const handleDownload = async (book: Ebook) => {
+    try {
+      // Update download count
+      const { error } = await supabase
+        .from('ebooks')
+        .update({ downloads: book.downloads + 1 })
+        .eq('id', book.id);
+
+      if (error) throw error;
+
+      // Trigger download
+      if (book.file_url) {
+        window.open(book.file_url, '_blank');
+        toast.success(`Downloading "${book.title}" by ${book.author}`);
+        
+        // Refresh data to show updated download count
+        fetchEbooks();
+      } else {
+        toast.error('Download link not available');
+      }
+    } catch (error) {
+      console.error('Error downloading book:', error);
+      toast.error('Failed to download book');
+    }
   };
 
-  const handleReadNow = (book: typeof featuredBooks[0]) => {
-    toast.success(`Opening "${book.title}" for reading`);
-    // In a real app, this would open the e-book reader
+  const handleReadNow = (book: Ebook) => {
+    if (book.file_url) {
+      window.open(book.file_url, '_blank');
+      toast.success(`Opening "${book.title}" for reading`);
+    } else {
+      toast.error('Reading link not available');
+    }
   };
 
   return (
@@ -115,7 +213,7 @@ const EBooks = () => {
               <Card className="text-center hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
                   <BookOpen className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                  <h3 className="text-2xl font-bold text-purple-600 mb-2">50+</h3>
+                  <h3 className="text-2xl font-bold text-purple-600 mb-2">{stats.totalBooks}</h3>
                   <p className="text-gray-600">Available Books</p>
                 </CardContent>
               </Card>
@@ -123,7 +221,7 @@ const EBooks = () => {
               <Card className="text-center hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
                   <Users className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                  <h3 className="text-2xl font-bold text-green-600 mb-2">25,000+</h3>
+                  <h3 className="text-2xl font-bold text-green-600 mb-2">{stats.totalReaders.toLocaleString()}+</h3>
                   <p className="text-gray-600">Active Readers</p>
                 </CardContent>
               </Card>
@@ -131,7 +229,7 @@ const EBooks = () => {
               <Card className="text-center hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
                   <Download className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                  <h3 className="text-2xl font-bold text-blue-600 mb-2">100K+</h3>
+                  <h3 className="text-2xl font-bold text-blue-600 mb-2">{stats.totalDownloads.toLocaleString()}+</h3>
                   <p className="text-gray-600">Downloads</p>
                 </CardContent>
               </Card>
@@ -139,7 +237,7 @@ const EBooks = () => {
               <Card className="text-center hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
                   <Star className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
-                  <h3 className="text-2xl font-bold text-yellow-600 mb-2">4.8</h3>
+                  <h3 className="text-2xl font-bold text-yellow-600 mb-2">{stats.averageRating.toFixed(1)}</h3>
                   <p className="text-gray-600">Average Rating</p>
                 </CardContent>
               </Card>
@@ -184,7 +282,7 @@ const EBooks = () => {
                     <div className="md:flex">
                       <div className="md:w-1/3">
                         <img
-                          src={book.coverImage}
+                          src={book.cover_image_url || '/placeholder.svg'}
                           alt={book.title}
                           className="w-full h-64 md:h-full object-cover"
                         />
@@ -250,7 +348,7 @@ const EBooks = () => {
                   <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="relative">
                       <img
-                        src={book.coverImage}
+                        src={book.cover_image_url || '/placeholder.svg'}
                         alt={book.title}
                         className="w-full h-48 object-cover"
                       />

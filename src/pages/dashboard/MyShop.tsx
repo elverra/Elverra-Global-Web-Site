@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, Package, DollarSign, AlertCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Package, DollarSign, AlertCircle, Gift, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Product {
   id: string;
@@ -112,17 +113,35 @@ export default function MyShop() {
     if (!user) return;
     
     try {
-      // Mock product limits based on membership - will be replaced with Supabase
-      const mockLimit: ProductLimit = {
-        existingProducts: products.length,
-        freeLimit: 3,
-        remainingFree: Math.max(0, 3 - products.length),
-        nextProductCost: products.length >= 3 ? 5000 : 0,
-        costPerProduct: 5000
+      const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin;
+      const response = await fetch(`${backendUrl}/api/products/count?userId=${user.id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch product count');
+      }
+      
+      const result = await response.json();
+      const data = result.data;
+      
+      const limit: ProductLimit = {
+        existingProducts: data.totalProducts,
+        freeLimit: 10,
+        remainingFree: data.freeProductsRemaining,
+        nextProductCost: data.requiresPayment ? 500 : 0,
+        costPerProduct: 500
       };
-      setProductLimit(mockLimit);
+      setProductLimit(limit);
     } catch (error) {
       console.error('Error fetching product limit:', error);
+      // Fallback to mock data
+      const mockLimit: ProductLimit = {
+        existingProducts: products.length,
+        freeLimit: 10,
+        remainingFree: Math.max(0, 10 - products.length),
+        nextProductCost: products.length >= 10 ? 500 : 0,
+        costPerProduct: 500
+      };
+      setProductLimit(mockLimit);
     }
   };
 
@@ -196,7 +215,7 @@ export default function MyShop() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
-              Add Product
+              {productLimit?.nextProductCost && productLimit.nextProductCost > 0 ? `Ajouter produit (${productLimit.costPerProduct} FCFA)` : 'Ajouter produit gratuit'}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
@@ -265,51 +284,68 @@ export default function MyShop() {
               </div>
               
               <Button onClick={handleAddProduct} className="w-full">
-                Add Product
+                {productLimit?.nextProductCost && productLimit.nextProductCost > 0 ? `Ajouter produit (${productLimit.costPerProduct} FCFA)` : 'Ajouter produit gratuit'}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Product Limit Info */}
+      {/* Product Limit Banners */}
       {productLimit && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5" />
-              Product Limits
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{productLimit.existingProducts}</div>
-                <div className="text-sm text-gray-500">Current Products</div>
+        <>
+          {/* Free Products Banner */}
+          {productLimit.remainingFree > 0 && (
+            <Alert className="border-green-200 bg-green-50">
+              <Gift className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                <strong>Produits gratuits!</strong> Il vous reste <strong>{productLimit.remainingFree}</strong> produits gratuits sur {productLimit.freeLimit}.
+                Profitez-en pour publier sans frais!
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Payment Required Banner */}
+          {productLimit.nextProductCost > 0 && (
+            <Alert className="border-orange-200 bg-orange-50">
+              <Info className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-800">
+                <strong>Limite atteinte!</strong> Vous avez utilisé vos {productLimit.freeLimit} produits gratuits. 
+                Chaque nouveau produit coûte maintenant <strong>{productLimit.costPerProduct} FCFA</strong>.
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Product Limit Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Statistiques des produits
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{productLimit.existingProducts}</div>
+                  <div className="text-sm text-gray-500">Produits actuels</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{productLimit.remainingFree}</div>
+                  <div className="text-sm text-gray-500">Gratuits restants</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">{productLimit.freeLimit}</div>
+                  <div className="text-sm text-gray-500">Limite gratuite</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">{productLimit.nextProductCost} FCFA</div>
+                  <div className="text-sm text-gray-500">Coût prochain produit</div>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{productLimit.remainingFree}</div>
-                <div className="text-sm text-gray-500">Free Remaining</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{productLimit.freeLimit}</div>
-                <div className="text-sm text-gray-500">Free Limit</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{productLimit.nextProductCost}F</div>
-                <div className="text-sm text-gray-500">Next Product Cost</div>
-              </div>
-            </div>
-            {productLimit.nextProductCost > 0 && (
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-yellow-600" />
-                <span className="text-sm text-yellow-800">
-                  You've used your free products. Each additional product costs {productLimit.costPerProduct}F.
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Products Grid */}

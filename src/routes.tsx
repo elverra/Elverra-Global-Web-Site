@@ -67,6 +67,7 @@ import MerchantApprovals from '@/pages/admin/MerchantApprovals';
 import AccessLawyer from '@/pages/AccessLawyer';
 import RegistrationThankYou from '@/pages/RegistrationThankYou';
 import EBooks from '@/pages/EBooks';
+import EbookManagement from '@/pages/admin/EbookManagement';
 import MembershipSelection from '@/pages/MembershipSelection';
 import PaymentStatus from '@/pages/PaymentStatus';
 import PaydayAdvance from './pages/services/PaydayAdvance';
@@ -520,6 +521,14 @@ const routes = [
   {
     path: '/ebooks',
     element: <EBooks />,
+  },
+  {
+    path: '/admin/ebook-management',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <EbookManagement />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/membership/selection',

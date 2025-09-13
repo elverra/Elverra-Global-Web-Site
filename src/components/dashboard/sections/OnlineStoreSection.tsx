@@ -196,6 +196,7 @@ const OnlineStoreSection = () => {
           if (shopImageFile && currentShopId) {
             try {
               const [url] = await uploadFilesToStorage('shop-images', [shopImageFile], `shops/${currentShopId}/banner`);
+              console.log('Banner upload result:', url);
               if (url) imageUrl = url;
             } catch (upErr: any) {
               console.error('Shop image upload failed:', upErr);
@@ -309,13 +310,29 @@ const OnlineStoreSection = () => {
       if (productIds.length === 0) { setWishlist([]); return; }
       const { data: prods, error: pe } = await supabase
         .from('products')
-        .select('id, name, title, price, category, images, image_url')
+        .select('id, name, title, price, category, images, image_url, shop_id')
         .in('id', productIds);
       if (pe) throw pe;
+      // Get shop info for each product to show correct seller name
+      const shopIds = (prods || []).map((p: any) => p.shop_id).filter(Boolean);
+      let shopData: any = {};
+      if (shopIds.length > 0) {
+        const { data: shops } = await supabase
+          .from('shops')
+          .select('id, name')
+          .in('id', shopIds);
+        if (shops) {
+          shopData = shops.reduce((acc: any, shop: any) => {
+            acc[shop.id] = shop.name;
+            return acc;
+          }, {});
+        }
+      }
+
       const list = (prods || []).map((p: any) => ({
         id: p.id,
         title: p.name || p.title || 'Untitled',
-        seller: shopName || 'Shop',
+        seller: shopData[p.shop_id] || 'Unknown Shop',
         price: Number(p.price) || 0,
         image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : (p.image_url || ''),
         addedDate: new Date().toISOString().slice(0, 10),
@@ -383,8 +400,8 @@ const OnlineStoreSection = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full">
-        <TabsList className={`grid w-full ${hasShop ? 'grid-cols-3' : 'grid-cols-1'}`}>
-          {hasShop && <TabsTrigger value="wishlist">Wishlist</TabsTrigger>}
+        <TabsList className={`grid w-full ${hasShop ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <TabsTrigger value="wishlist">Wishlist</TabsTrigger>
           {hasShop && <TabsTrigger value="my-products">My Products</TabsTrigger>}
           <TabsTrigger value="my-shop">My Shop</TabsTrigger>
         </TabsList>
@@ -645,7 +662,6 @@ const OnlineStoreSection = () => {
         </Dialog>
 
 
-        {hasShop ? (
         <TabsContent value="wishlist" className="space-y-6">
           <Card>
             <CardHeader>
@@ -681,7 +697,6 @@ const OnlineStoreSection = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        ) : null}
 
         {hasShop ? (
           <TabsContent value="my-products" className="space-y-6">

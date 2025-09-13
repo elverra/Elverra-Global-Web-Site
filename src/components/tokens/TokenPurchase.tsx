@@ -178,7 +178,9 @@ const TokenPurchase: React.FC<TokenPurchaseProps> = ({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to initiate SAMA Money payment');
+          const errorData = await response.json();
+          console.log('[DEBUG] SAMA Money error response:', errorData);
+          throw new Error(errorData.message || 'Échec du paiement SAMA Money');
         }
 
         const data = await response.json();

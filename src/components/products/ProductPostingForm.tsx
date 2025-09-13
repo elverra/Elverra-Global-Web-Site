@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { CreditCard, Loader2, AlertCircle, Gift, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/hooks/useAuth';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const productSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -63,18 +65,20 @@ interface ProductPostingFormProps {
 
 const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingFormProps) => {
   const { user } = useAuth();
-  const { getActiveGateways, getGatewayById } = usePaymentGateways();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
-  const [selectedGateway, setSelectedGateway] = useState('');
-  const [paymentData, setPaymentData] = useState({
-    phone: '',
-    email: '',
-    pin: ''
-  });
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [pendingProductData, setPendingProductData] = useState<ProductFormData | null>(null);
+  const [productCount, setProductCount] = useState<{
+    totalProducts: number;
+    freeProductsUsed: number;
+    freeProductsRemaining: number;
+    requiresPayment: boolean;
+    nextProductFee: number;
+  } | null>(null);
+  const [loadingProductCount, setLoadingProductCount] = useState(true);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -92,20 +96,14 @@ const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingForm
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+    if (user?.id) {
+      fetchProductCount();
+    }
+  }, [user?.id]);
 
   const fetchCategories = async () => {
     try {
-      const response = null;
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
-      const data = await response.json();
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
-      // Fallback to default categories if API fails
+      // Fallback to default categories
       setCategories([
         { id: '1', name: 'Electronics', description: 'Electronic devices and gadgets' },
         { id: '2', name: 'Fashion', description: 'Clothing and accessories' },
@@ -118,22 +116,58 @@ const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingForm
         { id: '9', name: 'Food & Beverages', description: 'Food and drink items' },
         { id: '10', name: 'Other', description: 'Other miscellaneous items' }
       ]);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to load categories');
+    }
+  };
+
+  const fetchProductCount = async () => {
+    if (!user?.id) return;
+    
+    setLoadingProductCount(true);
+    try {
+      const response = await fetch(`/api/products/count?userId=${user.id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch product count');
+      }
+      
+      const result = await response.json();
+      console.log('Product count result:', result);
+      setProductCount(result.data);
+    } catch (error) {
+      console.error('Error fetching product count:', error);
+      toast.error('Erreur lors du chargement des informations de produit');
+    } finally {
+      setLoadingProductCount(false);
     }
   };
 
   const onSubmit = async (data: ProductFormData) => {
     if (!user) {
-      toast.error('Please login to post a product');
+      toast.error('Veuillez vous connecter pour publier un produit');
       return;
     }
 
     if (product) {
       // Update existing product (no payment required)
-      null;
+      await updateExistingProduct(data);
     } else {
-      // New product - show payment dialog
-      setPendingProductData(data);
-      setShowPaymentDialog(true);
+      // New product - check if payment required
+      if (!productCount) {
+        toast.error('Erreur lors du chargement des informations de produit');
+        return;
+      }
+      
+      if (productCount.requiresPayment) {
+        // Show payment dialog
+        setPendingProductData(data);
+        setShowPaymentDialog(true);
+      } else {
+        // Create product for free
+        await createFreeProduct(data);
+      }
     }
   };
 
@@ -168,51 +202,94 @@ const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingForm
     }
   };
 
+  const createFreeProduct = async (data: ProductFormData) => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin;
+      const response = await fetch(`${backendUrl}/api/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          seller_id: user.id,
+          title: data.title,
+          description: data.description,
+          price: data.price,
+          category: data.category,
+          condition: data.condition,
+          location: data.location || null,
+          contact_phone: data.contact_phone || null,
+          contact_email: data.contact_email || null,
+          posting_fee_paid: false,
+          posting_fee_amount: 0,
+          is_active: true,
+          is_sold: false,
+          views: 0
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create product');
+      }
+
+      toast.success('Produit créé avec succès! (Produit gratuit)');
+      await fetchProductCount(); // Refresh count
+      onSuccess();
+    } catch (error) {
+      console.error('Error creating free product:', error);
+      toast.error('Erreur lors de la création du produit');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePayment = async () => {
-    if (!selectedGateway || !paymentData.phone || !paymentData.email || !pendingProductData) {
-      toast.error('Please fill in all payment details');
+    if (!phoneNumber || !pendingProductData || !user) {
+      toast.error('Veuillez remplir tous les champs requis');
       return;
     }
 
-    const gateway = getGatewayById(selectedGateway);
-    if (!gateway) {
-      toast.error('Invalid payment method selected');
+    // Validate phone number format
+    if (!/^223\d{8}$/.test(phoneNumber)) {
+      toast.error('Format de numéro incorrect. Utilisez le format: 22370445566');
       return;
     }
 
     setProcessingPayment(true);
 
     try {
-      // Create payment request
-      const paymentRequest = {
-        serviceId: 'product_posting',
-        gatewayId: selectedGateway,
-        amount: 500,
-        currency: 'CFA',
-        customerInfo: {
-          name: user?.email?.split('@')[0] || 'User',
-          email: paymentData.email,
-          phone: paymentData.phone
-        },
-        metadata: {
-          productTitle: pendingProductData.title,
-          productCategory: pendingProductData.category,
-          userId: user?.id
-        }
-      };
+      const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin;
+      const response = await fetch(`${backendUrl}/api/products/initiate-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          phone: phoneNumber,
+          productData: pendingProductData
+        })
+      });
 
-      // Process payment
-      const response = await paymentService.processPayment(gateway, paymentRequest);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Échec du paiement');
+      }
 
-      if (response.success && response.transactionId) {
-        // Payment successful - create product
-        null;
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Paiement réussi! Votre produit est maintenant en ligne.');
+        setShowPaymentDialog(false);
+        setPendingProductData(null);
+        setPhoneNumber('');
+        await fetchProductCount(); // Refresh count
+        onSuccess();
       } else {
-        toast.error(response.error || 'Payment failed. Please try again.');
+        throw new Error(result.message || 'Échec du paiement');
       }
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error('Payment processing failed. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors du traitement du paiement');
     } finally {
       setProcessingPayment(false);
     }
@@ -247,16 +324,13 @@ const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingForm
       toast.success('Payment successful! Your product is now live.');
       setShowPaymentDialog(false);
       setPendingProductData(null);
-      setSelectedGateway('');
-      setPaymentData({ phone: '', email: '', pin: '' });
+      setPhoneNumber('');
       onSuccess();
     } catch (error) {
       console.error('Error creating product:', error);
       toast.error('Payment successful but product creation failed. Please contact support.');
     }
   };
-
-  const activeGateways = getActiveGateways();
 
   return (
     <>
@@ -412,25 +486,52 @@ const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingForm
             />
           </div>
 
-          {!product && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5" />
-                  Posting Fee Required
-                </CardTitle>
-                <CardDescription>
-                  A posting fee of 500 CFA is required to list your product.
-                  This helps maintain quality listings on our platform.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary">500 CFA</div>
-                <p className="text-sm text-gray-600 mt-1">
-                  You will be prompted for payment after submitting this form
-                </p>
-              </CardContent>
-            </Card>
+          {!product && productCount && (
+            <>
+              {/* Free Products Banner */}
+              {productCount.freeProductsRemaining > 0 && (
+                <Alert className="border-green-200 bg-green-50">
+                  <Gift className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800">
+                    <strong>Produits gratuits!</strong> Il vous reste <strong>{productCount.freeProductsRemaining}</strong> produits gratuits sur 10.
+                    Profitez-en pour publier sans frais!
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Payment Required Banner */}
+              {productCount.requiresPayment && (
+                <Alert className="border-orange-200 bg-orange-50">
+                  <Info className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-800">
+                    <strong>Limite atteinte!</strong> Vous avez utilisé vos 10 produits gratuits. 
+                    Chaque nouveau produit coûte maintenant <strong>500 FCFA</strong>.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Payment Fee Card */}
+              {productCount.requiresPayment && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5" />
+                      Frais de publication requis
+                    </CardTitle>
+                    <CardDescription>
+                      Un frais de 500 FCFA est requis pour publier ce produit.
+                      Cela aide à maintenir la qualité des annonces sur notre plateforme.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-primary">500 FCFA</div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Vous serez invité à effectuer le paiement après avoir soumis ce formulaire
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
 
           <div className="flex gap-4">
@@ -444,16 +545,22 @@ const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingForm
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || loadingProductCount}
               className="flex-1"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  Enregistrement...
+                </>
+              ) : loadingProductCount ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Chargement...
                 </>
               ) : (
-                product ? 'Update Product' : 'Continue to Payment'
+                product ? 'Mettre à jour le produit' : 
+                (productCount?.requiresPayment ? 'Continuer vers le paiement' : 'Publier gratuitement')
               )}
             </Button>
           </div>
@@ -464,109 +571,71 @@ const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingForm
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Complete Payment</DialogTitle>
+            <DialogTitle>Finaliser le paiement</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6">
             {/* Payment Summary */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Payment Summary</CardTitle>
+                <CardTitle className="text-lg">Résumé du paiement</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Product Listing Fee:</span>
-                  <span className="font-medium">500 CFA</span>
+                  <span className="text-sm text-gray-600">Frais de publication:</span>
+                  <span className="font-medium">500 FCFA</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
                   <span className="font-medium">Total:</span>
-                  <span className="font-bold text-lg">500 CFA</span>
+                  <span className="font-bold text-lg">500 FCFA</span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Payment Method Selection */}
+            {/* SAMA Money Payment Method */}
             <div>
-              <Label className="text-base font-medium mb-3 block">Payment Method</Label>
-              <RadioGroup value={selectedGateway} onValueChange={setSelectedGateway}>
-                <div className="space-y-3">
-                  {activeGateways.map((gateway) => (
-                    <Label
-                      key={gateway.id}
-                      htmlFor={gateway.id}
-                      className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                    >
-                      <RadioGroupItem value={gateway.id} id={gateway.id} />
-                      <div className="flex items-center space-x-3 flex-1">
-                        <span className="text-2xl">{gateway.icon}</span>
-                        <div>
-                          <div className="font-medium">{gateway.name}</div>
-                          <div className="text-sm text-gray-500">{gateway.description}</div>
-                        </div>
-                      </div>
-                    </Label>
-                  ))}
+              <Label className="text-base font-medium mb-3 block">Méthode de paiement</Label>
+              <div className="p-3 border rounded-lg bg-gray-50">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">💳</span>
+                  <div>
+                    <div className="font-medium">SAMA Money</div>
+                    <div className="text-sm text-gray-500">Paiement mobile sécurisé</div>
+                  </div>
                 </div>
-              </RadioGroup>
+              </div>
             </div>
 
             {/* Payment Details */}
-            {selectedGateway && (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="payment-phone">Phone Number *</Label>
-                  <Input
-                    id="payment-phone"
-                    placeholder="+223 XX XX XX XX"
-                    value={paymentData.phone}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, phone: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="payment-email">Email Address *</Label>
-                  <Input
-                    id="payment-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={paymentData.email}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, email: e.target.value }))}
-                    required
-                  />
-                </div>
-                
-                {selectedGateway === 'moov_money' && (
-                  <div>
-                    <Label htmlFor="payment-pin">PIN *</Label>
-                    <Input
-                      id="payment-pin"
-                      type="password"
-                      placeholder="Enter your 4-digit PIN"
-                      maxLength={4}
-                      value={paymentData.pin}
-                      onChange={(e) => setPaymentData(prev => ({ ...prev, pin: e.target.value }))}
-                      required
-                    />
-                  </div>
-                )}
-
-                {(selectedGateway === 'orange_money' || selectedGateway === 'sama_money') && (
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <div className="flex items-start space-x-2">
-                      <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <h4 className="font-medium text-blue-900">Payment Instructions</h4>
-                        <p className="text-sm text-blue-800 mt-1">
-                          You will receive a payment request on your {getGatewayById(selectedGateway)?.name} account. 
-                          Please approve the transaction to complete your product listing.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="payment-phone">Numéro de téléphone SAMA Money *</Label>
+                <Input
+                  id="payment-phone"
+                  placeholder="22370445566"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Format: 22370445566 (sans espaces ni caractères spéciaux)
+                </p>
               </div>
-            )}
+              
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-blue-900">Instructions de paiement</h4>
+                    <p className="text-sm text-blue-800 mt-1">
+                      Vous recevrez une demande de paiement sur votre compte SAMA Money. 
+                      Veuillez approuver la transaction pour finaliser la publication de votre produit.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Action Buttons */}
             <div className="flex space-x-3">
@@ -580,18 +649,18 @@ const ProductPostingForm = ({ product, onSuccess, onCancel }: ProductPostingForm
               </Button>
               <Button 
                 onClick={handlePayment} 
-                disabled={!selectedGateway || processingPayment || !paymentData.phone || !paymentData.email}
+                disabled={processingPayment || !phoneNumber}
                 className="flex-1 bg-green-600 hover:bg-green-700"
               >
                 {processingPayment ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
+                    Traitement...
                   </>
                 ) : (
                   <>
                     <CreditCard className="h-4 w-4 mr-2" />
-                    Pay 500 CFA
+                    Payer 500 FCFA
                   </>
                 )}
               </Button>
