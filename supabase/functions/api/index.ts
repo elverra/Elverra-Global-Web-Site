@@ -137,7 +137,7 @@ async function creditTokens(params: { userId?: string; reference?: string; servi
       .from("secours_subscriptions")
       .select("id, token_balance")
       .eq("user_id", userId)
-      .eq("subscription_type", serviceType)
+      .eq("plan", serviceType)
       .maybeSingle();
 
     if (!sub?.id) return;
@@ -452,7 +452,7 @@ Deno.serve(async (req: Request) => {
       if (!userId) return json({ success: false, message: "Missing userId" }, { status: 400 });
       const { data, error } = await supabase
         .from("secours_subscriptions")
-        .select("id, user_id, service_type:subscription_type, token_balance")
+        .select("id, user_id, service_type:plan, token_balance")
         .eq("user_id", userId);
       if (error) return json({ success: false, message: error.message }, { status: 500 });
       return json({ success: true, data });
@@ -466,7 +466,7 @@ Deno.serve(async (req: Request) => {
       if (!supabase) return json({ success: false, message: "Supabase not configured" }, { status: 500 });
       const subscriptionId = url.searchParams.get("subscriptionId") || undefined;
       const userId = url.searchParams.get("userId") || undefined;
-      let query = supabase.from("secours_transactions").select("*, secours_subscriptions!inner(id, user_id, service_type:subscription_type)").order("created_at", { ascending: false });
+      let query = supabase.from("secours_transactions").select("*, secours_subscriptions!inner(id, user_id, service_type:plan)").order("created_at", { ascending: false });
       if (subscriptionId) {
         query = query.eq("subscription_id", subscriptionId);
       } else if (userId) {

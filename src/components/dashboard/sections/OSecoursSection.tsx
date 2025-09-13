@@ -136,6 +136,9 @@ const OSecoursSection = () => {
   // Functions base helper (align with TokenPurchase.tsx)
   const functionsBase = (import.meta as any)?.env?.VITE_FUNCTIONS_BASE || '';
   const withBase = useCallback((path: string) => (functionsBase ? `${functionsBase}${path.startsWith('/') ? path : `/${path}`}` : path), [functionsBase]);
+  // Debug: verify env and base resolution in production
+  // Note: remove or guard this in production if too verbose
+  console.log('[DEBUG] VITE_FUNCTIONS_BASE =', functionsBase);
 
   // Temporarily allow all users to access Ô Secours without requiring a specific card tier
   const isEligible = true;
@@ -204,13 +207,17 @@ const OSecoursSection = () => {
       setError(null);
 
       // 1) Subscriptions (balances)
-      const subsRes = await fetch(withBase(`/api/secours/subscriptions?userId=${encodeURIComponent(user.id)}`));
+      const subsUrl = withBase(`/api/secours/subscriptions?userId=${encodeURIComponent(user.id)}`);
+      console.log('[DEBUG] Fetch subscriptions URL:', subsUrl);
+      const subsRes = await fetch(subsUrl);
       if (!subsRes.ok) throw new Error(await subsRes.text());
       const subsJson = await subsRes.json();
       const subs: Array<{ id: string; user_id: string; service_type: string; token_balance: number; }> = subsJson?.data || [];
 
       // 2) Transactions for usage calculations
-      const txRes = await fetch(withBase(`/api/secours/transactions?userId=${encodeURIComponent(user.id)}`));
+      const txUrl = withBase(`/api/secours/transactions?userId=${encodeURIComponent(user.id)}`);
+      console.log('[DEBUG] Fetch transactions URL:', txUrl);
+      const txRes = await fetch(txUrl);
       const txJson = txRes.ok ? await txRes.json() : { data: [] };
       const txs: Array<{ id: string; subscription_id: string; transaction_type: string; token_amount: number; created_at: string; secours_subscriptions?: { service_type?: string } }>= txJson?.data || [];
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
@@ -237,7 +244,9 @@ const OSecoursSection = () => {
       });
 
       // 3) Requests
-      const reqRes = await fetch(withBase(`/api/secours/requests?userId=${encodeURIComponent(user.id)}`));
+      const reqUrl = withBase(`/api/secours/requests?userId=${encodeURIComponent(user.id)}`);
+      console.log('[DEBUG] Fetch requests URL:', reqUrl);
+      const reqRes = await fetch(reqUrl);
       const reqJson = reqRes.ok ? await reqRes.json() : { data: [] };
       const reqs: Array<{ id: string; service_type: string; request_description: string; rescue_value_fcfa: number; status: string; request_date: string; }>= reqJson?.data || [];
       const svcRequests: ServiceRequest[] = reqs.map(r => ({
