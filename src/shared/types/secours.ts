@@ -40,7 +40,7 @@ export interface SecoursTransaction {
   transaction_type: 'purchase' | 'rescue_claim';
   token_amount: number;
   token_value_fcfa: number;
-  payment_method: 'orange_money' | 'sama_money' | 'cash';
+  payment_method: 'orange_money' | 'sama_money' | 'cinetpay' | 'cash';
   payment_status: 'pending' | 'completed' | 'failed';
   created_at: string;
   secours_subscriptions?: SecoursSubscription;
@@ -117,7 +117,7 @@ export const MAX_MONTHLY_PURCHASE_PER_SERVICE = {
 export type ServiceType = keyof typeof TOKEN_TYPES;
 
 // Payment methods
-export type PaymentMethod = 'orange_money' | 'sama_money' | 'cash';
+export type PaymentMethod = 'orange_money' | 'sama_money' | 'cinetpay';
 
 // Transaction status
 export type TransactionStatus = 'pending' | 'completed' | 'failed';

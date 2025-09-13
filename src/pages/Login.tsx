@@ -29,7 +29,7 @@ const Login = () => {
 
   // If user is logged in, redirect appropriately
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (

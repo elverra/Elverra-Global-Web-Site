@@ -25,9 +25,7 @@ import DiscountManagement from '@/pages/admin/DiscountManagement';
 import SecoursAdmin from '@/pages/admin/SecoursAdmin';
 import AdminDashboard from '@/pages/admin/Dashboard';
 import AffiliateManagement from '@/pages/admin/AffiliateManagement';
-import CmsManagement from '@/pages/admin/CmsManagement';
 import JobManagement from '@/pages/admin/JobManagement';
-import PartnersManagement from '@/pages/admin/PartnersManagement';
 import ProjectsManagement from '@/pages/admin/ProjectsManagement';
 import PaymentManagement from '@/pages/admin/PaymentManagement';
 import FAQ from '@/pages/FAQ';
@@ -65,7 +63,6 @@ import Wishlist from '@/pages/Wishlist';
 import ShopManagement from '@/pages/admin/ShopManagement';
 import UserManagement from '@/pages/admin/UserManagement';
 import ProjectRequests from '@/pages/ProjectRequests';
-import PaymentGatewayManagement from '@/pages/admin/PaymentGatewayManagement';
 import MerchantApprovals from '@/pages/admin/MerchantApprovals';
 import AccessLawyer from '@/pages/AccessLawyer';
 import RegistrationThankYou from '@/pages/RegistrationThankYou';
@@ -91,6 +88,11 @@ import Discounts from './pages/Discounts';
 import DiscountDetail from './pages/DiscountDetail';
 import TestPage from './pages/TestPage';
 import ShopDetail from './pages/ShopDetail';
+import SuperAdminDashboard from './pages/superadmin/Dashboard';
+import PartnersManagement from './pages/superadmin/PartnersManagement';
+import PaymentGatewayManagement from './pages/superadmin/PaymentGatewayManagement';
+import ProtectedRoute from '@/components/layout/ProtectedRoute';
+import PartnerDashboard from './pages/partners/Dashboard';
 
 // Add the new route to the existing routes array
 const routes = [
@@ -196,7 +198,11 @@ const routes = [
   },
   {
     path: '/dashboard',
-    element: <Dashboard />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['USER']}>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/job-dashboard/employee',
@@ -336,39 +342,80 @@ const routes = [
   },
   {
     path: '/admin',
-    element: <AdminDashboard />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <AdminDashboard />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/dashboard',
-    element: <AdminDashboard />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <AdminDashboard />
+      </ProtectedRoute>
+    ),
   },
+  
   {
     path: '/admin/discount-management',
-    element: <DiscountManagement />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <DiscountManagement />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/secours',
-    element: <SecoursAdmin />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <SecoursAdmin />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/agent-panel',
-    element: <AffiliateManagement />,
-  },
-  {
-    path: '/admin/cms',
-    element: <CmsManagement />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <AffiliateManagement />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/jobs',
-    element: <JobManagement />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <JobManagement />
+      </ProtectedRoute>
+    ),
   },
   {
-    path: '/admin/partners-management',
+    path: '/superadmin/partners-management',
     element: <PartnersManagement />,
   },
   {
     path: '/admin/projects-management',
-    element: <ProjectsManagement />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <ProjectsManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/superadmin',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <SuperAdminDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/superadmin/dashboard',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <SuperAdminDashboard />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/secours/my-account',
@@ -412,27 +459,55 @@ const routes = [
   },
   {
     path: '/admin/payments',
-    element: <PaymentManagement />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <PaymentManagement />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/shop-management',
-    element: <ShopManagement />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <ShopManagement />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/user-management',
-    element: <UserManagement />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <UserManagement />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/cookies',
     element: <Cookies />,
   },
   {
-    path: '/admin/payment-gateways',
-    element: <PaymentGatewayManagement />,
+    path: '/superadmin/payment-gateways',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <PaymentGatewayManagement />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/merchant-approvals',
-    element: <MerchantApprovals />,
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+        <MerchantApprovals />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/partners/dashbord',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['PARTNER']}>
+        <PartnerDashboard />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/access-lawyer',

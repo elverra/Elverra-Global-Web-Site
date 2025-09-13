@@ -21,12 +21,14 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import TokenPurchase from '@/components/tokens/TokenPurchase';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 // Types
 type TokenType = {
@@ -119,11 +121,21 @@ const OSecoursSection = () => {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestServiceId, setRequestServiceId] = useState<string>('');
+  const [requestTokens, setRequestTokens] = useState<string>('1');
+  const [requestDescription, setRequestDescription] = useState<string>('');
+  const [requestFile, setRequestFile] = useState<File | null>(null);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   const { user } = useAuth();
   const { membership } = useMembership();
   const { t } = useLanguage();
   // No navigation needed in this section for now
+
+  // Functions base helper (align with TokenPurchase.tsx)
+  const functionsBase = (import.meta as any)?.env?.VITE_FUNCTIONS_BASE || '';
+  const withBase = useCallback((path: string) => (functionsBase ? `${functionsBase}${path.startsWith('/') ? path : `/${path}`}` : path), [functionsBase]);
 
   // Temporarily allow all users to access Ô Secours without requiring a specific card tier
   const isEligible = true;
@@ -191,59 +203,65 @@ const OSecoursSection = () => {
       setLoading(true);
       setError(null);
 
-      // Mock data for token balances
-      const mockBalances: TokenBalance[] = [
-        {
-          tokenId: 'auto',
-          balance: 45,
-          usedThisMonth: 15,
-          monthlyLimit: 100,
-          remainingBalance: 85
-        },
-        {
-          tokenId: 'motors',
-          balance: 120,
-          usedThisMonth: 80,
-          monthlyLimit: 400,
-          remainingBalance: 320
-        },
-        {
-          tokenId: 'telephone',
-          balance: 200,
-          usedThisMonth: 50,
-          monthlyLimit: 400,
-          remainingBalance: 350
+      // 1) Subscriptions (balances)
+      const subsRes = await fetch(withBase(`/api/secours/subscriptions?userId=${encodeURIComponent(user.id)}`));
+      if (!subsRes.ok) throw new Error(await subsRes.text());
+      const subsJson = await subsRes.json();
+      const subs: Array<{ id: string; user_id: string; service_type: string; token_balance: number; }> = subsJson?.data || [];
+
+      // 2) Transactions for usage calculations
+      const txRes = await fetch(withBase(`/api/secours/transactions?userId=${encodeURIComponent(user.id)}`));
+      const txJson = txRes.ok ? await txRes.json() : { data: [] };
+      const txs: Array<{ id: string; subscription_id: string; transaction_type: string; token_amount: number; created_at: string; secours_subscriptions?: { service_type?: string } }>= txJson?.data || [];
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+      const usedByType: Record<string, number> = {};
+      txs.forEach(tx => {
+        const tstamp = new Date(tx.created_at).getTime();
+        const type = tx.secours_subscriptions?.service_type || '';
+        if (tstamp >= startOfMonth && tx.transaction_type === 'rescue_claim' && type) {
+          usedByType[type] = (usedByType[type] || 0) + (tx.token_amount || 0);
         }
-      ];
-      
-      const mockTransactions: Transaction[] = [
-        {
-          id: '1',
-          date: new Date().toISOString(),
-          type: 'purchase',
-          tokenId: 'auto',
-          amount: 20,
-          totalPrice: 15000,
-          status: 'completed'
-        }
-      ];
-      
-      const mockRequests: ServiceRequest[] = [
-        {
-          id: 'req-1',
-          service: 'Auto',
-          description: 'Assistance véhicule',
-          amount: 1,
-          provider: 'Elverra Global',
-          status: 'in-progress',
-          requestDate: new Date().toISOString(),
-          estimatedCompletion: new Date(Date.now() + 86400000).toISOString()
-        }
-      ];
-      
-      setTokenBalances(mockBalances);
-      setTransactions(mockTransactions);
-      setServiceRequests(mockRequests);
+      });
+
+      const balances: TokenBalance[] = subs.map(s => {
+        const tokenId = s.service_type;
+        const used = usedByType[tokenId] || 0;
+        const monthlyLimit = (MAX_MONTHLY_PURCHASE_PER_SERVICE as any)[tokenId] || 100;
+        return {
+          tokenId,
+          balance: s.token_balance || 0,
+          usedThisMonth: used,
+          monthlyLimit,
+          remainingBalance: (s.token_balance || 0) - used,
+        };
+      });
+
+      // 3) Requests
+      const reqRes = await fetch(withBase(`/api/secours/requests?userId=${encodeURIComponent(user.id)}`));
+      const reqJson = reqRes.ok ? await reqRes.json() : { data: [] };
+      const reqs: Array<{ id: string; service_type: string; request_description: string; rescue_value_fcfa: number; status: string; request_date: string; }>= reqJson?.data || [];
+      const svcRequests: ServiceRequest[] = reqs.map(r => ({
+        id: r.id,
+        service: r.service_type,
+        description: r.request_description,
+        amount: r.rescue_value_fcfa || 0,
+        provider: 'Elverra Global',
+        status: (r.status as any) || 'pending',
+        requestDate: r.request_date,
+        estimatedCompletion: undefined,
+      }));
+
+      setTokenBalances(balances);
+      setTransactions((txs || []).map(tx => ({
+        id: tx.id,
+        date: tx.created_at,
+        type: (tx.transaction_type === 'purchase' ? 'purchase' : 'usage') as any,
+        tokenId: tx.secours_subscriptions?.service_type || 'auto',
+        amount: tx.token_amount || 0,
+        totalPrice: 0,
+        status: 'completed',
+      })) as Transaction[]);
+      setServiceRequests(svcRequests);
 
       if (TOKEN_TYPES.length > 0 && !selectedToken) {
         setSelectedToken(TOKEN_TYPES[0].id);
@@ -361,51 +379,12 @@ const OSecoursSection = () => {
         return;
       }
 
-      const balance = tokenBalances.find(b => b.tokenId === serviceId)?.balance || 0;
-      if (balance < 1) {
-        toast.error(t('error_insufficient_balance'));
-        setSelectedToken(serviceId);
-        setActiveTab('purchase');
-        return;
-      }
-
-      try {
-        // Mock service request creation
-        const request: ServiceRequest = {
-          id: 'req-' + Date.now(),
-          service: service.name,
-          description: `Service request for ${service.name}`,
-          amount: 1,
-          provider: 'Elverra Global',
-          status: 'pending',
-          requestDate: new Date().toISOString(),
-          estimatedCompletion: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        };
-
-        if (request) {
-          setServiceRequests(prev => [request, ...prev]);
-          setTokenBalances(prev => {
-            const updated = [...prev];
-            const index = updated.findIndex(b => b.tokenId === serviceId);
-            if (index >= 0) {
-              const newBalance = updated[index].balance - 1;
-              const newUsedThisMonth = (updated[index].usedThisMonth || 0) + 1;
-              updated[index] = { 
-                ...updated[index], 
-                balance: newBalance,
-                usedThisMonth: newUsedThisMonth,
-                remainingBalance: newBalance - newUsedThisMonth
-              };
-            }
-            return updated;
-          });
-
-          toast.success(t('service_request_success_message', { service: service.name }));
-        }
-      } catch (err) {
-        console.error('Service request error:', err);
-        toast.error(t('error_service_request'));
-      }
+      // Open dialog to collect request details
+      setRequestServiceId(serviceId);
+      setRequestTokens('1');
+      setRequestDescription('');
+      setRequestFile(null);
+      setRequestDialogOpen(true);
     },
     [
       isEligible, 
@@ -419,6 +398,82 @@ const OSecoursSection = () => {
       setTokenBalances
     ]
   );
+
+  const submitServiceRequest = async () => {
+    try {
+      if (!user?.id) {
+        toast.error(t('error_unauthorized'));
+        return;
+      }
+      const service = TOKEN_TYPES.find(s => s.id === requestServiceId);
+      if (!service) {
+        toast.error(t('error_service_not_found'));
+        return;
+      }
+      const tokensNum = Math.max(1, parseInt(requestTokens || '1', 10));
+      const balance = tokenBalances.find(b => b.tokenId === requestServiceId)?.balance || 0;
+      if (tokensNum > balance) {
+        toast.error(t('error_insufficient_balance'));
+        return;
+      }
+      setSubmittingRequest(true);
+
+      // Optional: upload justification to storage later; for now send metadata only
+      const payload = {
+        service_id: requestServiceId,
+        tokens_requested: tokensNum,
+        description: requestDescription || `Service request for ${service.name}`,
+      };
+
+      const res = await fetch(withBase('/api/secours/requests'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, userId: user.id }),
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Failed to create request');
+      }
+      const data = await res.json();
+
+      // Update UI state
+      setServiceRequests(prev => [{
+        id: data?.data?.id || data?.id || ('req-' + Date.now()),
+        service: service.name,
+        description: payload.description,
+        amount: tokensNum,
+        provider: 'Elverra Global',
+        status: 'pending',
+        requestDate: new Date().toISOString(),
+        estimatedCompletion: undefined,
+      }, ...prev]);
+
+      // Deduct tokens from local balance and add to usedThisMonth
+      setTokenBalances(prev => {
+        const updated = [...prev];
+        const idx = updated.findIndex(b => b.tokenId === requestServiceId);
+        if (idx >= 0) {
+          const newBalance = updated[idx].balance - tokensNum;
+          const newUsed = (updated[idx].usedThisMonth || 0) + tokensNum;
+          updated[idx] = {
+            ...updated[idx],
+            balance: newBalance,
+            usedThisMonth: newUsed,
+            remainingBalance: newBalance - newUsed,
+          };
+        }
+        return updated;
+      });
+
+      toast.success(t('service_request_success_message', { service: service.name }));
+      setRequestDialogOpen(false);
+    } catch (e: any) {
+      console.error('submitServiceRequest error', e);
+      toast.error(e?.message || t('error_service_request'));
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -800,11 +855,60 @@ const OSecoursSection = () => {
                 </Alert>
               )}
               {/* Embedded TokenPurchase component handles payment method selection and flow */}
-              <TokenPurchase onPurchaseSuccess={fetchData} />
+              <TokenPurchase 
+                onPurchaseSuccess={fetchData}
+                userBalances={tokenBalances.map(b => ({ serviceType: b.tokenId as any, usedThisMonth: b.usedThisMonth || 0 }))}
+              />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Request Service Dialog */}
+      <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('request_service')}</DialogTitle>
+            <DialogDescription>{t('describe_service_request') || 'Provide details for your assistance request.'}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>{t('service')}</Label>
+              <Select value={requestServiceId} onValueChange={setRequestServiceId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('select_service') || 'Select service'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {TOKEN_TYPES.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t('tokens_to_use') || 'Tokens to use'}</Label>
+              <Input type="number" min={1} value={requestTokens} onChange={(e) => setRequestTokens(e.target.value)} />
+              <div className="text-xs text-muted-foreground mt-1">
+                {t('available')}: {getTokenBalance(requestServiceId)}
+              </div>
+            </div>
+            <div>
+              <Label>{t('description')}</Label>
+              <Textarea rows={4} value={requestDescription} onChange={(e) => setRequestDescription(e.target.value)} placeholder={t('describe_need') || 'Describe your need...'} />
+            </div>
+            <div>
+              <Label>{t('justification_attachment') || 'Justification (optional)'}</Label>
+              <Input type="file" accept="image/*,application/pdf" onChange={(e) => setRequestFile(e.target.files?.[0] || null)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestDialogOpen(false)}>{t('cancel') || 'Cancel'}</Button>
+            <Button onClick={submitServiceRequest} disabled={submittingRequest}>
+              {submittingRequest ? t('submitting') || 'Submitting...' : t('submit_request') || 'Submit Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

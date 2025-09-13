@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import Layout from "@/components/layout/Layout";
 import PremiumBanner from "@/components/layout/PremiumBanner";
@@ -30,6 +30,7 @@ const Register = () => {
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get("ref");
   const { signUp } = useAuth();
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -138,6 +139,9 @@ const Register = () => {
       toast.error(error.message || "Registration failed");
     },
   });
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   // Redirect logic
   if (shouldRedirectToDashboard) {

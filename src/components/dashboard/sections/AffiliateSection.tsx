@@ -74,6 +74,7 @@ const AffiliateSection = () => {
       console.error('Error fetching referrals:', error);
     }
   };
+  const VITE_APP_URL = import.meta.env.VITE_APP_URL as string;
 
   const fetchLeaderboard = async () => {
     try {
@@ -107,7 +108,7 @@ const AffiliateSection = () => {
 
   const shareReferralLink = () => {
     if (!affiliateData?.referralCode) return;
-    const referralLink = `https://elverra-global.com/register?ref=${affiliateData.referralCode}`;
+    const referralLink = `${VITE_APP_URL}/register?ref=${affiliateData.referralCode}`;
     if (navigator.share) {
       navigator.share({
         title: 'Join Elverra Global',
@@ -163,7 +164,7 @@ const AffiliateSection = () => {
               <div>
                 <p className="text-sm text-gray-600">Total Earnings</p>
                 {loading ? (
-                  <div className="h-8 w-24 bg-gray-200 rounded animate-pulse mt-1"></div>
+                  <span className="inline-block h-6 w-24 bg-gray-200 rounded animate-pulse mt-1 align-middle"></span>
                 ) : (
                   <p className="text-2xl font-bold text-green-600">
                     CFA {(affiliateData.totalEarnings || 0).toLocaleString()}
@@ -190,7 +191,7 @@ const AffiliateSection = () => {
                 <p className="text-sm text-gray-600">Total Referrals</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {loading ? (
-                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    <span className="inline-block h-6 w-16 bg-gray-200 rounded animate-pulse align-middle"></span>
                   ) : (
                     affiliateData?.totalReferrals || 0
                   )}
@@ -207,7 +208,7 @@ const AffiliateSection = () => {
               <div>
                 <p className="text-sm text-gray-600">This Month</p>
                 {loading ? (
-                  <div className="h-8 w-24 bg-gray-200 rounded animate-pulse mt-1"></div>
+                  <span className="inline-block h-6 w-24 bg-gray-200 rounded animate-pulse mt-1 align-middle"></span>
                 ) : (
                   <p className="text-2xl font-bold text-purple-600">
                     CFA {(affiliateData.monthlyEarnings || 0).toLocaleString()}
@@ -312,7 +313,7 @@ const AffiliateSection = () => {
                 <p className="text-sm text-gray-600">Pending Payout</p>
                 <p className="text-lg font-bold text-orange-600">
                   {loading ? (
-                    <div className="h-6 w-20 bg-gray-200 rounded animate-pulse inline-block"></div>
+                    <span className="inline-block h-5 w-20 bg-gray-200 rounded animate-pulse align-middle"></span>
                   ) : (
                     `CFA ${(affiliateData?.pendingPayouts || 0).toLocaleString()}`
                   )}
@@ -322,7 +323,7 @@ const AffiliateSection = () => {
                 <p className="text-sm text-gray-600">Next Payout</p>
                 <p className="text-lg font-bold text-blue-600">
                   {loading ? (
-                    <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
+                    <span className="inline-block h-5 w-24 bg-gray-200 rounded animate-pulse align-middle"></span>
                   ) : (
                     affiliateData?.nextPayoutDate || 'N/A'
                   )}

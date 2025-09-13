@@ -50,7 +50,7 @@ interface Merchant {
 }
 
 export default function DiscountManagement() {
-  const { user, isAdmin, userRole, loading: authLoading } = useAuth() as any;
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -87,8 +87,6 @@ export default function DiscountManagement() {
     is_active: true,
     is_featured: false,
   });
-
-  const canManage = !!isAdmin && (String(userRole).toUpperCase() === 'SUPERADMIN' || String(userRole).toUpperCase() === 'SUPPORT');
 
   useEffect(() => {
     // Only load after auth has resolved and user has required admin role
@@ -129,10 +127,6 @@ export default function DiscountManagement() {
   const handleSectorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!canManage) {
-        toast({ title: 'Permission', description: 'Only SUPERADMIN or SUPPORT can modify sectors', variant: 'destructive' });
-        return;
-      }
       setSectorSaving(true);
       if (editingSector?.id) {
         const { error } = await supabase.from('discount_sectors').update({
@@ -166,10 +160,6 @@ export default function DiscountManagement() {
   const handleMerchantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!canManage) {
-        toast({ title:'Permission', description:'Only SUPERADMIN or SUPPORT can modify merchants', variant:'destructive' });
-        return;
-      }
       if (!merchantForm.name || !merchantForm.sector_id || !merchantForm.discount_percentage) {
         toast({ title:'Validation', description:'Name, sector and percentage are required', variant:'destructive' });
         return;
@@ -273,10 +263,6 @@ export default function DiscountManagement() {
     if (!window.confirm('Are you sure you want to delete this sector?')) return;
 
     try {
-      if (!canManage) {
-        toast({ title:'Permission', description:'Only SUPERADMIN or SUPPORT can delete sectors', variant:'destructive' });
-        return;
-      }
       const { error } = await supabase.from('discount_sectors').delete().eq('id', id);
       if (error) throw error;
       // Normalize to string for safe comparison across string | number ids
@@ -303,10 +289,6 @@ export default function DiscountManagement() {
     if (!window.confirm('Are you sure you want to delete this merchant?')) return;
     
     try {
-      if (!canManage) {
-        toast({ title:'Permission', description:'Only SUPERADMIN or SUPPORT can delete merchants', variant:'destructive' });
-        return;
-      }
       const { error } = await supabase.from('discount_merchants').delete().eq('id', id);
       if (error) throw error;
       setMerchants(prev => prev.filter(m => m.id !== id));
@@ -432,12 +414,10 @@ export default function DiscountManagement() {
         <TabsContent value="merchants" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-semibold">Merchants</h2>
-            {canManage && (
             <Button variant="outline" size="sm" onClick={() => openMerchantDialog()} type="button">
               <Plus className="h-4 w-4 mr-2" />
               Add Merchant
             </Button>
-            )}
           </div>
 
           <Card>
@@ -473,24 +453,20 @@ export default function DiscountManagement() {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          {canManage && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openMerchantDialog(merchant)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => deleteMerchant(merchant.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openMerchantDialog(merchant)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteMerchant(merchant.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -504,12 +480,10 @@ export default function DiscountManagement() {
         <TabsContent value="sectors" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-semibold">Sectors</h2>
-            {canManage && (
             <Button onClick={() => openSectorDialog()}>
               <Plus className="h-4 w-4 mr-2" />
               Add Sector
             </Button>
-            )}
           </div>
 
           <Card>
@@ -535,24 +509,20 @@ export default function DiscountManagement() {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          {canManage && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openSectorDialog(sector)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => deleteSector(sector.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openSectorDialog(sector)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteSector(sector.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

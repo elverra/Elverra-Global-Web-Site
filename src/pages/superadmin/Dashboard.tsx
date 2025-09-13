@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-const AdminDashboard = () => {
+const SuperAdminDashboard = () => {
   const navigate = useNavigate();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -171,12 +171,28 @@ const AdminDashboard = () => {
       route: "/admin/jobs",
       color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
+   
+    {
+      title: "Partners Management",
+      description: "Manage business partners and collaborations",
+      icon: Users,
+      route: "/admin/partners-management",
+      color: "bg-pink-50 hover:bg-pink-100 border-pink-200"
+    },
     {
       title: "Projects Management",
       description: "Manage funding projects and initiatives",
       icon: TrendingUp,
       route: "/admin/projects-management",
       color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
+    },
+  
+    {
+      title: "Payment Gateway Management",
+      description: "Configure payment methods and gateways",
+      icon: CreditCard,
+      route: "/admin/payment-gateways",
+      color: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
     },
     {
       title: "Merchant Approvals",
@@ -207,6 +223,13 @@ const AdminDashboard = () => {
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
     {
+      title: "Admin manager",
+      description: "Review and approve merchant applications",
+      icon: UserCheck,
+      route: "/admin/merchant-approvals",
+      color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
+    },
+    {
       title: "Actualité",
       description: "Manage funding projects and initiatives",
       icon: TrendingUp,
@@ -229,7 +252,7 @@ const AdminDashboard = () => {
       <Layout>
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Super Admin Dashboard</h1>
             <p className="text-gray-600">Manage your Elverra platform from here</p>
           </div>
 
@@ -322,4 +345,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default SuperAdminDashboard;

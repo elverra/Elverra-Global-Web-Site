@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -15,6 +15,7 @@ const DashboardStats = React.lazy(() => import('@/components/dashboard/Dashboard
 const QuickLinks = React.lazy(() => import('@/components/dashboard/QuickLinks'));
 const JobCenter = React.lazy(() => import('@/components/dashboard/JobCenter'));
 const PaymentHistory = React.lazy(() => import('@/components/dashboard/PaymentHistory'));
+
 
 // Error boundary for dashboard components
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
@@ -58,6 +59,10 @@ const Dashboard: React.FC<DashboardProps> = () => {
   
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   // Show loading state
   if (authLoading || profileLoading) {

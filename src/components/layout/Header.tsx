@@ -318,7 +318,7 @@ const Header = () => {
                   {isSuperAdmin && (
                     <>
                       <DropdownMenuItem asChild>
-                        <Link to="/super-admin" className="flex items-center">
+                        <Link to="/superadmin" className="flex items-center">
                           <Settings className="h-4 w-4 mr-2" />
                           Super Administration
                         </Link>

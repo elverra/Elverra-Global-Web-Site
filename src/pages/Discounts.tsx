@@ -99,7 +99,7 @@ const Discounts = () => {
         console.error("Error fetching discount data:", error);
         const raw = (error?.message || "").toString().toLowerCase();
         const friendly = raw.includes("permission denied") || raw.includes("rls") || raw.includes("policy") || raw.includes("403")
-          ? "Veuillez vous connecter"
+          ? "Impossible de charger les discounts pour le moment"
           : (error.message || "Failed to load discount data");
         toast.error(friendly);
       } finally {
@@ -132,7 +132,7 @@ const Discounts = () => {
     } catch (error: any) {
       const raw = (error?.message || "").toString().toLowerCase();
       const friendly = raw.includes("permission denied") || raw.includes("rls") || raw.includes("policy") || raw.includes("403")
-        ? "Veuillez vous connecter"
+        ? "Recherche indisponible pour le moment"
         : (error.message || "Search failed");
       toast.error(friendly);
     }
