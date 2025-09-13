@@ -62,12 +62,12 @@ async function readJson<T = any>(req: Request): Promise<T> {
 }
 
 // Supabase client (service role)
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL") || "";
-// Avoid requiring a secret that starts with reserved prefix. Use SERVICE_ROLE_KEY if provided.
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
-const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { global: { fetch: fetch as any } })
-  : null;
+const SUPABASE_URL = Deno.env.get("PROJECT_URL") || Deno.env.get("VITE_SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") || "";
+// Fallback to anon key if service role missing (temporary debug)
+const SUPABASE_ANON_KEY = Deno.env.get("ANON_KEY") || Deno.env.get("VITE_SUPABASE_ANON_KEY") || "";
+const finalKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
+const supabase = SUPABASE_URL && finalKey ? createClient(SUPABASE_URL, finalKey, { global: { fetch } }) : null;
 
 // Token value mapping
 const TOKEN_VALUES: Record<string, number> = {
@@ -452,10 +452,16 @@ Deno.serve(async (req: Request) => {
       if (!userId) return json({ success: false, message: "Missing userId" }, { status: 400 });
       const { data, error } = await supabase
         .from("secours_subscriptions")
-        .select("id, user_id, service_type:plan, token_balance")
+        .select("id, user_id, plan, token_balance")
         .eq("user_id", userId);
       if (error) return json({ success: false, message: error.message }, { status: 500 });
-      return json({ success: true, data });
+      const mapped = (data || []).map((row: any) => ({
+        id: row.id,
+        user_id: row.user_id,
+        service_type: row.plan,
+        token_balance: row.token_balance,
+      }));
+      return json({ success: true, data: mapped });
     } catch (e: any) {
       return json({ success: false, message: e?.message || "Unexpected error" }, { status: 500 });
     }
@@ -491,7 +497,7 @@ Deno.serve(async (req: Request) => {
         .from("secours_rescue_requests")
         .select("*")
         .eq("user_id", userId)
-        .order("request_date", { ascending: false });
+        .order("created_at", { ascending: false });
       if (error) return json({ success: false, message: error.message }, { status: 500 });
       return json({ success: true, data });
     } catch (e: any) {
@@ -514,7 +520,7 @@ Deno.serve(async (req: Request) => {
         .from("secours_subscriptions")
         .select("id, token_balance")
         .eq("user_id", userId)
-        .eq("subscription_type", serviceId)
+        .eq("plan", serviceId)
         .maybeSingle();
       if (subErr) return json({ success: false, message: subErr.message }, { status: 500 });
       if (!sub?.id) return json({ success: false, message: "No subscription for this service" }, { status: 400 });
@@ -527,13 +533,24 @@ Deno.serve(async (req: Request) => {
         request_description: description,
         rescue_value_fcfa: 0,
         status: "pending",
-        request_date: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       } as any).select("*").maybeSingle();
       if (error) return json({ success: false, message: error.message }, { status: 500 });
       return json({ success: true, data });
     } catch (e: any) {
       return json({ success: false, message: e?.message || "Unexpected error" }, { status: 500 });
     }
+  }
+
+  // Debug endpoint to check secrets
+  if (path === "/debug" && req.method === "GET") {
+    return json({
+      project_url: SUPABASE_URL ? "✓" : "✗",
+      service_role_key: SUPABASE_SERVICE_ROLE_KEY ? "✓" : "✗", 
+      anon_key: SUPABASE_ANON_KEY ? "✓" : "✗",
+      final_key: finalKey ? "✓" : "✗",
+      supabase_client: supabase ? "✓" : "✗"
+    });
   }
 
   return json({ ok: true, message: "API Function online", path });

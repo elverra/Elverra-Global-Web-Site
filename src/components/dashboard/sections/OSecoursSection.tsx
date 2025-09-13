@@ -4,7 +4,6 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Coins,
   Loader2,
   PlusCircle,
   Zap,
@@ -12,20 +11,26 @@ import {
   ShieldCheck,
   Star,
   Calendar,
+  AlertTriangle,
+  Shield,
+  Phone,
+  Car,
+  GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import TokenPurchase from '@/components/tokens/TokenPurchase';
-import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -133,17 +138,25 @@ const OSecoursSection = () => {
   const { t } = useLanguage();
   // No navigation needed in this section for now
 
-  // Functions base helper (align with TokenPurchase.tsx)
-  const envFunctionsBase = (import.meta as any)?.env?.VITE_FUNCTIONS_BASE || '';
-  // Runtime fallback: if env is empty in production, use the known functions domain
-  const defaultFunctionsBase = (typeof window !== 'undefined' && /elverraglobalml\.com$/i.test(window.location.hostname))
-    ? 'https://dsnzsgszqdjmugjdyvzv.functions.supabase.co'
-    : '';
-  const functionsBase = envFunctionsBase || defaultFunctionsBase;
-  const withBase = useCallback((path: string) => (functionsBase ? `${functionsBase}${path.startsWith('/') ? path : `/${path}`}` : path), [functionsBase]);
-  // Debug: verify env and base resolution in production
-  // Note: remove or guard this in production if too verbose
-  console.log('[DEBUG] VITE_FUNCTIONS_BASE =', functionsBase);
+  // Backend API base URL
+  const getBackendUrl = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      // In development, use localhost backend
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3001';
+      }
+      // In production, use Vercel backend API routes
+      return window.location.origin;
+    }
+    return 'http://localhost:3001';
+  }, []);
+  
+  const withBase = useCallback((path: string) => {
+    const baseUrl = getBackendUrl();
+    return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  }, [getBackendUrl]);
+  // Debug: verify backend URL resolution
+  console.log('[DEBUG] Backend URL =', getBackendUrl());
 
   // Temporarily allow all users to access Ô Secours without requiring a specific card tier
   const isEligible = true;

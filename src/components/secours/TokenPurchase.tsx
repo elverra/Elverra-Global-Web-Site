@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Coins, CreditCard, Smartphone } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const TokenPurchase = () => {
   const queryClient = useQueryClient();
@@ -66,15 +65,22 @@ const TokenPurchase = () => {
           throw new Error('Phone number is required for mobile money payment');
         }
 
-        const paymentResponse = await fetch('/api/secours/purchase-tokens', {
+        // Generate unique reference for payment
+        const reference = `TOKENS_${subscription.subscription_type}_${user?.id || 'temp'}_${Date.now()}`;
+        
+        // Use backend API for Orange Money payment
+        const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin;
+        const paymentResponse = await fetch(`${backendUrl}/api/payments/initiate-orange-money`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: 'temp_user_' + Date.now(), // Replace with actual user ID
-            subscriptionId: purchaseData.subscriptionId,
-            tokenAmount: purchaseData.tokenAmount,
-            phoneNumber: purchaseData.phoneNumber,
-            subscriptionType: subscription.subscription_type
+            reference,
+            amount: purchaseData.tokenAmount * tokenValue,
+            userId: user?.id,
+            metadata: {
+              serviceType: subscription.subscription_type,
+              tokens: purchaseData.tokenAmount
+            }
           })
         });
 

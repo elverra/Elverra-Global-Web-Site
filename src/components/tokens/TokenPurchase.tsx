@@ -69,21 +69,19 @@ const TokenPurchase: React.FC<TokenPurchaseProps> = ({
   };
 
   const handlePurchase = async () => {
-    if (!selectedServiceType || !amount) {
+    if (!selectedToken || !amount || !user) {
       toast.error('Please select a token type and amount');
       return;
     }
 
     const amountNum = parseInt(amount);
-    const minForService = selectedServiceType ? MIN_PURCHASE_PER_SERVICE[selectedServiceType] : 0;
-    
-    if (isNaN(amountNum) || amountNum < minForService) {
-      toast.error(`Minimum purchase amount is ${minForService} tokens`);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast.error('Please enter a valid amount');
       return;
     }
 
     if (amountNum > remainingTokens) {
-      toast.error(`You can only purchase up to ${remainingTokens} more tokens this month`);
+      toast.error(`Cannot purchase more than ${remainingTokens} tokens this month`);
       return;
     }
 
@@ -92,151 +90,194 @@ const TokenPurchase: React.FC<TokenPurchaseProps> = ({
       return;
     }
 
-    if ((paymentMethod === 'sama_money') && !phone) {
-      toast.error('Please provide your Mobile Money phone number');
-      return;
-    }
-
-    if (!user?.id) {
+    if (!user) {
       toast.error('You must be logged in to purchase tokens');
       return;
     }
 
     setIsPurchasing(true);
     try {
-      // Build request depending on gateway
       const tokenValue = selectedToken?.value || 0;
       const amountFcfa = amountNum * tokenValue;
+      const reference = `TOKENS_${selectedServiceType.toUpperCase()}_${Date.now()}`;
 
-      const functionsBase = (import.meta as any)?.env?.VITE_FUNCTIONS_BASE || '';
-      const withBase = (path: string) => functionsBase ? `${functionsBase}${path.startsWith('/') ? path : `/${path}`}` : path;
+      // Backend API base URL
+      const withBase = (path: string) => {
+        // In production, use relative API paths for Vercel functions
+        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+          return `http://localhost:3001${path.startsWith('/') ? path : `/${path}`}`;
+        }
+        return path.startsWith('/') ? path : `/${path}`;
+      };
 
-      let endpoint = '';
-      let payload: any = {};
+      if (paymentMethod === 'orange_money') {
+        const response = await fetch(withBase('/api/payments/initiate-orange-money'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            amount: amountFcfa,
+            currency: 'XOF',
+            phone: phone || user.phone || '',
+            email: user.email,
+            name: user.fullName || user.email?.split('@')[0] || 'User',
+            reference: reference,
+            metadata: {
+              type: 'secours_tokens',
+              serviceType: selectedServiceType,
+              tokens: amountNum,
+              paymentMethod: 'orange_money'
+            }
+          }),
+        });
 
-      if (paymentMethod === 'sama_money') {
-        endpoint = withBase('/api/payments/initiate-sama-money');
-        payload = {
-          userId: user.id,
-          amount: amountFcfa,
-          currency: 'XOF',
-          phone: phone || user.phone || '',
-          email: user.email,
-          name: user.fullName || user.email?.split('@')[0] || 'User',
-          reference: `TOKENS_${selectedServiceType.toUpperCase()}_${Date.now()}`,
-          metadata: {
-            type: 'secours_tokens',
-            serviceType: selectedServiceType,
-            tokens: amountNum,
-            paymentMethod: 'sama_money'
-          }
-        };
-      } else if (paymentMethod === 'orange_money') {
-        endpoint = withBase('/api/payments/initiate-orange-money');
-        payload = {
-          userId: user.id,
-          amount: amountFcfa,
-          currency: 'XOF',
-          phone: user.phone || '',
-          email: user.email,
-          name: user.fullName || user.email?.split('@')[0] || 'User',
-          reference: `TOKENS_${selectedServiceType.toUpperCase()}_${Date.now()}`,
-          metadata: {
-            type: 'secours_tokens',
-            serviceType: selectedServiceType,
-            tokens: amountNum,
-            paymentMethod: 'orange_money'
-          }
-        };
+        if (!response.ok) {
+          throw new Error('Failed to initiate Orange Money payment');
+        }
+
+        const data = await response.json();
+        
+        if (data.success && data.paymentUrl) {
+          window.open(data.paymentUrl, '_blank');
+          toast.success('Redirecting to Orange Money payment page...');
+          onPurchaseSuccess?.();
+        } else {
+          throw new Error(data.message || 'Orange Money payment initiation failed');
+        }
+        
+      } else if (paymentMethod === 'sama_money') {
+        if (!phone && !user.phone) {
+          toast.error('Please provide a phone number for SAMA Money');
+          return;
+        }
+        
+        const response = await fetch(withBase('/api/payments/initiate-sama-money'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            amount: amountFcfa,
+            currency: 'XOF',
+            phone: phone || user.phone || '',
+            email: user.email,
+            name: user.fullName || user.email?.split('@')[0] || 'User',
+            reference: reference,
+            description: `Ô Secours token purchase - ${selectedToken?.name || 'Service'}`,
+            url: 'https://elverraglobalml.com',
+            metadata: {
+              type: 'secours_tokens',
+              serviceType: selectedServiceType,
+              tokens: amountNum,
+              paymentMethod: 'sama_money'
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to initiate SAMA Money payment');
+        }
+
+        const data = await response.json();
+        
+        if (data.success && data.initiated) {
+          toast.success('Payment confirmation sent to your phone. Please confirm to complete the purchase.');
+          onPurchaseSuccess?.();
+        } else {
+          throw new Error(data.message || 'SAMA Money payment initiation failed');
+        }
+        
       } else if (paymentMethod === 'cinetpay') {
         // Validate minimal customer fields for CinetPay
         if (!cpName || !cpSurname || !(cpEmail || user.email) || !(cpPhone || user.phone) || !cpCity || !cpCountry) {
           toast.error('Please fill in CinetPay customer details (name, surname, email, phone, city, country).');
           return;
         }
-        // Client-side seamless integration
-        await loadCinetPay();
-        const CinetPay = (window as any).CinetPay;
+        
+        // Direct API integration instead of SDK
         const apikey = import.meta.env.VITE_CINETPAY_API_KEY;
         const siteId = import.meta.env.VITE_CINETPAY_SITE_ID;
+        
         if (!apikey || !siteId) {
           toast.error('CinetPay configuration missing. Please set VITE_CINETPAY_API_KEY and VITE_CINETPAY_SITE_ID');
           return;
         }
+        
         const txId = `TOKENS_${selectedServiceType.toUpperCase()}_${user.id || 'ANON'}_${Date.now()}`;
-        const notifyUrl = (import.meta as any)?.env?.VITE_CINETPAY_NOTIFY_URL || '/api/payments/cinetpay-webhook';
-        CinetPay.setConfig({
+        const notifyUrl = (import.meta as any)?.env?.VITE_CINETPAY_NOTIFY_URL || 'https://elverraglobalml.com/api/payments/cinetpay-webhook';
+        const returnUrl = 'https://elverraglobalml.com/payment/success';
+        
+        const paymentData = {
           apikey,
           site_id: siteId,
-          notify_url: notifyUrl,
-          mode: 'PRODUCTION'
-        });
-        CinetPay.getCheckout({
           transaction_id: txId,
           amount: amountFcfa,
           currency: 'XOF',
+          description: `Ô Secours token purchase - ${selectedToken?.name || 'Service'}`,
+          return_url: returnUrl,
+          notify_url: notifyUrl,
           channels: 'ALL',
-          description: `Ô Secours token purchase - ${TOKEN_TYPES[selectedServiceType].name}`,
-          customer_name: (cpName || user.fullName?.split(' ')[0] || 'Client'),
-          customer_surname: (cpSurname || user.fullName?.split(' ').slice(1).join(' ') || 'Elverra'),
-          customer_email: (cpEmail || user.email || ''),
-          customer_phone_number: (cpPhone || user.phone || ''),
-          customer_address: cpAddress,
-          customer_city: cpCity,
-          customer_country: cpCountry,
-          customer_state: cpState,
-          customer_zip_code: cpZip,
-        });
-        CinetPay.waitResponse((data: any) => {
-          if (data.status === 'ACCEPTED') {
-            toast.success('Payment successful! Tokens will be credited shortly.');
-            onPurchaseSuccess?.();
-          } else if (data.status === 'REFUSED') {
-            toast.error('Payment refused');
+          metadata: JSON.stringify({
+            type: 'secours_tokens',
+            serviceType: selectedServiceType,
+            tokens: amountNum,
+            userId: user.id
+          }),
+          customer_id: user.id || 'ANON',
+          customer_name: cpName || user.fullName?.split(' ')[0] || 'Client',
+          customer_surname: cpSurname || user.fullName?.split(' ').slice(1).join(' ') || 'Elverra',
+          customer_email: cpEmail || user.email || '',
+          customer_phone_number: cpPhone || user.phone || '',
+          customer_address: cpAddress || 'N/A',
+          customer_city: cpCity || 'Dakar',
+          customer_country: cpCountry?.toUpperCase() || 'SN',
+          customer_state: cpState?.toUpperCase() || 'DK',
+          customer_zip_code: cpZip || '00000',
+          lang: 'FR',
+          invoice_data: {
+            'Service': selectedToken?.name || 'Tokens',
+            'Quantité': amountNum.toString(),
+            'Prix unitaire': `${selectedToken?.value || 0} FCFA`
           }
-        });
-        CinetPay.onError((err: any) => {
-          console.error('CinetPay error', err);
-          toast.error('CinetPay error');
-        });
-        // After initiating CinetPay, we return to avoid calling backend initiation
-        return;
+        };
+        
+        try {
+          const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(paymentData)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          
+          if (result.code === '201') {
+            // Success - redirect to payment page
+            window.open(result.data.payment_url, '_blank');
+            toast.success('Redirecting to CinetPay payment page...');
+            onPurchaseSuccess?.();
+          } else {
+            throw new Error(result.message || result.description || 'CinetPay payment failed');
+          }
+        } catch (error: any) {
+          console.error('CinetPay API error:', error);
+          toast.error(`CinetPay error: ${error.message || 'Payment initialization failed'}`);
+        }
+        
+        return; // Exit early for CinetPay
       }
-
-      const token = localStorage.getItem('token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || 'Failed to initiate payment');
-      }
-
-      const data = await res.json();
-      const paymentUrl = data.payment_url || data.paymentUrl;
-      if (paymentUrl) {
-        window.open(paymentUrl, '_blank');
-        toast.success('Payment initiated! Please complete it in the new tab.');
-        // Leave it to the webhook/callback to credit tokens, then refresh balances on success callback elsewhere
-        return;
-      }
-
-      // Fallback success without URL
-      toast.success(`Payment initiated successfully`);
-      onPurchaseSuccess?.();
-      setPaymentMethod('');
-      setPhone('');
+      
     } catch (error: any) {
       console.error('Purchase error:', error);
-      toast.error(error?.message || 'Failed to process purchase');
+      toast.error(error.message || 'Failed to process purchase');
     } finally {
       setIsPurchasing(false);
     }
