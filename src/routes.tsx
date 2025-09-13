@@ -28,6 +28,9 @@ import AffiliateManagement from '@/pages/admin/AffiliateManagement';
 import JobManagement from '@/pages/admin/JobManagement';
 import ProjectsManagement from '@/pages/admin/ProjectsManagement';
 import PaymentManagement from '@/pages/admin/PaymentManagement';
+import SuperAdminCareerJobsManagement from '@/pages/superadmin/CareerJobsManagement';
+import SuperAdminEventsManagement from '@/pages/superadmin/EventsManagement';
+import SuperAdminDiscountManagement from '@/pages/superadmin/DiscountManagement';
 import FAQ from '@/pages/FAQ';
 import SecoursMyAccount from '@/pages/SecoursMyAccount';
 import Competitions from '@/pages/Competitions';
@@ -94,6 +97,12 @@ import PartnersManagement from './pages/superadmin/PartnersManagement';
 import PaymentGatewayManagement from './pages/superadmin/PaymentGatewayManagement';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import PartnerDashboard from './pages/partners/Dashboard';
+import Career from './pages/Career';
+import CareerJobDetail from './pages/CareerJobDetail';
+import Events from './pages/Events';
+import EventDetail from './pages/EventDetail';
+import CareerJobsManagement from './pages/admin/CareerJobsManagement';
+import EventsManagement from './pages/admin/EventsManagement';
 
 // Add the new route to the existing routes array
 const routes = [
@@ -461,7 +470,7 @@ const routes = [
   {
     path: '/admin/payments',
     element: (
-      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
         <PaymentManagement />
       </ProtectedRoute>
     ),
@@ -469,7 +478,7 @@ const routes = [
   {
     path: '/admin/shop-management',
     element: (
-      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
         <ShopManagement />
       </ProtectedRoute>
     ),
@@ -477,7 +486,7 @@ const routes = [
   {
     path: '/admin/user-management',
     element: (
-      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
         <UserManagement />
       </ProtectedRoute>
     ),
@@ -497,7 +506,7 @@ const routes = [
   {
     path: '/admin/merchant-approvals',
     element: (
-      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
         <MerchantApprovals />
       </ProtectedRoute>
     ),
@@ -525,7 +534,7 @@ const routes = [
   {
     path: '/admin/ebook-management',
     element: (
-      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
         <EbookManagement />
       </ProtectedRoute>
     ),
@@ -537,6 +546,62 @@ const routes = [
   {
     path: '/payment-status',
     element: <PaymentStatus />,
+  },
+  {
+    path: '/career',
+    element: <Career />,
+  },
+  {
+    path: '/career/:id',
+    element: <CareerJobDetail />,
+  },
+  {
+    path: '/events',
+    element: <Events />,
+  },
+  {
+    path: '/events/:id',
+    element: <EventDetail />,
+  },
+  {
+    path: '/admin/career-jobs',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
+        <CareerJobsManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/events-management',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
+        <EventsManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/superadmin/career-jobs',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <SuperAdminCareerJobsManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/superadmin/events-management',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <SuperAdminEventsManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/superadmin/discount-management',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <SuperAdminDiscountManagement />
+      </ProtectedRoute>
+    ),
   },
 ];
 

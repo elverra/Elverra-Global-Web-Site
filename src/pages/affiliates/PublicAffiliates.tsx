@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-// import { affiliateService } from '@/services/mockServices';
+import { supabase } from '@/lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,43 +30,20 @@ export default function PublicAffiliates() {
   const fetchAffiliatePrograms = async () => {
     try {
       setLoading(true);
-      // Mock affiliate programs - will be replaced with Supabase
-      const mockPrograms: AffiliateProgram[] = [
-        {
-          id: '1',
-          title: 'Elverra Membership Referral',
-          description: 'Earn commissions by referring new members to Elverra Global membership plans.',
-          commissionRate: 15,
-          minPayout: 25000,
-          category: 'Membership',
-          isActive: true,
-          totalAffiliates: 1247,
-          avgEarnings: 45000
-        },
-        {
-          id: '2',
-          title: 'Ô Secours Token Referral',
-          description: 'Get rewarded for every Ô Secours token purchase made through your referral link.',
-          commissionRate: 10,
-          minPayout: 15000,
-          category: 'Tokens',
-          isActive: true,
-          totalAffiliates: 892,
-          avgEarnings: 28000
-        },
-        {
-          id: '3',
-          title: 'Shop Partner Program',
-          description: 'Promote products from our marketplace and earn on every successful sale.',
-          commissionRate: 8,
-          minPayout: 20000,
-          category: 'E-commerce',
-          isActive: true,
-          totalAffiliates: 634,
-          avgEarnings: 35000
-        }
-      ];
-      setPrograms(mockPrograms);
+      
+      const { data, error } = await supabase
+        .from('affiliate_programs')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching affiliate programs:', error);
+        setPrograms([]);
+        return;
+      }
+
+      setPrograms(data || []);
     } catch (error) {
       console.error('Error fetching affiliate programs:', error);
     } finally {

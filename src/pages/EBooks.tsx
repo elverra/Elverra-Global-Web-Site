@@ -58,89 +58,35 @@ const EBooks = () => {
 
   const fetchEbooks = async () => {
     try {
-      // Use mock data temporarily to bypass RLS issues
-      const mockEbooks = [
-        {
-          id: '1',
-          title: 'Guide Complet Elverra',
-          author: 'Équipe Elverra',
-          description: 'Un guide complet pour utiliser la plateforme Elverra et maximiser vos opportunités',
-          category: 'Guide',
-          pages: 120,
-          rating: 4.5,
-          downloads: 150,
-          publish_date: '2024-01-15',
-          cover_image_url: '/placeholder.svg',
-          file_url: '#',
-          file_type: 'PDF',
-          file_size_mb: 5.2,
-          tags: ['guide', 'elverra', 'plateforme'],
-          featured: true,
-          is_active: true,
-          is_free: true,
-          price: 0,
-          created_at: '2024-01-15T00:00:00Z',
-          updated_at: '2024-01-15T00:00:00Z',
-          created_by: 'admin'
-        },
-        {
-          id: '2',
-          title: 'Stratégies de Marketing Digital',
-          author: 'Expert Marketing',
-          description: 'Découvrez les meilleures stratégies pour développer votre présence en ligne',
-          category: 'Marketing',
-          pages: 85,
-          rating: 4.2,
-          downloads: 89,
-          publish_date: '2024-01-10',
-          cover_image_url: '/placeholder.svg',
-          file_url: '#',
-          file_type: 'PDF',
-          file_size_mb: 3.8,
-          tags: ['marketing', 'digital', 'stratégie'],
-          featured: false,
-          is_active: true,
-          is_free: false,
-          price: 2500,
-          created_at: '2024-01-10T00:00:00Z',
-          updated_at: '2024-01-10T00:00:00Z',
-          created_by: 'admin'
-        },
-        {
-          id: '3',
-          title: 'Entrepreneuriat en Afrique',
-          author: 'Entrepreneur Africain',
-          description: 'Les clés du succès entrepreneurial sur le continent africain',
-          category: 'Business',
-          pages: 200,
-          rating: 4.8,
-          downloads: 234,
-          publish_date: '2024-01-05',
-          cover_image_url: '/placeholder.svg',
-          file_url: '#',
-          file_type: 'EPUB',
-          file_size_mb: 4.1,
-          tags: ['entrepreneuriat', 'afrique', 'business'],
-          featured: true,
-          is_active: true,
-          is_free: true,
-          price: 0,
-          created_at: '2024-01-05T00:00:00Z',
-          updated_at: '2024-01-05T00:00:00Z',
-          created_by: 'admin'
-        }
-      ];
+      const { data, error } = await supabase
+        .from('ebooks')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        setEbooks([]);
+        setStats({
+          totalBooks: 0,
+          totalReaders: 0,
+          totalDownloads: 0,
+          averageRating: 0
+        });
+        return;
+      }
       
-      setEbooks(mockEbooks);
+      const ebooksData = data || [];
+      setEbooks(ebooksData);
       
       // Calculate stats
-      const totalDownloads = mockEbooks.reduce((sum, book) => sum + book.downloads, 0);
-      const averageRating = mockEbooks.length > 0 
-        ? mockEbooks.reduce((sum, book) => sum + book.rating, 0) / mockEbooks.length 
+      const totalDownloads = ebooksData.reduce((sum, book) => sum + book.downloads, 0);
+      const averageRating = ebooksData.length > 0 
+        ? ebooksData.reduce((sum, book) => sum + book.rating, 0) / ebooksData.length 
         : 0;
       
       setStats({
-        totalBooks: mockEbooks.length,
+        totalBooks: ebooksData.length,
         totalReaders: totalDownloads,
         totalDownloads,
         averageRating: Math.round(averageRating * 10) / 10
@@ -148,6 +94,13 @@ const EBooks = () => {
     } catch (error) {
       console.error('Error fetching ebooks:', error);
       toast.error('Erreur lors du chargement des e-books');
+      setEbooks([]);
+      setStats({
+        totalBooks: 0,
+        totalReaders: 0,
+        totalDownloads: 0,
+        averageRating: 0
+      });
     } finally {
       setLoading(false);
     }

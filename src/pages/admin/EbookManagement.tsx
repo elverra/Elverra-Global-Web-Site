@@ -71,36 +71,21 @@ const EbookManagement = () => {
   const fetchEbooks = async () => {
     setLoading(true);
     try {
-      // Use mock data temporarily to bypass RLS issues
-      const mockEbooks = [
-        {
-          id: '1',
-          title: 'Guide Complet Elverra',
-          author: 'Équipe Elverra',
-          description: 'Un guide complet pour utiliser la plateforme Elverra',
-          category: 'Guide',
-          pages: 120,
-          rating: 4.5,
-          downloads: 150,
-          publish_date: '2024-01-15',
-          cover_image_url: '/placeholder.svg',
-          file_url: '#',
-          file_type: 'PDF',
-          file_size_mb: 5.2,
-          tags: ['guide', 'elverra', 'plateforme'],
-          featured: true,
-          is_active: true,
-          is_free: true,
-          price: 0,
-          created_at: '2024-01-15T00:00:00Z',
-          updated_at: '2024-01-15T00:00:00Z',
-          created_by: 'admin'
-        }
-      ];
-      setEbooks(mockEbooks);
+      const { data, error } = await supabase
+        .from('ebooks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        setEbooks([]);
+        return;
+      }
+      
+      setEbooks(data || []);
     } catch (error) {
       console.error('Error fetching ebooks:', error);
-      toast.error('Failed to load ebooks');
+      setEbooks([]);
     } finally {
       setLoading(false);
     }

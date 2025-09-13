@@ -1,11 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Job } from '@/services/mockServices';
+import { supabase } from '@/lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Clock, Users, Briefcase } from "lucide-react";
+
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  requirements: string[];
+  salary: string;
+  type: string;
+  employment_type: string;
+  salary_min: number;
+  salary_max: number;
+  currency: string;
+  experience_level: string;
+  remote_allowed: boolean;
+  application_count: number;
+  created_at: string;
+  application_deadline: string;
+  isActive: boolean;
+  createdAt: string;
+}
 
 export default function PublicJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -23,60 +45,42 @@ export default function PublicJobs() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      // Mock jobs with proper structure
-      const mockJobs: Job[] = [
-        {
-          id: '1',
-          title: 'Software Developer',
-          company: 'Tech Mali',
-          location: 'Bamako',
-          description: 'Looking for a skilled software developer to join our team.',
-          requirements: ['JavaScript', 'React', 'Node.js'],
-          salary: '500,000 - 800,000 CFA',
-          type: 'full-time',
-          employment_type: 'full-time',
-          salary_min: 500000,
-          salary_max: 800000,
-          currency: 'CFA',
-          experience_level: 'Mid-level',
-          remote_allowed: true,
-          application_count: 15,
-          created_at: new Date().toISOString(),
-          application_deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          isActive: true,
-          createdAt: new Date().toISOString()
-        }
-      ];
       
-      let filteredJobs = mockJobs;
-      
+      let query = supabase
+        .from('jobs')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
       // Apply filters
-      if (selectedLocation !== 'all') {
-        filteredJobs = filteredJobs.filter(j => 
-          j.location.toLowerCase().includes(selectedLocation.toLowerCase())
-        );
-      }
-      
-      if (selectedType !== 'all') {
-        filteredJobs = filteredJobs.filter(j => j.employment_type === selectedType);
-      }
-      
       if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filteredJobs = filteredJobs.filter(j => 
-          j.title.toLowerCase().includes(query) ||
-          j.company.toLowerCase().includes(query) ||
-          j.description.toLowerCase().includes(query)
-        );
+        query = query.or(`title.ilike.%${searchQuery}%,company.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
       }
-      
-      // Apply pagination
-      const startIndex = (currentPage - 1) * 20;
-      const endIndex = startIndex + 20;
-      const paginatedJobs = filteredJobs.slice(startIndex, endIndex);
-      
-      setJobs(paginatedJobs);
-      setHasMore(endIndex < filteredJobs.length);
+
+      if (selectedLocation !== 'all') {
+        query = query.eq('location', selectedLocation);
+      }
+
+      if (selectedType !== 'all') {
+        query = query.eq('employment_type', selectedType);
+      }
+
+      // Pagination
+      const limit = 10;
+      const offset = (currentPage - 1) * limit;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching jobs:', error);
+        setJobs([]);
+        setHasMore(false);
+        return;
+      }
+
+      setJobs(data || []);
+      setHasMore((data || []).length === limit);
     } catch (error) {
       console.error('Error fetching jobs:', error);
     } finally {

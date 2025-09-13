@@ -165,10 +165,10 @@ const AdminDashboard = () => {
     },
    
     {
-      title: "Carreers Management",
-      description: "Manage job postings and applications",
+      title: "Career Jobs Management",
+      description: "Manage Elverra career job postings and applications",
       icon: CreditCard,
-      route: "/admin/jobs",
+      route: "/admin/career-jobs",
       color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
     {
@@ -193,11 +193,11 @@ const AdminDashboard = () => {
      color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
     {
-      title: "Events",
-      description: "Review and approve merchant applications",
+      title: "Events Management",
+      description: "Manage events, competitions, and workshops",
       icon: UserCheck,
-      route: "/admin/merchant-approvals",
-     color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
+      route: "/admin/events-management",
+      color: "bg-green-50 hover:bg-green-100 border-green-200"
     },
     {
       title: "E-Book Library",

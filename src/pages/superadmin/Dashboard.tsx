@@ -160,15 +160,15 @@ const SuperAdminDashboard = () => {
       title: "Discount Management",
       description: "Manage merchants, sectors, and discount offers",
       icon: ShoppingBag,
-      route: "/admin/discount-management",
+      route: "/superadmin/discount-management",
       color: "bg-blue-50 hover:bg-blue-100 border-blue-200"
     },
    
     {
-      title: "Carreers Management",
+      title: "Careers Management",
       description: "Manage job postings and applications",
       icon: CreditCard,
-      route: "/admin/jobs",
+      route: "/superadmin/career-jobs",
       color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
    
@@ -176,14 +176,14 @@ const SuperAdminDashboard = () => {
       title: "Partners Management",
       description: "Manage business partners and collaborations",
       icon: Users,
-      route: "/admin/partners-management",
+      route: "/superadmin/partners-management",
       color: "bg-pink-50 hover:bg-pink-100 border-pink-200"
     },
     {
       title: "Projects Management",
       description: "Manage funding projects and initiatives",
       icon: TrendingUp,
-      route: "/admin/projects-management",
+      route: "/superadmin/projects-management",
       color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
     },
   
@@ -191,56 +191,56 @@ const SuperAdminDashboard = () => {
       title: "Payment Gateway Management",
       description: "Configure payment methods and gateways",
       icon: CreditCard,
-      route: "/admin/payment-gateways",
+      route: "/superadmin/payment-gateways",
       color: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
     },
     {
       title: "Merchant Approvals",
       description: "Review and approve merchant applications",
       icon: UserCheck,
-      route: "/admin/merchant-approvals",
+      route: "/superadmin/merchant-approvals",
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
     {
       title: "News Letters",
-      description: "Review and approve merchant applications",
+      description: "Manage newsletters and communications",
       icon: UserCheck,
-      route: "/admin/merchant-approvals",
+      route: "/superadmin/newsletters",
      color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
     {
       title: "Events",
-      description: "Review and approve merchant applications",
+      description: "Manage events and competitions",
       icon: UserCheck,
-      route: "/admin/merchant-approvals",
+      route: "/superadmin/events-management",
      color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
     {
       title: "E-Book library",
-      description: "Review and approve merchant applications",
+      description: "Manage digital book library",
       icon: Book,
-      route: "/admin/merchant-approvals",
+      route: "/superadmin/ebook-management",
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
     {
-      title: "Admin manager",
-      description: "Review and approve merchant applications",
+      title: "Admin Manager",
+      description: "Manage admin users and permissions",
       icon: UserCheck,
-      route: "/admin/merchant-approvals",
+      route: "/superadmin/user-management",
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
     {
       title: "Actualité",
-      description: "Manage funding projects and initiatives",
+      description: "Manage news and updates",
       icon: TrendingUp,
-      route: "/admin/projects-management",
+      route: "/superadmin/news-management",
       color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
     },
     {
       title: "Contact",
-      description: "Manage funding projects and initiatives",
+      description: "Manage contact requests and support",
       icon: TrendingUp,
-      route: "/admin/projects-management",
+      route: "/superadmin/contact-management",
       color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
     },
     

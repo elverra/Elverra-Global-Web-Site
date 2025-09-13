@@ -31,15 +31,8 @@ const CountrySelector = ({ onClose }: CountrySelectorProps) => {
   const { language, setLanguage, t } = useLanguage();
 
   const countries: Country[] = [
-    { id: '1', name: 'Mali', code: 'ML', active: true, url: 'https://www.elverramali.com' },
-    { id: '2', name: 'Nigeria', code: 'NG', active: false, url: 'https://www.elverranigeria.com' },
-    { id: '3', name: 'Ghana', code: 'GH', active: false, url: 'https://www.elverraghana.com' },
-    { id: '4', name: 'Senegal', code: 'SN', active: false, url: 'https://www.elverrasenegal.com' },
-    { id: '5', name: 'South Africa', code: 'ZA', active: false, url: 'https://www.elverrasouthafrica.com' },
-    { id: '6', name: 'Kenya', code: 'KE', active: false, url: 'https://www.elverrakenya.com' },
-    { id: '7', name: 'Ivory Coast', code: 'CI', active: false, url: 'https://www.elverraivorycoast.com' },
-    { id: '8', name: 'Egypt', code: 'EG', active: false, url: 'https://www.elverraegypt.com' },
-    { id: '9', name: 'International', code: 'GL', active: true, url: 'https://www.elverra.net' },
+    { id: '1', name: 'Mali', code: 'ML', active: true},
+   
   ];
 
   const languages: Language[] = [

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { membershipService } from '@/services/mockServices';
+import { supabase } from '@/lib/supabaseClient';
 
 // Global cache to prevent multiple API calls
 let membershipCache: { [userId: string]: Membership | null } = {};
@@ -74,17 +74,22 @@ export const useMembership = () => {
     try {
       setLoading(true);
       
-      // Create and store the fetch promise using mock service
-      const fetchPromise = membershipService.getMembership(user.id)
-        .then(async (result) => {
-          if (result.success) {
-            membershipCache[user.id] = result.data;
-            return result.data;
-          } else {
-            membershipCache[user.id] = null;
-            return null;
-          }
-        });
+      // Create and store the fetch promise using Supabase
+      const fetchPromise = (async () => {
+        const { data, error } = await supabase
+          .from('memberships')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+
+        membershipCache[user.id] = data || null;
+        return data || null;
+      })();
 
       fetchPromises[user.id] = fetchPromise;
       
@@ -97,7 +102,7 @@ export const useMembership = () => {
     } catch (err) {
       console.error('Error in fetchMembership:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch membership');
-      console.error('Error fetching membership:', err);
+      membershipCache[user.id] = null;
       // Clean up failed promise
       delete fetchPromises[user.id];
     } finally {

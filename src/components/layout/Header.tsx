@@ -3,11 +3,107 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Menu,
   X,
-  User,
-  LogOut,
-  Settings,
-  Plus,
   ChevronDown,
+  User,
+  Settings,
+  LogOut,
+  Building2,
+  Users,
+  Briefcase,
+  Heart,
+  Globe,
+  Shield,
+  CreditCard,
+  BookOpen,
+  Zap,
+  ShoppingCart,
+  Home,
+  Phone,
+  Info,
+  FileText,
+  HelpCircle,
+  Star,
+  Target,
+  TrendingUp,
+  Award,
+  Handshake,
+  MapPin,
+  Calendar,
+  Clock,
+  DollarSign,
+  Search,
+  Filter,
+  SortAsc,
+  Eye,
+  Download,
+  Share2,
+  Bookmark,
+  MessageCircle,
+  ThumbsUp,
+  Flag,
+  Edit,
+  Trash2,
+  Send,
+  Upload,
+  Image,
+  Video,
+  Music,
+  File,
+  Code,
+  Database,
+  Server,
+  Cloud,
+  Lock,
+  Unlock,
+  Key,
+  Wifi,
+  Battery,
+  Signal,
+  Volume2,
+  VolumeX,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Repeat,
+  Shuffle,
+  Mic,
+  MicOff,
+  Camera,
+  CameraOff,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Laptop,
+  Watch,
+  Headphones,
+  Speaker,
+  Printer,
+  Keyboard,
+  Mouse,
+  Gamepad2,
+  Joystick,
+  Cpu,
+  HardDrive,
+  MemoryStick,
+  Usb,
+  Bluetooth,
+  Wifi as WifiIcon,
+  Radio,
+  Tv,
+  Film,
+  Camera as CameraIcon,
+  Mic as MicIcon,
+  Headphones as HeadphonesIcon,
+  Speaker as SpeakerIcon,
+  Volume2 as VolumeIcon,
+  VolumeX as VolumeOffIcon,
+  Play as PlayIcon,
+  Pause as PauseIcon,
+  SkipBack as PreviousIcon,
+  SkipForward as NextIcon,
+  Repeat as RepeatIcon,
+  Shuffle as ShuffleIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -168,7 +264,7 @@ const Header = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/job-center" className="flex items-center">
-                    Job Center
+                    Jobs Center
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -184,53 +280,14 @@ const Header = () => {
               {/* Shop */}
             </Link>
 
-            {/* Jobs Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="text-gray-600 hover:text-purple-600 font-medium"
-                  style={{ fontSize: "15px" }}
-                >
-                  Jobs
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-56 bg-white border shadow-lg"
-              >
-                <DropdownMenuItem asChild>
-                  <Link to="/jobs" className="flex items-center">
-                    Browse Jobs
-                  </Link>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/job-dashboard/employee"
-                    className="flex items-center"
-                  >
-                    Employee Dashboard
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/job-dashboard/employer"
-                    className="flex items-center"
-                  >
-                    Employer Dashboard
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/post-job" className="flex items-center">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Post a Job
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Career Link */}
+            <Link
+              to="/career"
+              className="text-gray-600 hover:text-purple-600 transition-colors font-medium"
+              style={{ fontSize: "15px" }}
+            >
+              Career
+            </Link>
 
             {/* Our Affiliates Dropdown */}
             <DropdownMenu>
@@ -284,7 +341,7 @@ const Header = () => {
             </Link>
 
             <Link
-              to="/competitions"
+              to="/events"
               className="text-gray-600 hover:text-purple-600 transition-colors font-medium"
               style={{ fontSize: "15px" }}
             >
@@ -485,28 +542,12 @@ const Header = () => {
                 E-Book Library
               </Link>
               <Link
-                to="/jobs"
+                to="/career"
                 className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"
                 style={{ fontSize: "15px" }}
                 onClick={toggleMenu}
               >
-                Browse Jobs
-              </Link>
-              <Link
-                to="/job-center"
-                className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"
-                style={{ fontSize: "15px" }}
-                onClick={toggleMenu}
-              >
-                Job Center
-              </Link>
-              <Link
-                to="/post-job"
-                className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"
-                style={{ fontSize: "15px" }}
-                onClick={toggleMenu}
-              >
-                Post a Job
+                Career at Elverra
               </Link>
               <Link
                 to="/affiliates/members"
@@ -549,12 +590,12 @@ const Header = () => {
                 Discounts
               </Link>
               <Link
-                to="/competitions"
+                to="/events"
                 className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"
                 style={{ fontSize: "15px" }}
                 onClick={toggleMenu}
               >
-                Competitions
+                Events
               </Link>
 
               {!user && (

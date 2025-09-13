@@ -38,7 +38,7 @@ interface Category {
 }
 
 import { useAuth } from '@/hooks/useAuth';
-import { productService } from '@/services/mockServices';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function MyShop() {
   const { user } = useAuth();
@@ -84,28 +84,43 @@ export default function MyShop() {
     if (!user) return;
     
     try {
-      const result = await productService.getUserProducts(user.id);
-      if (result.success) {
-        setProducts(result.data || []);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('seller_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching products:', error);
+        setProducts([]);
+        return;
       }
+
+      setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setProducts([]);
     }
   };
 
   const fetchCategories = async () => {
     try {
-      // Mock categories - will be replaced with Supabase
-      const mockCategories: Category[] = [
-        { id: 'electronics', name: 'Electronics', description: 'Electronic devices and gadgets' },
-        { id: 'clothing', name: 'Clothing', description: 'Fashion and apparel' },
-        { id: 'food', name: 'Food & Beverages', description: 'Food items and drinks' },
-        { id: 'books', name: 'Books', description: 'Books and educational materials' },
-        { id: 'home', name: 'Home & Garden', description: 'Home improvement and garden items' }
-      ];
-      setCategories(mockCategories);
+      const { data, error } = await supabase
+        .from('product_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching categories:', error);
+        setCategories([]);
+        return;
+      }
+
+      setCategories(data || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories([]);
     }
   };
 
@@ -147,24 +162,41 @@ export default function MyShop() {
 
   const handleAddProduct = async () => {
     if (!user || !newProduct.name || !newProduct.description || !newProduct.category) {
-      toast.error('Please fill in all required fields');
+      toast.error('Veuillez remplir tous les champs requis');
       return;
     }
 
     try {
-      const result = await productService.createProduct({
-        ...newProduct,
-        userId: user.id,
-        isActive: true,
-        createdAt: new Date().toISOString()
-      });
-
-      if (!result.success) {
-        toast.error(result.error || 'Failed to add product');
+      // Check if payment is required for additional products
+      if (productLimit && productLimit.remainingFree <= 0) {
+        // Redirect to payment page for product creation
+        const paymentUrl = `/api/products/initiate-payment?userId=${user.id}&productData=${encodeURIComponent(JSON.stringify(newProduct))}`;
+        window.location.href = paymentUrl;
         return;
       }
 
-      toast.success('Product added successfully!');
+      const { data, error } = await supabase
+        .from('products')
+        .insert([{
+          name: newProduct.name,
+          description: newProduct.description,
+          price: newProduct.price,
+          category: newProduct.category,
+          images: newProduct.images,
+          contact: newProduct.contact,
+          seller_id: user.id,
+          is_active: true
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating product:', error);
+        toast.error('Erreur lors de la création du produit');
+        return;
+      }
+
+      toast.success('Produit ajouté avec succès!');
       setNewProduct({
         name: '',
         description: '',
@@ -185,17 +217,23 @@ export default function MyShop() {
     if (!user) return;
     
     try {
-      const result = await productService.deleteProduct(productId);
-      
-      if (result.success) {
-        toast.success('Product deleted successfully');
-        fetchProducts();
-      } else {
-        toast.error(result.error || 'Failed to delete product');
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId)
+        .eq('seller_id', user.id);
+
+      if (error) {
+        console.error('Error deleting product:', error);
+        toast.error('Erreur lors de la suppression du produit');
+        return;
       }
+
+      toast.success('Produit supprimé avec succès');
+      fetchProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
-      toast.error('Failed to delete product');
+      toast.error('Erreur lors de la suppression du produit');
     }
   };
 

@@ -1,12 +1,10 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { jobService } from '@/services/mockServices';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 
-// Global cache for bookmarks and applications data
-const bookmarksCache = new Map<string, { bookmarks: string[]; timestamp: number }>();
-const bookmarksPromises = new Map<string, Promise<string[]>>();
+// Global cache for applications data
 const applicationsCache = new Map<string, { applications: any[]; timestamp: number }>();
 const applicationsPromises = new Map<string, Promise<any[]>>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -41,7 +39,6 @@ export interface Job {
 export const useJobs = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchJobs = async (filters?: {
     search?: string;
@@ -51,51 +48,43 @@ export const useJobs = () => {
   }) => {
     try {
       setLoading(true);
-      // Use mock job service
-      const result = await jobService.getJobs();
       
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch jobs');
-      }
-      
-      // Apply client-side filtering (will be replaced with server-side filtering)
-      let filteredData = result.data || [];
-      
+      let supabaseQuery = supabase
+        .from('jobs')
+        .select('*')
+        .eq('is_active', true);
+
+      // Apply filters
       if (filters?.search) {
-        const searchLower = filters.search.toLowerCase();
-        filteredData = filteredData.filter((job: any) => 
-          job.title?.toLowerCase().includes(searchLower) ||
-          job.company?.toLowerCase().includes(searchLower) ||
-          job.description?.toLowerCase().includes(searchLower)
+        supabaseQuery = supabaseQuery.or(
+          `title.ilike.%${filters.search}%,company.ilike.%${filters.search}%,description.ilike.%${filters.search}%`
         );
       }
 
       if (filters?.location) {
-        filteredData = filteredData.filter((job: any) => 
-          job.location?.toLowerCase().includes(filters.location!.toLowerCase())
-        );
+        supabaseQuery = supabaseQuery.ilike('location', `%${filters.location}%`);
       }
 
       if (filters?.employmentType) {
-        filteredData = filteredData.filter((job: any) => job.employment_type === filters.employmentType);
+        supabaseQuery = supabaseQuery.eq('employment_type', filters.employmentType);
       }
 
       if (filters?.experienceLevel) {
-        filteredData = filteredData.filter((job: any) => job.experience_level === filters.experienceLevel);
+        supabaseQuery = supabaseQuery.eq('experience_level', filters.experienceLevel);
       }
-      
-      // Transform data to match our interface
-      const transformedJobs = filteredData.map((job: any) => ({
-        ...job,
-        type: job.employment_type,
-        experience_required: job.experience_level === 'entry' ? 0 : 
-                           job.experience_level === 'mid' ? 3 : 5,
-      }));
-      
-      setJobs(transformedJobs);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch jobs');
-      console.error('Error fetching jobs:', err);
+
+      const { data, error } = await supabaseQuery.order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        setJobs([]);
+        return;
+      }
+
+      setJobs(data || []);
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      setJobs([]);
     } finally {
       setLoading(false);
     }
@@ -133,27 +122,48 @@ export const useJobs = () => {
     remote_allowed?: boolean;
   }) => {
     try {
-      const result = await jobService.createJob(jobData as any);
+      const { data, error } = await supabase
+        .from('jobs')
+        .insert([jobData])
+        .select();
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to post job');
-      }
+      if (error) throw error;
       
-      toast.success('Job posted successfully!');
+      toast.success('Emploi publié avec succès!');
       await fetchJobs(); // Refresh jobs list
-      return { data: result.job, error: null };
+      return { data: data?.[0], error: null };
     } catch (error) {
       console.error('Error posting job:', error);
-      toast.error('Failed to post job');
+      toast.error('Échec de la publication de l\'emploi');
       return { data: null, error };
     }
   };
 
   const incrementJobViews = async (jobId: string) => {
     try {
-      // Mock increment views - will be replaced with Supabase
-      await new Promise(resolve => setTimeout(resolve, 100));
-      console.log(`Incremented views for job ${jobId}`);
+      // First get the current views count
+      const { data: currentJob, error: fetchError } = await supabase
+        .from('jobs')
+        .select('views')
+        .eq('id', jobId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching current views:', fetchError);
+        return;
+      }
+
+      // Increment the views count
+      const newViews = (currentJob?.views || 0) + 1;
+      
+      const { error } = await supabase
+        .from('jobs')
+        .update({ views: newViews })
+        .eq('id', jobId);
+        
+      if (error) {
+        console.error('Error incrementing job views:', error);
+      }
     } catch (error) {
       console.error('Error incrementing job views:', error);
     }
@@ -166,7 +176,6 @@ export const useJobs = () => {
   return { 
     jobs, 
     loading, 
-    error, 
     fetchJobs, 
     searchJobs, 
     postJob,
@@ -184,28 +193,18 @@ export const useJobDetails = (jobId: string) => {
     const fetchJob = async () => {
       try {
         setLoading(true);
-        // Mock job fetch - will be replaced with Supabase
-        await new Promise(resolve => setTimeout(resolve, 400));
         
-        const mockJob: Job = {
-          id: jobId,
-          title: 'Sample Job',
-          company: 'Sample Company',
-          location: 'Bamako, Mali',
-          employment_type: 'full-time',
-          type: 'full-time',
-          currency: 'CFA',
-          description: 'This is a sample job description.',
-          experience_level: 'mid',
-          experience_required: 3,
-          remote_allowed: false,
-          application_count: 0,
-          created_at: new Date().toISOString()
-        };
+        const { data, error } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('id', jobId)
+          .single();
+          
+        if (error) throw error;
         
-        setJob(mockJob);
+        setJob(data);
         
-        // Mock increment view count
+        // Increment view count
         await incrementJobViews(jobId);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch job details');
@@ -223,27 +222,70 @@ export const useJobDetails = (jobId: string) => {
   return { job, loading, error };
 };
 
-// Global state for bookmarks to prevent multiple hook instances from conflicting
-const globalBookmarksState = new Map<string, {
-  bookmarks: string[];
-  subscribers: Set<(bookmarks: string[]) => void>;
-  timestamp: number;
-  isLoading: boolean;
-}>();
-
-// Track if we've already initiated a fetch for a user to prevent duplicate requests
-const activeFetches = new Set<string>();
-
 export const useJobBookmarks = () => {
-  // EMERGENCY FIX: Return static values immediately to prevent any API calls
-  console.warn('useJobBookmarks is temporarily disabled to prevent infinite API calls');
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const { user } = useAuth();
+  
+  const toggleBookmark = async (jobId: string) => {
+    if (!user) {
+      toast.error('Vous devez être connecté pour sauvegarder des emplois');
+      return;
+    }
+
+    try {
+      const isBookmarked = bookmarks.includes(jobId);
+      
+      if (isBookmarked) {
+        // Remove bookmark
+        const { error } = await supabase
+          .from('job_bookmarks')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('job_id', jobId);
+          
+        if (error) throw error;
+        setBookmarks(prev => prev.filter(id => id !== jobId));
+        toast.success('Emploi retiré des favoris');
+      } else {
+        // Add bookmark
+        const { error } = await supabase
+          .from('job_bookmarks')
+          .insert({ user_id: user.id, job_id: jobId });
+          
+        if (error) throw error;
+        setBookmarks(prev => [...prev, jobId]);
+        toast.success('Emploi ajouté aux favoris');
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      toast.error('Erreur lors de la sauvegarde');
+    }
+  };
+
+  const refetchBookmarks = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('job_bookmarks')
+        .select('job_id')
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      setBookmarks(data?.map(item => item.job_id) || []);
+    } catch (error) {
+      console.error('Error fetching bookmarks:', error);
+    }
+  };
+
+  useEffect(() => {
+    refetchBookmarks();
+  }, [user]);
   
   return { 
-    bookmarks: [] as string[], 
-    toggleBookmark: () => {
-      toast.error('Bookmark functionality is temporarily disabled for maintenance');
-    }, 
-    refetchBookmarks: () => Promise.resolve()
+    bookmarks, 
+    toggleBookmark, 
+    refetchBookmarks
   };
 };
 
@@ -264,19 +306,27 @@ export const useJobApplications = () => {
     portfolio_url?: string;
   }) => {
     try {
-      // Mock job application - will be replaced with Supabase
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const { error } = await supabase
+        .from('job_applications')
+        .insert([{
+          job_id: jobId,
+          user_id: user?.id,
+          ...applicationData,
+          applied_at: new Date().toISOString()
+        }]);
+      
+      if (error) throw error;
       
       // Clear applications cache after successful submission
       if (user?.id) {
         applicationsCache.delete(user.id);
       }
       
-      toast.success('Application submitted successfully!');
+      toast.success('Candidature soumise avec succès!');
       return { success: true };
     } catch (err) {
       console.error('Error applying to job:', err);
-      toast.error('Failed to submit application');
+      toast.error('Échec de la soumission de candidature');
       throw err;
     }
   };
@@ -295,9 +345,21 @@ export const useJobApplications = () => {
       let promise = applicationsPromises.get(user.id);
       if (!promise) {
         promise = (async () => {
-          // Mock applications fetch - will be replaced with Supabase
-          await new Promise(resolve => setTimeout(resolve, 500));
-          return [];
+          const { data, error } = await supabase
+            .from('job_applications')
+            .select(`
+              *,
+              jobs:job_id (
+                title,
+                company,
+                location
+              )
+            `)
+            .eq('user_id', user.id)
+            .order('applied_at', { ascending: false });
+            
+          if (error) throw error;
+          return data || [];
         })();
         applicationsPromises.set(user.id, promise);
       }
@@ -320,9 +382,14 @@ export const useJobApplications = () => {
     if (!user) return [];
 
     try {
-      // Mock job applications fetch - will be replaced with Supabase
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return [];
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select('*')
+        .eq('job_id', jobId)
+        .order('applied_at', { ascending: false });
+        
+      if (error) throw error;
+      return data || [];
     } catch (err) {
       console.error('Error fetching job applications:', err);
       return [];

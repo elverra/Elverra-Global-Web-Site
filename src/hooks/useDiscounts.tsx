@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { discountService } from '@/services/mockServices';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 
 export interface Merchant {
@@ -44,43 +44,44 @@ export const useDiscounts = () => {
   }) => {
     try {
       setLoading(true);
-      // Use mock discount service
-      const result = await discountService.getDiscounts();
       
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch merchants');
-      }
-      
-      // Apply client-side filtering (will be replaced with server-side filtering)
-      let filteredData = result.data || [];
-      
+      let query = supabase
+        .from('merchants')
+        .select('*')
+        .eq('is_active', true);
+
+      // Apply filters
       if (filters?.search) {
-        const searchLower = filters.search.toLowerCase();
-        filteredData = filteredData.filter((merchant: any) => 
-          merchant.name?.toLowerCase().includes(searchLower) ||
-          merchant.description?.toLowerCase().includes(searchLower) ||
-          merchant.sector?.toLowerCase().includes(searchLower)
+        query = query.or(
+          `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%,sector.ilike.%${filters.search}%`
         );
       }
 
       if (filters?.sector && filters.sector !== 'all') {
-        filteredData = filteredData.filter((merchant: any) => merchant.sector === filters.sector);
+        query = query.eq('sector', filters.sector);
       }
 
       if (filters?.location && filters.location !== 'all') {
-        filteredData = filteredData.filter((merchant: any) => 
-          merchant.location?.toLowerCase().includes(filters.location?.toLowerCase())
-        );
+        query = query.ilike('location', `%${filters.location}%`);
       }
 
       if (filters?.featured) {
-        filteredData = filteredData.filter((merchant: any) => merchant.featured);
+        query = query.eq('featured', true);
       }
 
-      setMerchants(filteredData);
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        setMerchants([]);
+        return;
+      }
+
+      setMerchants(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch merchants');
       console.error('Error fetching merchants:', err);
+      setMerchants([]);
     } finally {
       setLoading(false);
     }
@@ -92,15 +93,22 @@ export const useDiscounts = () => {
 
   const fetchSectors = async () => {
     try {
-      // Use mock discount service
-      const result = await discountService.getSectors();
+      const { data, error } = await supabase
+        .from('merchants')
+        .select('sector')
+        .eq('is_active', true);
       
-      if (result.success) {
-        setSectors(result.data || []);
-      } else {
-        console.log('No sectors found, using empty list');
+      if (error) {
+        console.error('Error fetching sectors:', error);
         setSectors([]);
+        return;
       }
+      
+      // Get unique sectors
+      const uniqueSectors = [...new Set(data?.map(item => item.sector).filter(Boolean))]
+        .map((sector, index) => ({ id: `sector_${index}`, name: sector }));
+      
+      setSectors(uniqueSectors);
     } catch (err) {
       console.error('Error fetching sectors:', err);
       setSectors([]);
@@ -141,28 +149,30 @@ export const useDiscountUsage = () => {
 
   const recordDiscountUsage = async (merchantId: string, discountPercentage: number, amountSaved?: number) => {
     if (!user) {
-      toast.error('Please login to claim discounts');
+      toast.error('Veuillez vous connecter pour réclamer des remises');
       return;
     }
 
     try {
-      // Mock discount usage recording - will be replaced with Supabase
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const { data, error } = await supabase
+        .from('discount_usage')
+        .insert([{
+          user_id: user.id,
+          merchant_id: merchantId,
+          discount_percentage: discountPercentage,
+          amount_saved: amountSaved,
+          used_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
       
-      const newUsage: DiscountUsage = {
-        id: `usage_${Date.now()}`,
-        user_id: user.id,
-        merchant_id: merchantId,
-        discount_percentage: discountPercentage,
-        amount_saved: amountSaved,
-        used_at: new Date().toISOString()
-      };
+      if (error) throw error;
       
-      setUsageHistory(prev => [newUsage, ...prev]);
-      toast.success('Discount claimed successfully!');
+      setUsageHistory(prev => [data, ...prev]);
+      toast.success('Remise réclamée avec succès!');
     } catch (error) {
       console.error('Error recording discount usage:', error);
-      toast.error('Failed to claim discount');
+      toast.error('Échec de la réclamation de remise');
     }
   };
 
@@ -171,11 +181,25 @@ export const useDiscountUsage = () => {
 
     try {
       setLoading(true);
-      // Mock usage history fetch - will be replaced with Supabase
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setUsageHistory([]);
+      
+      const { data, error } = await supabase
+        .from('discount_usage')
+        .select(`
+          *,
+          merchant:merchant_id (
+            name,
+            sector
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('used_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      setUsageHistory(data || []);
     } catch (error) {
       console.error('Error fetching usage history:', error);
+      setUsageHistory([]);
     } finally {
       setLoading(false);
     }

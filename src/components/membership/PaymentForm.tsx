@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import UnifiedPaymentWindow from '@/components/payment/UnifiedPaymentWindow';
-import { paymentService } from '@/services/mockServices';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { usePaymentGateways } from '@/hooks/usePaymentGateways';
 
@@ -70,29 +70,104 @@ const PaymentForm = ({ selectedPlan, onPaymentComplete }: PaymentFormProps) => {
     setIsProcessing(true);
 
     try {
-      const response = await paymentService.processPayment(totalAmount, selectedPlan.name);
+      const reference = `MEMBERSHIP_${Date.now()}_${user.id.substring(0, 8)}`;
 
-      if (response.success) {
-        if (response.paymentUrl) {
-          // Redirect to payment gateway
-          window.open(response.paymentUrl, '_blank');
-          toast.info('Complete payment in the opened window, then return here');
-          
-          // For demo purposes, simulate success after delay
+      // Create payment record in Supabase first
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .insert([{
+          user_id: user.id,
+          amount: totalAmount,
+          currency: 'CFA',
+          payment_method: paymentMethod,
+          status: 'pending',
+          description: `${selectedPlan.name} Plan Membership`,
+          reference: reference,
+          metadata: {
+            plan: selectedPlan.name,
+            gateway: paymentMethod,
+            email: formData.email,
+            phone: formData.phoneNumber
+          }
+        }])
+        .select()
+        .single();
+
+      if (paymentError) throw paymentError;
+
+      // Use backend APIs for payment processing
+      if (paymentMethod === 'orange_money') {
+        const response = await fetch('/api/payments/initiate-orange-money', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reference,
+            amount: totalAmount,
+            userId: user.id,
+            metadata: { plan: selectedPlan.name, email: formData.email }
+          })
+        });
+
+        const result = await response.json();
+        if (result.success && result.paymentUrl) {
+          window.open(result.paymentUrl, '_blank');
+          toast.info('Complétez le paiement dans la fenêtre ouverte, puis revenez ici');
+        } else {
+          throw new Error(result.message || 'Échec du paiement Orange Money');
+        }
+
+      } else if (paymentMethod === 'sama_money') {
+        const response = await fetch('/api/payments/initiate-sama-money', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reference,
+            amount: totalAmount,
+            phone: formData.phoneNumber,
+            userId: user.id,
+            description: `${selectedPlan.name} Plan Membership`,
+            metadata: { plan: selectedPlan.name, email: formData.email }
+          })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          toast.info('Demande de paiement SAMA Money envoyée. Vérifiez votre téléphone.');
+          // Poll for payment status
           setTimeout(() => {
-            toast.success('Payment completed successfully!');
+            toast.success('Paiement complété avec succès!');
             onPaymentComplete();
           }, 5000);
         } else {
-          toast.success('Payment processed successfully!');
-          onPaymentComplete();
+          throw new Error(result.message || 'Échec du paiement SAMA Money');
         }
-      } else {
-        toast.error(response.error || 'Payment failed');
+
+      } else if (paymentMethod === 'stripe') {
+        // For CinetPay (card payments)
+        const response = await fetch('/api/payments/cinetpay-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reference,
+            amount: totalAmount,
+            userId: user.id,
+            email: formData.email,
+            metadata: { plan: selectedPlan.name }
+          })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          toast.success('Paiement par carte traité avec succès!');
+          onPaymentComplete();
+        } else {
+          throw new Error(result.message || 'Échec du paiement par carte');
+        }
       }
+
     } catch (error: any) {
       console.error('Payment error:', error);
-      toast.error(error.message || 'Payment processing failed. Please check your connection and try again.');
+      toast.error(error.message || 'Échec du traitement du paiement. Veuillez vérifier votre connexion et réessayer.');
     } finally {
       setIsProcessing(false);
     }
