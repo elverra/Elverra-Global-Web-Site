@@ -134,7 +134,12 @@ const OSecoursSection = () => {
   // No navigation needed in this section for now
 
   // Functions base helper (align with TokenPurchase.tsx)
-  const functionsBase = (import.meta as any)?.env?.VITE_FUNCTIONS_BASE || '';
+  const envFunctionsBase = (import.meta as any)?.env?.VITE_FUNCTIONS_BASE || '';
+  // Runtime fallback: if env is empty in production, use the known functions domain
+  const defaultFunctionsBase = (typeof window !== 'undefined' && /elverraglobalml\.com$/i.test(window.location.hostname))
+    ? 'https://dsnzsgszqdjmugjdyvzv.functions.supabase.co'
+    : '';
+  const functionsBase = envFunctionsBase || defaultFunctionsBase;
   const withBase = useCallback((path: string) => (functionsBase ? `${functionsBase}${path.startsWith('/') ? path : `/${path}`}` : path), [functionsBase]);
   // Debug: verify env and base resolution in production
   // Note: remove or guard this in production if too verbose
