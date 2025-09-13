@@ -4,7 +4,6 @@
   "description": "Elverra Global API functions",
   "main": "index.js",
   "dependencies": {
-    "axios": "^1.6.0",
     "@supabase/supabase-js": "^2.38.0"
   },
   "engines": {

@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
@@ -25,23 +23,27 @@ export default async function handler(req, res) {
     }
 
     // Step 1: Auth
-    const authResponse = await axios.post(`${SAMA_BASE_URL}/marchand/auth`, {}, {
+    const authResponse = await fetch(`${SAMA_BASE_URL}/marchand/auth`, {
+      method: 'POST',
       headers: {
         'TRANSAC': SAMA_TRANSAC,
         'cmd': SAMA_CMD,
-        'cle_publique': SAMA_CLE_PUBLIQUE
-      }
+        'cle_publique': SAMA_CLE_PUBLIQUE,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
     });
 
-    if (authResponse.data?.status !== 1) {
+    const authData = await authResponse.json();
+    if (authData?.status !== 1) {
       return res.status(502).json({
         success: false,
         message: 'SAMA auth failed',
-        details: authResponse.data
+        details: authData
       });
     }
 
-    const samaToken = authResponse.data?.resultat?.token;
+    const samaToken = authData?.resultat?.token;
     if (!samaToken) {
       return res.status(502).json({
         success: false,
@@ -59,19 +61,22 @@ export default async function handler(req, res) {
       url: url || process.env.FRONTEND_URL || 'https://elverraglobal.com'
     });
 
-    const payResponse = await axios.post(`${SAMA_BASE_URL}/marchand/pay`, payParams, {
+    const payResponse = await fetch(`${SAMA_BASE_URL}/marchand/pay`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${samaToken}`,
         'TRANSAC': SAMA_TRANSAC,
         'Content-Type': 'application/x-www-form-urlencoded'
-      }
+      },
+      body: payParams.toString()
     });
 
-    if (payResponse.data?.status !== 1) {
+    const payData = await payResponse.json();
+    if (payData?.status !== 1) {
       return res.status(502).json({
         success: false,
         message: 'SAMA pay failed',
-        details: payResponse.data
+        details: payData
       });
     }
 
@@ -79,15 +84,15 @@ export default async function handler(req, res) {
       success: true,
       initiated: true,
       reference,
-      data: payResponse.data
+      data: payData
     });
 
   } catch (error) {
-    console.error('SAMA Money error:', error.response?.data || error.message);
+    console.error('SAMA Money error:', error.message);
     res.status(502).json({
       success: false,
       message: 'SAMA Money payment failed',
-      details: error.response?.data || error.message
+      details: error.message
     });
   }
 }
