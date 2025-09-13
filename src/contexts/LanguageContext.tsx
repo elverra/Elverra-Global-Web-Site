@@ -166,6 +166,7 @@ const translations = {
     'error_service_not_found': 'Service not found',
     'service_request_success_message': 'Request created for {{service}}',
     'error_service_request': 'Failed to create request',
+    'error_insufficient_balance': 'Insufficient token balance',
     // Request dialog
     'describe_service_request': 'Describe your service request',
     'select_service': 'Select service',
@@ -330,6 +331,7 @@ const translations = {
     'error_service_not_found': 'Service introuvable',
     'service_request_success_message': 'Demande créée pour {{service}}',
     'error_service_request': 'Échec de création de la demande',
+    'error_insufficient_balance': 'Solde de jetons insuffisant',
     // Request dialog
     'describe_service_request': 'Décrivez votre demande de service',
     'select_service': 'Sélectionner le service',

@@ -63,7 +63,8 @@ async function readJson<T = any>(req: Request): Promise<T> {
 
 // Supabase client (service role)
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL") || "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+// Avoid requiring a secret that starts with reserved prefix. Use SERVICE_ROLE_KEY if provided.
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { global: { fetch: fetch as any } })
   : null;
@@ -451,7 +452,7 @@ Deno.serve(async (req: Request) => {
       if (!userId) return json({ success: false, message: "Missing userId" }, { status: 400 });
       const { data, error } = await supabase
         .from("secours_subscriptions")
-        .select("id, user_id, service_type, token_balance")
+        .select("id, user_id, service_type:subscription_type, token_balance")
         .eq("user_id", userId);
       if (error) return json({ success: false, message: error.message }, { status: 500 });
       return json({ success: true, data });
@@ -465,7 +466,7 @@ Deno.serve(async (req: Request) => {
       if (!supabase) return json({ success: false, message: "Supabase not configured" }, { status: 500 });
       const subscriptionId = url.searchParams.get("subscriptionId") || undefined;
       const userId = url.searchParams.get("userId") || undefined;
-      let query = supabase.from("secours_transactions").select("*, secours_subscriptions!inner(id, user_id, service_type)").order("created_at", { ascending: false });
+      let query = supabase.from("secours_transactions").select("*, secours_subscriptions!inner(id, user_id, service_type:subscription_type)").order("created_at", { ascending: false });
       if (subscriptionId) {
         query = query.eq("subscription_id", subscriptionId);
       } else if (userId) {
@@ -513,7 +514,7 @@ Deno.serve(async (req: Request) => {
         .from("secours_subscriptions")
         .select("id, token_balance")
         .eq("user_id", userId)
-        .eq("service_type", serviceId)
+        .eq("subscription_type", serviceId)
         .maybeSingle();
       if (subErr) return json({ success: false, message: subErr.message }, { status: 500 });
       if (!sub?.id) return json({ success: false, message: "No subscription for this service" }, { status: 400 });
