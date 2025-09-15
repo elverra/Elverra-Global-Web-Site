@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/lib/supabaseClient';
 
 const DatabaseTest = () => {
   const [testResults, setTestResults] = useState<any[]>([]);
@@ -34,23 +35,26 @@ const DatabaseTest = () => {
       });
 
       // Test 2: Test database query
-      const mockResult = { data: null, error: null }; // TODO: Replace with API call
-      const mockQueryResult = { data: [], error: null }; // TODO: Replace with API call
-      const { data: testQuery, error: queryError } = mockQueryResult;
+      // TODO: Replace with real API call
+      const { data: testQuery, error: queryError } = await supabase
+        .from('profiles')
+        .select('*')
+        .limit(1);
       
       addResult('Database Query Test', !queryError, testQuery, queryError);
 
       // Test 3: Check auth status
-      const mockSessionResult = { data: { session: null }, error: null }; // TODO: Replace with API call
-      const { data: sessionData, error: sessionError } = mockSessionResult;
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       addResult('Auth Session Check', !sessionError, { 
         hasSession: !!sessionData?.session,
         userId: sessionData?.session?.user?.id || 'No user' 
       }, sessionError);
 
       // Test 4: List all profiles
-      const mockProfilesResult = { data: [], error: null }; // TODO: Replace with API call
-      const { data: profiles, error: profilesError } = mockProfilesResult;
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .limit(10);
       
       addResult('Fetch Profiles', !profilesError, {
         count: profiles?.length || 0,
@@ -58,8 +62,10 @@ const DatabaseTest = () => {
       }, profilesError);
 
       // Test 5: List all memberships
-      const mockMembershipsResult = { data: [], error: null }; // TODO: Replace with API call
-      const { data: memberships, error: membershipsError } = mockMembershipsResult;
+      const { data: memberships, error: membershipsError } = await supabase
+        .from('memberships')
+        .select('*')
+        .limit(10);
       
       addResult('Fetch Memberships', !membershipsError, {
         count: memberships?.length || 0,
@@ -67,8 +73,10 @@ const DatabaseTest = () => {
       }, membershipsError);
 
       // Test 6: Check available tables by testing agents table
-      const mockAgentsResult = { data: [], error: null }; // TODO: Replace with API call
-      const { data: agents, error: agentsError } = mockAgentsResult;
+      const { data: agents, error: agentsError } = await supabase
+        .from('agents')
+        .select('*')
+        .limit(10);
       
       addResult('Fetch Agents (System Data)', !agentsError, {
         count: agents?.length || 0,
@@ -87,8 +95,10 @@ const DatabaseTest = () => {
     
     try {
       // Test registration flow
-      const mockRegResult = { data: { user: null, session: null }, error: null }; // TODO: Replace with API call
-      const { data: authData, error: authError } = mockRegResult;
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: testEmail,
+        password: testPassword
+      });
 
       addResult('Test Registration - Auth', !authError, {
         userId: authData?.user?.id || 'No user ID',
@@ -98,8 +108,13 @@ const DatabaseTest = () => {
 
       if (authData?.user && !authError) {
         // Try to create profile
-        const mockProfileResult = { data: null, error: null }; // TODO: Replace with API call
-        const { data: profileData, error: profileError } = mockProfileResult;
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: authData.user.email,
+            full_name: 'Test User'
+          });
 
         addResult('Test Registration - Profile', !profileError, profileData, profileError);
       }

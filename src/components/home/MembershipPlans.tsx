@@ -17,11 +17,11 @@ const MembershipPlans = () => {
 
   const handleSelectPlan = (planName: string, isChild: boolean = false) => {
     if (user) {
-      // User is logged in, go to membership selection page
+      // User is logged in, go to client subscription page
       if (isChild) {
-        navigate(`/membership/selection?preselect=child`);
+        navigate(`/client-subscription?preselect=child`);
       } else {
-        navigate(`/membership/selection?preselect=adult&tier=${planName.toLowerCase()}`);
+        navigate(`/client-subscription?preselect=adult&tier=${planName.toLowerCase()}`);
       }
     } else {
       // User not logged in, redirect to register with plan info

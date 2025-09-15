@@ -16,31 +16,23 @@ const OSecours: React.FC = () => {
   const fetchTokenBalances = async () => {
     try {
       setIsLoading(true);
-      // Mock token balances data
-      const mockBalances: TokenBalanceType[] = [
-        {
-          tokenId: 'auto',
-          balance: 45,
-          usedThisMonth: 15,
-          monthlyLimit: 100,
-          remainingBalance: 85
-        },
-        {
-          tokenId: 'motors',
-          balance: 120,
-          usedThisMonth: 80,
-          monthlyLimit: 400,
-          remainingBalance: 320
-        },
-        {
-          tokenId: 'telephone',
-          balance: 200,
-          usedThisMonth: 50,
-          monthlyLimit: 400,
-          remainingBalance: 350
-        }
-      ];
-      setTokenBalances(mockBalances);
+      // Fetch real token balances from API
+      const response = await fetch('/api/secours/subscriptions');
+      if (!response.ok) {
+        throw new Error('Failed to fetch token balances');
+      }
+      const data = await response.json();
+
+      // Transform the data to match the expected format
+      const transformedBalances: TokenBalanceType[] = data.map((subscription: any) => ({
+        tokenId: subscription.service_type,
+        balance: subscription.token_balance || 0,
+        usedThisMonth: subscription.tokens_used_this_month || 0,
+        monthlyLimit: subscription.monthly_limit || 100,
+        remainingBalance: (subscription.token_balance || 0) - (subscription.tokens_used_this_month || 0)
+      }));
+
+      setTokenBalances(transformedBalances);
     } catch (err) {
       console.error('Error fetching token balances:', err);
       setError('An error occurred while loading token balances');

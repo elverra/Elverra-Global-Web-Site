@@ -1,6 +1,7 @@
 import Layout from '@/components/layout/Layout';
+import MembershipGuard from '@/components/auth/MembershipGuard';
 import PremiumBanner from '@/components/layout/PremiumBanner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Download, Star, Clock, Users, Eye } from 'lucide-react';
@@ -150,7 +151,8 @@ const EBooks = () => {
   };
 
   return (
-    <Layout>
+    <MembershipGuard requiredFeature="ebooks">
+      <Layout>
       <PremiumBanner
         title="Free Online Library"
         description="Access our extensive collection of e-books covering business, technology, agriculture, and professional development. All books are free for Elverra Global clients."
@@ -296,6 +298,12 @@ const EBooks = () => {
             {/* All Books Grid */}
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">All Books</h2>
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Loading books...</p>
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredBooks.map((book) => (
                   <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -346,6 +354,7 @@ const EBooks = () => {
                   </Card>
                 ))}
               </div>
+              )}
             </div>
 
             {/* CTA Section */}
@@ -370,7 +379,8 @@ const EBooks = () => {
           </div>
         </div>
       </div>
-    </Layout>
+      </Layout>
+    </MembershipGuard>
   );
 };
 

@@ -1,6 +1,7 @@
 
 import { Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MembershipTiersProps {
   selectedTier: string;
@@ -91,7 +92,7 @@ const MembershipTiers = ({ selectedTier, onSelectTier, compact = false }: Member
   const handleSelectPlan = (planId: string) => {
     if (user) {
       // User is logged in, go directly to payment with plan selected
-      navigate(`/membership-payment?plan=${planId}`);
+      navigate(`/client-payment?plan=${planId}`);
     } else {
       // User not logged in, redirect to register with plan info
       navigate(`/register?plan=${planId}`);

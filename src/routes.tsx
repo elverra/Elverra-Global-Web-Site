@@ -11,7 +11,8 @@ import ResetPassword from '@/pages/ResetPassword';
 import Register from '@/pages/Register';
 import Login from '@/pages/Login';
 import ThankYou from '@/pages/ThankYou';
-import MembershipPayment from '@/pages/MembershipPayment';
+import ClientPayment from '@/pages/ClientPayment';
+import ClientSubscription from '@/pages/ClientSubscription';
 import Dashboard from '@/pages/Dashboard';
 import JobDashboardEmployee from '@/pages/job-dashboard/EmployeeDashboard';
 import JobDashboardEmployer from '@/pages/job-dashboard/EmployerDashboard';
@@ -71,7 +72,6 @@ import AccessLawyer from '@/pages/AccessLawyer';
 import RegistrationThankYou from '@/pages/RegistrationThankYou';
 import EBooks from '@/pages/EBooks';
 import EbookManagement from '@/pages/admin/EbookManagement';
-import MembershipSelection from '@/pages/MembershipSelection';
 import PaymentStatus from '@/pages/PaymentStatus';
 import PaydayAdvance from './pages/services/PaydayAdvance';
 import OnlineStore from './pages/services/OnlineStore';
@@ -96,6 +96,7 @@ import SuperAdminDashboard from './pages/superadmin/Dashboard';
 import PartnersManagement from './pages/superadmin/PartnersManagement';
 import PaymentGatewayManagement from './pages/superadmin/PaymentGatewayManagement';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
+import { Navigate } from 'react-router-dom';
 import PartnerDashboard from './pages/partners/Dashboard';
 import Career from './pages/Career';
 import CareerJobDetail from './pages/CareerJobDetail';
@@ -203,8 +204,8 @@ const routes = [
     element: <PaydayLoan />,
   },
   {
-    path: '/membership-payment',
-    element: <MembershipPayment />,
+    path: '/client-payment',
+    element: <ClientPayment />,
   },
   {
     path: '/dashboard',
@@ -460,8 +461,8 @@ const routes = [
     element: <ResetPassword />,
   },
   {
-    path: '/membership/payment',
-    element: <MembershipPayment />,
+    path: '/client-payment',
+    element: <ClientPayment />,
   },
   {
     path: '/thank-you',
@@ -540,8 +541,16 @@ const routes = [
     ),
   },
   {
+    path: '/client-subscription',
+    element: <ClientSubscription />,
+  },
+  {
+    path: '/membership/payment',
+    element: <Navigate to="/client-payment" replace />,
+  },
+  {
     path: '/membership/selection',
-    element: <MembershipSelection />,
+    element: <Navigate to="/client-subscription" replace />,
   },
   {
     path: '/payment-status',

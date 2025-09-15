@@ -1,27 +1,15 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from "@/components/layout/Layout";
 import PremiumBanner from "@/components/layout/PremiumBanner";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import React from "react";
-import { Check, Star, Heart, Crown } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Check, Crown, Shield, Star, Heart } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-const MembershipSelection = () => {
+const ClientSubscription = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [selectedCard, setSelectedCard] = useState<"child" | "adult" | null>(null);
@@ -139,9 +127,9 @@ const MembershipSelection = () => {
 
   const handleContinue = () => {
     if (selectedCard === "child") {
-      navigate(`/membership/payment?type=child&duration=${selectedDuration}`);
+      navigate(`/client-payment?type=child&duration=${selectedDuration}`);
     } else if (selectedCard === "adult") {
-      navigate(`/membership-payment?tier=${selectedTier}&duration=${selectedDuration}`);
+      navigate(`/client-payment?tier=${selectedTier}&duration=${selectedDuration}`);
     }
   };
 
@@ -379,4 +367,4 @@ const MembershipSelection = () => {
   );
 };
 
-export default MembershipSelection;
+export default ClientSubscription;

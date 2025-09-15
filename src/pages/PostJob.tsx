@@ -84,7 +84,7 @@ const PostJob = () => {
     const access = getMembershipAccess();
     if (!access.canPostJobs) {
       toast.error('Job posting requires Premium or Elite membership');
-      navigate('/membership-payment');
+      navigate('/client-subscription');
       return;
     }
 

@@ -46,7 +46,7 @@ const PaymentStatus = () => {
             ? "Solde insuffisant. Veuillez recharger votre compte et réessayer."
             : "Le paiement n'a pas pu être traité. Veuillez vérifier vos informations et réessayer.",
           buttonText: "Réessayer le Paiement",
-          buttonAction: () => navigate("/membership/selection")
+          buttonAction: () => navigate("/client-subscription")
         };
       case "cancelled":
         return {
@@ -57,7 +57,7 @@ const PaymentStatus = () => {
           title: "Paiement Annulé",
           message: "Vous avez annulé le paiement. Vous pouvez reprendre le processus à tout moment.",
           buttonText: "Reprendre le Paiement",
-          buttonAction: () => navigate("/membership/selection")
+          buttonAction: () => navigate("/client-subscription")
         };
       case "pending":
       default:

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Search, MapPin, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import MembershipGuard from '@/components/membership/MembershipGuard';
+import MembershipGuard from '@/components/auth/MembershipGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -183,7 +183,8 @@ const OnlineStore = () => {
   }
 
   return (
-    <Layout>
+    <MembershipGuard requiredFeature="shop">
+      <Layout>
         <PremiumBanner
           title="Online Store"
           description="Buy and sell products directly with other Elverra clients"
@@ -347,6 +348,7 @@ const OnlineStore = () => {
         </div>
         {/* Review modal removed */}
       </Layout>
+    </MembershipGuard>
   );
 };
 

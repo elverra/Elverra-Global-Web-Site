@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 
-const MembershipPayment = () => {
+const ClientPayment = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const planFromUrl = searchParams.get('plan');
@@ -372,4 +372,4 @@ const MembershipPayment = () => {
   );
 };
 
-export default MembershipPayment;
+export default ClientPayment;

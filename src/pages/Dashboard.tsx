@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import MembershipStatusWidget from '@/components/membership/MembershipStatus';
+import MembershipGuard from '@/components/auth/MembershipGuard';
 
 // Lazy load dashboard components for better performance
 const ModernDashboard = React.lazy(() => import('@/components/dashboard/ModernDashboard'));
@@ -107,8 +108,9 @@ const Dashboard: React.FC<DashboardProps> = () => {
     );
   }
 
-  // Show dashboard content
+  // Show dashboard content with membership guard
   return (
+    <MembershipGuard requiredFeature="dashboard">
       <ErrorBoundary>
         <React.Suspense
           fallback={
@@ -121,6 +123,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
           <ModernDashboard />
         </React.Suspense>
       </ErrorBoundary>
+    </MembershipGuard>
   );
 };
 

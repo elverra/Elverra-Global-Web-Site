@@ -130,9 +130,9 @@ const Register = () => {
     onSuccess: (_data) => {
       console.log("🎉 Registration completed successfully!");
       // Welcome notifications: Supabase will send email confirmation if configured.
-      toast.success("Account created! Check your SMS for verification if you provided a phone number.");
-      // Navigate to login where user can verify via SMS OTP
-      navigate("/login");
+      toast.success("Account created! Please complete your membership card purchase to activate your account.");
+      // Navigate to membership selection for mandatory card purchase
+      navigate("/client-subscription?new=true");
     },
     onError: (error: any) => {
       console.error("❌ Registration error:", error);
@@ -150,7 +150,7 @@ const Register = () => {
   }
 
   if (shouldRedirectToPayment) {
-    navigate("/membership/payment");
+    navigate("/client-subscription");
     return null;
   }
 

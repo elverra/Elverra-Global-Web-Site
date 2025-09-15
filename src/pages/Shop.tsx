@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useMembership } from '@/hooks/useMembership';
 import Layout from '@/components/layout/Layout';
+import MembershipGuard from '@/components/auth/MembershipGuard';
+import UnifiedPaymentWindow from '@/components/payment/UnifiedPaymentWindow';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +68,8 @@ const Shop = () => {
   const [sortBy, setSortBy] = useState<string>('featured');
   const [isPremiumMember, setIsPremiumMember] = useState(false);
   const [quantities, setQuantities] = useState<{[key: string]: number}>({});
+  const [showPaymentWindow, setShowPaymentWindow] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -87,46 +93,56 @@ const Shop = () => {
   };
 
   const fetchProducts = async () => {
-    const response = null;
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch products');
+    try {
+      const response = await fetch('/api/products');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+      
+      const data = await response.json();
+      
+      // Transform and enhance data for the shop display
+      const transformedData = (data || []).map((product: any) => ({
+        ...product,
+        images: Array.isArray(product.images) ? product.images as string[] : [],
+        rating: 4.5,
+        reviews_count: Math.floor(Math.random() * 500) + 10,
+        stock_quantity: Math.floor(Math.random() * 50) + 1,
+        free_delivery: Math.random() > 0.5,
+        in_stock: true,
+        variations: [
+          { size: '50kg', color: 'grey' },
+          { size: '25kg', color: 'grey' }
+        ]
+      }));
+      
+      setProducts(transformedData);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts([]);
     }
-    
-    const data = await response.json();
-    
-    // Transform and enhance data for the shop display
-    const transformedData = (data || []).map((product: any) => ({
-      ...product,
-      images: Array.isArray(product.images) ? product.images as string[] : [],
-      rating: 4.5,
-      reviews_count: Math.floor(Math.random() * 500) + 10,
-      stock_quantity: Math.floor(Math.random() * 50) + 1,
-      free_delivery: Math.random() > 0.5,
-      in_stock: true,
-      variations: [
-        { size: '50kg', color: 'grey' },
-        { size: '25kg', color: 'grey' }
-      ]
-    }));
-    
-    setProducts(transformedData);
   };
 
   const fetchCategories = async () => {
-    const response = null;
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch categories');
+    try {
+      const response = await fetch('/api/products/categories');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+      
+      const data = await response.json();
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      setCategories([]);
     }
-    
-    const data = await response.json();
-    setCategories(data || []);
   };
 
   const fetchOffers = async () => {
     try {
-      const response = null;
+      const response = await fetch('/api/shop-offers');
       if (response.ok) {
         const data = await response.json();
         setOffers(data || []);
@@ -167,14 +183,25 @@ const Shop = () => {
     const quantity = quantities[product.id] || 1;
     
     if (!user) {
-      toast.success(`${product.title} added to your session. Sign up to complete your purchase!`);
-      navigate('/register');
+      toast.error('Veuillez vous connecter pour effectuer un achat');
+      navigate('/login');
       return;
     }
     
-    toast.success(`Proceeding to checkout with ${quantity}x ${product.title}`);
-    // Navigate to checkout page
-    navigate('/checkout');
+    setSelectedProduct(product);
+    setShowPaymentWindow(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    toast.success('Paiement réussi! Votre commande a été confirmée.');
+    setShowPaymentWindow(false);
+    setSelectedProduct(null);
+    // Optionally refresh products or navigate to order confirmation
+  };
+
+  const handlePaymentClose = () => {
+    setShowPaymentWindow(false);
+    setSelectedProduct(null);
   };
 
   const getDiscountedPrice = (product: Product) => {
@@ -336,7 +363,7 @@ const Shop = () => {
                       Valid until {new Date(offer.valid_until).toLocaleDateString()}
                     </span>
                     {offer.premium_only && !isPremiumMember && (
-                      <Button size="sm" variant="outline" onClick={() => navigate('/membership-payment')}>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/client-subscription')}>
                         Get Membership
                       </Button>
                     )}
@@ -542,7 +569,7 @@ const Shop = () => {
                           className="w-full bg-orange-500 hover:bg-orange-600"
                           onClick={() => handleBuyNow(product)}
                         >
-                          Buy Now
+                          Acheter Maintenant
                         </Button>
                         <Button
                           variant="outline"
@@ -550,7 +577,7 @@ const Shop = () => {
                           onClick={() => handleAddToCart(product)}
                         >
                           <ShoppingCart className="w-4 h-4 mr-2" />
-                          Add to Cart
+                          Ajouter au Panier
                         </Button>
                       </div>
                     </CardContent>
@@ -561,6 +588,18 @@ const Shop = () => {
           )}
         </div>
         </div>
+        
+        {/* Payment Window */}
+        {showPaymentWindow && selectedProduct && (
+          <UnifiedPaymentWindow
+            plan="product"
+            amount={getDiscountedPrice(selectedProduct) * (quantities[selectedProduct.id] || 1)}
+            onSuccess={handlePaymentSuccess}
+            onClose={handlePaymentClose}
+            isOpen={showPaymentWindow}
+            preSelectedService="orange_money"
+          />
+        )}
       </Layout>
     </MembershipGuard>
   );

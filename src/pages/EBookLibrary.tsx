@@ -14,17 +14,15 @@ import {
   Download, 
   Eye, 
   Search, 
-  Filter, 
   Lock, 
   Upload,
-  Plus,
   Loader2,
   FileText,
-  User,
-  Calendar
+  User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabaseClient';
 
 interface EBook {
   id: string;
@@ -78,16 +76,22 @@ const EBookLibrary = () => {
   };
 
   const fetchEbooks = async () => {
-    const mockResult = { data: [], error: null }; // TODO: Replace with API call
-    const { data, error } = mockResult;
+    const { data, error } = await supabase
+      .from('ebooks')
+      .select('*')
+      .eq('is_active', true)
+      .order('upload_date', { ascending: false });
 
     if (error) throw error;
     setEbooks(data || []);
   };
 
   const fetchCategories = async () => {
-    const mockResult = { data: [], error: null }; // TODO: Replace with API call
-    const { data, error } = mockResult;
+    const { data, error } = await supabase
+      .from('ebook_categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('name');
 
     if (error) throw error;
     setCategories(data || []);

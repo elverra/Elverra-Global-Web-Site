@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
+import MembershipGuard from '@/components/auth/MembershipGuard';
 import PremiumBanner from '@/components/layout/PremiumBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -177,6 +178,7 @@ const JobCenter = () => {
   });
 
   return (
+    <MembershipGuard requiredFeature="jobs">
       <Layout>
       <PremiumBanner
         title="Job Center"
@@ -406,6 +408,7 @@ const JobCenter = () => {
           </DialogContent>
         </Dialog>
       </Layout>
+    </MembershipGuard>
   );
 };
 

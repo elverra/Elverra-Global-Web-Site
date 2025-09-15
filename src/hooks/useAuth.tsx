@@ -6,6 +6,12 @@ interface User {
   email?: string;
   phone?: string;
   fullName?: string | null;
+  address?: string;
+  city?: string;
+  country?: string;
+  state?: string;
+  zipCode?: string;
+  neighborhood?: string;
 }
 
 // Global cache for user role data

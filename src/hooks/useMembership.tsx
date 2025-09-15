@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
+import { getActiveSubscription } from '@/utils/subscriptionService';
 
 // Global cache to prevent multiple API calls
 let membershipCache: { [userId: string]: Membership | null } = {};
@@ -9,7 +10,7 @@ let fetchPromises: { [userId: string]: Promise<Membership | null> } = {};
 export interface Membership {
   id: string;
   user_id: string;
-  tier: 'essential' | 'premium' | 'elite';
+  tier: 'essential' | 'premium' | 'elite' | 'child';
   is_active: boolean;
   start_date: string;
   expiry_date: string;
@@ -19,7 +20,7 @@ export interface Membership {
 
 export interface MembershipAccess {
   hasActiveMembership: boolean;
-  membershipTier: 'essential' | 'premium' | 'elite' | null;
+  membershipTier: 'essential' | 'premium' | 'elite' | 'child' | null;
   canAccessDiscounts: boolean;
   canAccessJobs: boolean;
   canAccessAffiliates: boolean;
@@ -66,7 +67,8 @@ export const useMembership = () => {
         setLoading(false);
         return;
       } catch (err) {
-        // Continue with new fetch if cached promise failed
+        // Continue with new fetch
+        // Clean up failed promise
         delete fetchPromises[user.id];
       }
     }
@@ -74,21 +76,29 @@ export const useMembership = () => {
     try {
       setLoading(true);
       
-      // Create and store the fetch promise using Supabase
       const fetchPromise = (async () => {
-        const { data, error } = await supabase
-          .from('memberships')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .single();
+        try {
+          // Use subscription service for direct Supabase query
+          const data = await getActiveSubscription(user.id);
 
-        if (error && error.code !== 'PGRST116') {
-          throw error;
+          const membership = data ? {
+            id: data.id,
+            user_id: data.user_id,
+            tier: data.plan,
+            is_active: data.status === 'active',
+            start_date: data.start_date,
+            expiry_date: data.end_date,
+            physical_card_requested: false,
+            member_id: data.id
+          } : null;
+
+          membershipCache[user.id] = membership;
+          return membership;
+        } catch (error) {
+          console.error('Error fetching membership:', error);
+          // Don't cache errors, allow retry
+          return null;
         }
-
-        membershipCache[user.id] = data || null;
-        return data || null;
       })();
 
       fetchPromises[user.id] = fetchPromise;
@@ -103,7 +113,6 @@ export const useMembership = () => {
       console.error('Error in fetchMembership:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch membership');
       membershipCache[user.id] = null;
-      // Clean up failed promise
       delete fetchPromises[user.id];
     } finally {
       setLoading(false);
@@ -111,15 +120,11 @@ export const useMembership = () => {
   };
 
   const getMembershipAccess = (): MembershipAccess => {
-    // Check if user has a valid membership tier (not null/undefined)
-    const userTier = user?.membershipTier;
-    const hasValidTier = userTier && ['essential', 'premium', 'elite'].includes(userTier);
-    
-    // Also check if membership record exists and is active
-    const hasActiveMembership = hasValidTier && (!!membership && membership.is_active);
-    const membershipTier = hasValidTier ? userTier as 'essential' | 'premium' | 'elite' : null;
+    // Check if membership record exists and is active
+    const hasActiveMembership = !!membership && membership.is_active;
+    const membershipTier = hasActiveMembership ? membership.tier : null;
 
-    if (!hasActiveMembership || !hasValidTier) {
+    if (!hasActiveMembership) {
       return {
         hasActiveMembership: false,
         membershipTier: null,
@@ -142,22 +147,22 @@ export const useMembership = () => {
         return {
           hasActiveMembership: true,
           membershipTier: 'essential',
-          canAccessDiscounts: true,
+          canAccessDiscounts: false,
           canAccessJobs: true,
-          canAccessAffiliates: false, // Limited access
+          canAccessAffiliates: false,
           canAccessOSecours: true,
           canAccessShop: true,
-          canPostJobs: false, // Limited access
+          canPostJobs: false,
           canPostProducts: true,
           maxJobApplications: 5,
           maxProductListings: 3,
-          discountLevel: 5
+          discountLevel: 0
         };
       case 'premium':
         return {
           hasActiveMembership: true,
           membershipTier: 'premium',
-          canAccessDiscounts: true,
+          canAccessDiscounts: false,
           canAccessJobs: true,
           canAccessAffiliates: true,
           canAccessOSecours: true,
@@ -166,13 +171,13 @@ export const useMembership = () => {
           canPostProducts: true,
           maxJobApplications: 15,
           maxProductListings: 10,
-          discountLevel: 10
+          discountLevel: 0
         };
       case 'elite':
         return {
           hasActiveMembership: true,
           membershipTier: 'elite',
-          canAccessDiscounts: true,
+          canAccessDiscounts: false,
           canAccessJobs: true,
           canAccessAffiliates: true,
           canAccessOSecours: true,
@@ -181,9 +186,25 @@ export const useMembership = () => {
           canPostProducts: true,
           maxJobApplications: -1, // Unlimited
           maxProductListings: -1, // Unlimited
-          discountLevel: 20
+          discountLevel: 0
+        };
+      case 'child':
+        return {
+          hasActiveMembership: true,
+          membershipTier: 'child',
+          canAccessDiscounts: false,
+          canAccessJobs: false,
+          canAccessAffiliates: false,
+          canAccessOSecours: false,
+          canAccessShop: false,
+          canPostJobs: false,
+          canPostProducts: false,
+          maxJobApplications: 0,
+          maxProductListings: 0,
+          discountLevel: 0
         };
       default:
+        // Si le tier n'est pas reconnu, considérer comme pas d'abonnement
         return {
           hasActiveMembership: false,
           membershipTier: null,
