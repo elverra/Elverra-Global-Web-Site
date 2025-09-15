@@ -105,7 +105,7 @@ import CareerJobDetail from './pages/CareerJobDetail';
 import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import CareerJobsManagement from './pages/admin/CareerJobsManagement';
-import EventsManagement from './pages/admin/EventsManagement';
+import EventsManagement from './pages/admin/EventsManagement'
 
 // Add the new route to the existing routes array
 const routes = [
