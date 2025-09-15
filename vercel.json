@@ -13,26 +13,6 @@
       "use": "@vercel/node"
     },
     {
-      "src": "api/payments/initiate-orange-money.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/payments/initiate-sama-money.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/payments/orange-money-webhook.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/payments/cinetpay-webhook.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/payments/verify.js",
-      "use": "@vercel/node"
-    },
-    {
       "src": "api/products/index.js",
       "use": "@vercel/node"
     },
@@ -41,46 +21,26 @@
       "use": "@vercel/node"
     },
     {
-      "src": "api/secours/subscriptions.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/secours/transactions.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/secours/requests.js",
-      "use": "@vercel/node"
-    },
-    {
       "src": "api/subscriptions/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/subscriptions/activate.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/subscriptions/update.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/payments/(.*)",
-      "dest": "/api/payments"
+      "dest": "/api/payments/index.js"
     },
     {
       "src": "/api/products/(.*)",
-      "dest": "/api/products"
+      "dest": "/api/products/index.js"
     },
     {
       "src": "/api/secours/(.*)",
-      "dest": "/api/secours"
+      "dest": "/api/secours/index.js"
     },
     {
       "src": "/api/subscriptions/(.*)",
-      "dest": "/api/subscriptions"
+      "dest": "/api/subscriptions/index.js"
     },
     {
       "src": "/(.*)",
