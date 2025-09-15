@@ -32,6 +32,8 @@ import PaymentManagement from '@/pages/admin/PaymentManagement';
 import SuperAdminCareerJobsManagement from '@/pages/superadmin/CareerJobsManagement';
 import SuperAdminEventsManagement from '@/pages/superadmin/EventsManagement';
 import SuperAdminDiscountManagement from '@/pages/superadmin/DiscountManagement';
+import PaymentSuccess from '@/pages/PaymentSuccess';
+import PaymentCancel from '@/pages/PaymentCancel';
 import FAQ from '@/pages/FAQ';
 import SecoursMyAccount from '@/pages/SecoursMyAccount';
 import Competitions from '@/pages/Competitions';
@@ -104,8 +106,6 @@ import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import CareerJobsManagement from './pages/admin/CareerJobsManagement';
 import EventsManagement from './pages/admin/EventsManagement';
-import PaymentSuccess from './pages/PaymentSuccess';
-import PaymentCancel from './pages/PaymentCancel';
 
 // Add the new route to the existing routes array
 const routes = [
@@ -613,6 +613,15 @@ const routes = [
         <SuperAdminDiscountManagement />
       </ProtectedRoute>
     ),
+  },
+  // Payment callback routes
+  {
+    path: '/payment/success',
+    element: <PaymentSuccess />,
+  },
+  {
+    path: '/payment/cancel',
+    element: <PaymentCancel />,
   },
 ];
 
