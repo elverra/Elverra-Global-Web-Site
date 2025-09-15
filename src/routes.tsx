@@ -72,7 +72,7 @@ import AccessLawyer from '@/pages/AccessLawyer';
 import RegistrationThankYou from '@/pages/RegistrationThankYou';
 import EBooks from '@/pages/EBooks';
 import EbookManagement from '@/pages/admin/EbookManagement';
-import PaymentStatus from '@/pages/PaymentStatus';
+import PaymentStatus from './pages/PaymentStatus';
 import PaydayAdvance from './pages/services/PaydayAdvance';
 import OnlineStore from './pages/services/OnlineStore';
 import SchoolFees from './pages/services/secours/SchoolFees';
@@ -104,6 +104,8 @@ import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import CareerJobsManagement from './pages/admin/CareerJobsManagement';
 import EventsManagement from './pages/admin/EventsManagement';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancel from './pages/PaymentCancel';
 
 // Add the new route to the existing routes array
 const routes = [
