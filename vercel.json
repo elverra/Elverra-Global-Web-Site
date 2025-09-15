@@ -1,50 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
-      "src": "api/payments/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/products/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/secours/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/subscriptions.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/api/payments/(.*)",
-      "dest": "/api/payments"
-    },
-    {
-      "src": "/api/products/(.*)",
-      "dest": "/api/products"
-    },
-    {
-      "src": "/api/secours/(.*)",
-      "dest": "/api/secours"
-    },
-    {
-      "src": "/api/subscriptions",
-      "dest": "/api/subscriptions"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     }
   ]
 }
