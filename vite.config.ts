@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "./src"),
         "@assets": path.resolve(__dirname, "./public"),
+        'lodash': 'lodash-es',
       },
     },
     define: {
@@ -45,7 +46,7 @@ export default defineConfig(({ mode }) => {
             react: ['react', 'react-dom', 'react-router-dom'],
             ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
             form: ['react-hook-form', '@hookform/resolvers', 'zod'],
-            utils: ['date-fns', 'lodash', 'axios'],
+            utils: ['date-fns', 'lodash-es', 'axios'],
             vendor: ['@supabase/supabase-js', '@tanstack/react-query'],
           },
         },
