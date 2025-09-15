@@ -1,6 +1,6 @@
 import { handleCinetpayWebhook } from './cinetpay-webhook';
-import { handleOrangeMoneyPayment } from './initiate-orange-money';
-import { handleSamaMoneyPayment } from './initiate-sama-money';
+import initiateOrangeMoneyHandler from './initiate-orange-money';
+import initiateSamaMoneyHandler from './initiate-sama-money';
 import { handleOrangeMoneyWebhook } from './orange-money-webhook';
 import { handlePaymentVerification } from './verify';
 
@@ -13,9 +13,9 @@ export default async function handler(req, res) {
       case '/api/payments/cinetpay-webhook':
         return await handleCinetpayWebhook(req, res);
       case '/api/payments/initiate-orange-money':
-        return await handleOrangeMoneyPayment(req, res);
+        return await initiateOrangeMoneyHandler(req, res);
       case '/api/payments/initiate-sama-money':
-        return await handleSamaMoneyPayment(req, res);
+        return await initiateSamaMoneyHandler(req, res);
       case '/api/payments/orange-money-webhook':
         return await handleOrangeMoneyWebhook(req, res);
       case '/api/payments/verify':
