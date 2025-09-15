@@ -9,11 +9,19 @@
       }
     },
     {
-      "src": "api/**/index.js",
+      "src": "api/payments/index.js",
       "use": "@vercel/node"
     },
     {
-      "src": "api/subscriptions.js",
+      "src": "api/products/index.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/secours/index.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/subscriptions/index.js",
       "use": "@vercel/node"
     }
   ],
