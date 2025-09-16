@@ -103,14 +103,7 @@ const Footer = () => {
                   Home
                 </Link>
               </li>
-              <li>
-                <Link
-                  to="/cards"
-                  className="text-gray-300 hover:text-club66-gold text-sm"
-                >
-                  Our Cards
-                </Link>
-              </li>
+             
               <li>
                 <Link
                   to="/services"

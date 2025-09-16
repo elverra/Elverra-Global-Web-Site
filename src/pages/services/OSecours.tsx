@@ -276,7 +276,7 @@ const OSecours = () => {
                     <CardContent className="p-10 relative z-10">
                       <Shield className="h-12 w-12 mb-4 opacity-90" />
                       <h3 className="text-2xl font-bold mb-4">
-                        Ô Secour: Your Solution for a Brighter Tomorrow!
+                        Ô Secour Your Solution for a Brighter Tomorrow!
                       </h3>
                       <p className="text-lg opacity-90 mb-6 leading-relaxed">
                         Our token-based emergency assistance system ensures
@@ -292,7 +292,7 @@ const OSecours = () => {
                     <CardContent className="p-10 relative z-10">
                       <AlertTriangle className="h-12 w-12 mb-4 opacity-90" />
                       <h3 className="text-2xl font-bold mb-4">
-                        Secour Got You Covered!
+                      Ô Secour Got You Covered!
                       </h3>
                       <p className="text-lg opacity-90 mb-6 leading-relaxed">
                         From medical emergencies to transportation breakdowns,

@@ -383,7 +383,7 @@ const Events = () => {
                             {event.max_participants && (
                               <div className="flex items-center mt-1">
                                 <Users className="h-4 w-4 mr-1" />
-                                Places limitées: {event.max_participants - event.participant_count} restantes
+                                Places limitées: illimité 
                               </div>
                             )}
                           </div>

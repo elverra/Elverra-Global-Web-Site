@@ -53,7 +53,7 @@ const News = () => {
     {
       id: 1,
       slug: "elverra-global-expands-three-new-countries",
-      title: "Elverra Global Expands to Three New Countries",
+      title: "Elverra Global has opened its doors in Mali",
       excerpt: "We're excited to announce our expansion into Burkina Faso, Niger, and Guinea, bringing our client benefits to even more communities.",
       date: "2024-03-15",
       author: "Admin Team",

@@ -132,7 +132,7 @@ const Register = () => {
       // Welcome notifications: Supabase will send email confirmation if configured.
       toast.success("Account created! Please complete your membership card purchase to activate your account.");
       // Navigate to membership selection for mandatory card purchase
-      navigate("/client-subscription?new=true");
+      navigate("/client-payment?new=true");
     },
     onError: (error: any) => {
       console.error("❌ Registration error:", error);
@@ -150,7 +150,7 @@ const Register = () => {
   }
 
   if (shouldRedirectToPayment) {
-    navigate("/client-subscription");
+    navigate("/client-payment");
     return null;
   }
 

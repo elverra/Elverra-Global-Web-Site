@@ -32,28 +32,28 @@ const HirePurchase = () => {
     {
       name: "Electronics",
       examples: "Smartphones, Laptops, TVs, Appliances",
-      terms: "3-12 months",
+      terms: "As approved by partner",
       downPayment: "20%",
       icon: Smartphone
     },
     {
       name: "Furniture",
       examples: "Sofas, Beds, Dining Sets",
-      terms: "6-18 months",
+      terms: "As approved by partner",
       downPayment: "25%",
       icon: ShoppingBag
     },
     {
       name: "Vehicles",
       examples: "Cars, Motorcycles, Commercial Vehicles",
-      terms: "12-24 months",
+      terms: "As approved by partner",
       downPayment: "30%",
       icon: ShoppingBag
     },
     {
       name: "Equipment",
       examples: "Agricultural, Construction, Business",
-      terms: "6-24 months",
+      terms: "As approved by partner",
       downPayment: "25%",
       icon: ShoppingBag
     }
@@ -62,20 +62,20 @@ const HirePurchase = () => {
   const membershipTiers = [
     {
       tier: "Essential",
-      rate: "7% monthly",
-      maxAmount: "Up to CFA 1,000,000",
+      rate: "Higher",
+      maxAmount: "Partner approval limit apply",
       processingTime: "3-5 days"
     },
     {
       tier: "Premium",
-      rate: "6% monthly",
-      maxAmount: "Up to CFA 3,000,000",
+      rate: "Midway",
+      maxAmount: "Partner approval limit apply",
       processingTime: "2-3 days"
     },
     {
       tier: "Elite",
-      rate: "5% monthly",
-      maxAmount: "Up to CFA 5,000,000",
+      rate: "Lower",
+      maxAmount: "Partner approval limit apply",
       processingTime: "1-2 days"
     }
   ];
@@ -95,9 +95,9 @@ const HirePurchase = () => {
               <div>
                 <h2 className="text-2xl font-bold mb-6">Own What You Need Today, Pay Over Time</h2>
                 <p className="text-gray-600 mb-6">
-                  Our Hire Purchase program allows Elverra Global clients to acquire valuable assets without paying 
+                  Througt our partners, Our Hire Purchase program allows Elverra Global clients to acquire valuable assets without paying 
                   the full amount upfront. Make a down payment, take possession of the item immediately, and pay 
-                  the remainder in convenient monthly installments while you use and enjoy your purchase.
+                  the remaining amount in convenient monthly installments while you use and enjoy your purchase.
                 </p>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
@@ -200,7 +200,7 @@ const HirePurchase = () => {
                   <CardHeader>
                     <CardTitle>The Hire Purchase Process</CardTitle>
                     <CardDescription>
-                      Follow these simple steps to acquire products through our Hire Purchase program.
+                      Follow these simple steps to acquire products through our Hire Purchase program with our partners.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -230,7 +230,7 @@ const HirePurchase = () => {
                           <h3 className="font-bold mb-1">Apply & Get Approved</h3>
                           <p className="text-gray-600">
                             Complete the Hire Purchase application form with your product details and preferred payment term.
-                            Our team will review your application and provide a quick decision based on your client tier.
+                            Our partners will review your application and provide a quick decision based on your client tier.
                           </p>
                         </div>
                       </div>
@@ -244,8 +244,8 @@ const HirePurchase = () => {
                         <div>
                           <h3 className="font-bold mb-1">Make Down Payment</h3>
                           <p className="text-gray-600">
-                            Pay the required down payment (typically 20-30% of the product value) 
-                            through mobile money, bank transfer, or at our office locations.
+                            Pay the down payment required by our partners (typically 20-30% of the product value) 
+                            through mobile money, bank transfer, or at their office locations.
                           </p>
                         </div>
                       </div>
@@ -259,7 +259,7 @@ const HirePurchase = () => {
                         <div>
                           <h3 className="font-bold mb-1">Receive Your Product</h3>
                           <p className="text-gray-600">
-                            Take immediate possession of your product! We'll handle the purchase and arrange delivery 
+                            Take immediate possession of your product! They will handle the purchase and arrange delivery 
                             to your specified address, or you can pick it up from the merchant location.
                           </p>
                         </div>
@@ -298,7 +298,7 @@ const HirePurchase = () => {
                         <ul className="space-y-2">
                           <li className="flex items-center">
                             <Check className="h-5 w-5 text-green-500 mr-2" />
-                            <span>Active Club66 Global client status for at least 2 months</span>
+                            <span>Active Elverra Global client status for at least 2 months</span>
                           </li>
                           <li className="flex items-center">
                             <Check className="h-5 w-5 text-green-500 mr-2" />
@@ -393,7 +393,7 @@ const HirePurchase = () => {
             <h2 className="text-2xl font-bold mb-4">Ready to Make a Purchase?</h2>
             <p className="text-gray-600 mb-8">
               Our Hire Purchase program helps you acquire the items you need without the burden of full upfront payment.
-              Apply today and start enjoying your purchase while paying over time.
+              Apply today and start enjoying your purchase through our while paying over time.
             </p>
             <Button 
               onClick={() => {

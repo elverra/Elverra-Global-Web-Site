@@ -467,7 +467,7 @@ const EventDetail = () => {
                 {event.max_participants && (
                   <div>
                     <Label className="text-sm font-medium text-gray-600">Places disponibles</Label>
-                    <p className="text-gray-900">{event.max_participants - event.participant_count} / {event.max_participants}</p>
+                    <p className="text-gray-900">illimité</p>
                   </div>
                 )}
 

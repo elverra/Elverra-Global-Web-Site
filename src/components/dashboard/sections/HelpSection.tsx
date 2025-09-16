@@ -385,7 +385,7 @@ const HelpSection = () => {
                   <Mail className="h-6 w-6 text-blue-600" />
                   <div>
                     <p className="font-medium">Email Support</p>
-                    <p className="text-sm text-gray-600">support@elverra-global.com</p>
+                    <p className="text-sm text-gray-600">info@elverraglobalml.com</p>
                     <p className="text-xs text-gray-500">Response within 24 hours</p>
                   </div>
                 </div>
@@ -394,8 +394,9 @@ const HelpSection = () => {
                   <Phone className="h-6 w-6 text-green-600" />
                   <div>
                     <p className="font-medium">Phone Support</p>
-                    <p className="text-sm text-gray-600">+223 XX XX XX XX</p>
-                    <p className="text-xs text-gray-500">Mon-Fri, 9AM-6PM GMT</p>
+                    <p className="text-sm text-gray-600">+223 44 94 38 44</p>
+                    <p className="text-xs text-gray-500">Mon-Fri, 8AM-5PM GMT</p>
+                    <p className="text-xs text-gray-500">Sat, 9AM-1PM GMT</p>
                   </div>
                 </div>
 
@@ -404,7 +405,7 @@ const HelpSection = () => {
                   <div>
                     <p className="font-medium">Live Chat</p>
                     <p className="text-sm text-gray-600">Available on website</p>
-                    <p className="text-xs text-gray-500">Mon-Fri, 9AM-6PM GMT</p>
+                    <p className="text-xs text-gray-500">Mon-Fri, 8AM-5PM GMT</p>
                   </div>
                 </div>
 
@@ -414,8 +415,8 @@ const HelpSection = () => {
                     <p className="font-medium text-blue-800">Business Hours</p>
                   </div>
                   <div className="text-sm text-blue-700 space-y-1">
-                    <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
-                    <p>Saturday: 9:00 AM - 2:00 PM</p>
+                    <p>Monday - Friday: 8:00 AM - 5:00 PM</p>
+                    <p>Saturday: 9:00 AM - 1:00 PM</p>
                     <p>Sunday: Closed</p>
                     <p className="text-xs mt-2">All times in GMT (Bamako time)</p>
                   </div>

@@ -17,7 +17,7 @@ const Team = () => {
     },
     {
       id: 3,
-      position: "Head of Department - Acting Head of Sales and Marketing",
+      position: " Head of Sales and Marketing",
       bio: "Driving sales strategies, marketing initiatives, and ensuring customer satisfaction.",
     },
     {
@@ -56,6 +56,7 @@ const Team = () => {
       position: "Head of Department - Legal",
       bio: "Providing legal guidance, ensuring regulatory compliance, and safeguarding the organization’s interests.",
     },
+   
   ];
 
   const organizationRoles = [

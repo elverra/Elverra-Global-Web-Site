@@ -252,10 +252,10 @@ const SubscriptionsSection = () => {
     {
       id: 'essential',
       name: 'Essential',
-      price: 0,
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      yearlyDiscount: 0,
+      price: 10000,
+      monthlyPrice: 1000,
+      yearlyPrice: 10000,
+      yearlyDiscount: 5,
       features: [
         'Basic job search access',
         'Community forum access',
@@ -269,10 +269,10 @@ const SubscriptionsSection = () => {
     {
       id: 'premium',
       name: 'Premium',
-      price: 2000,
+      price: 10000,
       monthlyPrice: 2000,
-      yearlyPrice: 20000,
-      yearlyDiscount: 17,
+      yearlyPrice: 10000,
+      yearlyDiscount: 10,
       features: [
         'Everything in Essential',
         'Unlimited job applications',
@@ -291,10 +291,10 @@ const SubscriptionsSection = () => {
     {
       id: 'elite',
       name: 'Elite',
-      price: 5000,
+      price: 10000,
       monthlyPrice: 5000,
-      yearlyPrice: 50000,
-      yearlyDiscount: 17,
+      yearlyPrice: 10000,
+      yearlyDiscount: 20,
       features: [
         'Everything in Premium',
         'VIP job matching',

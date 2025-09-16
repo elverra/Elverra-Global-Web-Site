@@ -131,12 +131,12 @@ const impactStories = [
 ];
 
 const impactStats = [
-  { label: "Lives Transformed", value: "125,000+", icon: "👥" },
-  { label: "Jobs Created", value: "45,000+", icon: "💼" },
-  { label: "Businesses Supported", value: "15,000+", icon: "🏪" },
-  { label: "Students Educated", value: "35,000+", icon: "🎓" },
-  { label: "Emergency Assistance", value: "12,000+", icon: "🆘" },
-  { label: "Countries Served", value: "12", icon: "🌍" },
+  { label: "Lives Transformed", value: "56", icon: "👥" },
+  { label: "Jobs Created", value: "56", icon: "💼" },
+  { label: "Businesses Supported", value: "110", icon: "🏪" },
+  { label: "Students Educated", value: "0", icon: "🎓" },
+  { label: "Emergency Assistance", value: "0", icon: "🆘" },
+  { label: "Countries Served", value: "1", icon: "🌍" },
 ];
 
 const ChangingLives = () => {
@@ -282,7 +282,7 @@ const ChangingLives = () => {
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button asChild size="lg" variant="secondary">
-                      <Link to="/selectCountry">Share Your Story</Link>
+                      <Link to="/register">Share Your Story</Link>
                     </Button>
                   </div>
                 </CardContent>

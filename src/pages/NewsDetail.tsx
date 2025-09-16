@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import Layout from '@/components/layout/Layout';
-import PremiumBanner from '@/components/layout/PremiumBanner';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, User, ArrowLeft, Share2 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import Layout from "@/components/layout/Layout";
+import PremiumBanner from "@/components/layout/PremiumBanner";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, User, ArrowLeft, Share2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const NewsDetail = () => {
   const { id } = useParams();
@@ -15,58 +16,60 @@ const NewsDetail = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('NewsDetail mounted with ID:', id);
+    console.log("NewsDetail mounted with ID:", id);
     if (id) {
       fetchArticle();
     } else {
-      console.log('No ID found, redirecting to news');
-      navigate('/about/news');
+      console.log("No ID found, redirecting to news");
+      navigate("/about/news");
     }
   }, [id]);
 
   const fetchArticle = async () => {
     try {
       setLoading(true);
-      
+
       // First try to get from CMS pages
-      const response = null;
-      console.log('CMS response status:', response.status);
-      
+      const response = await fetch(`/api/cms-pages/${id}`);
+      console.log("CMS response status:", response.status);
+
       if (response.ok) {
         const cmsData = await response.json();
-        console.log('CMS data received:', cmsData);
+        console.log("CMS data received:", cmsData);
         setArticle({
           ...cmsData,
-          author: 'Admin Team', // Default author
-          category: 'News', // Default category
-          image: cmsData.featured_image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80'
+          author: "Admin Team", // Default author
+          category: "News", // Default category
+          image:
+            cmsData.featured_image_url ||
+            "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
         });
-        
+
         // Increment view count
         try {
-          null;
+          await fetch(`/api/cms-pages/${id}/views`, { method: "POST" });
         } catch (error) {
           // View count increment is non-critical
         }
       } else {
-        console.log('CMS not found, trying static news');
+        console.log("CMS not found, trying static news");
         // Fallback to static news if not found in CMS
         const staticNews = getStaticNews();
         // Try to find by slug first, then by ID
-        const staticArticle = staticNews.find(news => 
-          news.slug === id || news.id.toString() === id
+        const staticArticle = staticNews.find(
+          (news) => news.slug === id || news.id.toString() === id
         );
-        console.log('Static article found:', staticArticle);
+        console.log("Static article found:", staticArticle);
         if (staticArticle) {
           setArticle(staticArticle);
           return; // Exit early for static articles
         } else {
-          console.log('No article found');
-          throw new Error('Article not found');
+          console.log("No article found");
+          throw new Error("Article not found");
         }
       }
     } catch (error: any) {
-      console.error('Error fetching article:', error);
+      console.error("Error fetching article:", error);
       setArticle(null);
     } finally {
       setLoading(false);
@@ -77,13 +80,15 @@ const NewsDetail = () => {
     {
       id: 1,
       slug: "elverra-global-expands-three-new-countries",
-      title: "Elverra Global Expands to Three New Countries",
-      meta_description: "Elverra Global announces expansion into Burkina Faso, Niger, and Guinea, bringing client benefits to new communities.",
+      title:
+        "Elverra Global has opened business in Mali trading as Elverra Global ML SAS",
+      meta_description:
+        "Elverra Global announces the launch of its ZENIKA card, ZENIKA Kiddies ELVERRA PLUS App and verious social media official pages.",
       content: `
-        <p>We're excited to announce a major milestone in Elverra Global's expansion journey. Our client benefits and services are now available in three new countries: Burkina Faso, Niger, and Guinea.</p>
+        <p>We're excited to announce a major milestone in Elverra Global journey. Our client benefits and services are now available in Mali.</p>
         
         <h3>What This Means for Our Clients</h3>
-        <p>This expansion represents our commitment to bringing financial inclusion and community benefits to more communities. Clients in these new countries will have access to:</p>
+        <p>This expansion represents our commitment to bringing financial inclusion and community benefits to more communities. Clients in the countries we operate will have access to:</p>
         <ul>
           <li>Ô Secours emergency assistance services</li>
           <li>Discount networks with local merchants</li>
@@ -96,19 +101,21 @@ const NewsDetail = () => {
         <p>We've established partnerships with local businesses and service providers in each country to ensure our clients receive the best possible benefits. Our team has been working closely with local communities to understand their specific needs and tailor our services accordingly.</p>
         
         <h3>What's Next</h3>
-        <p>This expansion is just the beginning. We have plans to enter additional markets across the region in the coming months, always with the goal of supporting local communities and providing valuable services to our clients.</p>
+        <p>This is just the beginning. We have plans to enter additional markets across the region in the coming months, always with the goal of supporting local communities and providing valuable services to our clients.</p>
       `,
       created_at: "2024-03-15T00:00:00Z",
       author: "Admin Team",
       category: "Expansion",
-      image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
-      view_count: 245
+      image:
+        "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
+      view_count: 245,
     },
     {
       id: 2,
       slug: "new-partnership-regional-development-bank",
       title: "New Partnership with Regional Development Bank",
-      meta_description: "Strategic partnership enhances financial services and micro-lending opportunities for clients across our network.",
+      meta_description:
+        "Strategic partnership enhances financial services and micro-lending opportunities for clients across our network.",
       content: `
         <p>Elverra Global is proud to announce a strategic partnership with the Regional Development Bank that will significantly enhance our financial services and micro-lending opportunities for clients across our network.</p>
         
@@ -134,14 +141,16 @@ const NewsDetail = () => {
       created_at: "2024-03-10T00:00:00Z",
       author: "Partnership Team",
       category: "Partnership",
-      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
-      view_count: 189
+      image:
+        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
+      view_count: 189,
     },
     {
       id: 3,
       slug: "digital-card-launch-instant-access-benefits",
       title: "Digital Card Launch: Instant Access to Benefits",
-      meta_description: "New digital client cards feature QR code technology for instant verification and seamless benefit access.",
+      meta_description:
+        "New digital client cards feature QR code technology for instant verification and seamless benefit access.",
       content: `
         <p>We're thrilled to introduce our new digital client cards, featuring cutting-edge QR code technology that provides instant verification and seamless access to all Elverra Global benefits.</p>
         
@@ -178,14 +187,16 @@ const NewsDetail = () => {
       created_at: "2024-03-05T00:00:00Z",
       author: "Technology Team",
       category: "Innovation",
-      image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
-      view_count: 312
+      image:
+        "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
+      view_count: 312,
     },
     {
       id: 4,
       slug: "zenika-card-program-financial-inclusion",
       title: "ZENIKA Card Program Reaches 100,000 Active Users",
-      meta_description: "Our flagship ZENIKA card program achieves major milestone, providing financial services to over 100,000 clients.",
+      meta_description:
+        "Our flagship ZENIKA card program achieves major milestone, providing financial services to over 100,000 clients.",
       content: `
         <p>We're proud to announce that our flagship ZENIKA card program has reached a significant milestone: 100,000 active users across our client network.</p>
         
@@ -218,14 +229,16 @@ const NewsDetail = () => {
       created_at: "2024-08-10T00:00:00Z",
       author: "Program Team",
       category: "Milestone",
-      image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
-      view_count: 156
+      image:
+        "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
+      view_count: 156,
     },
     {
       id: 5,
       slug: "community-job-training-program-expansion",
       title: "Community Job Training Program Expands to 10 New Cities",
-      meta_description: "Skills development and job placement program expands to reach more young professionals seeking employment opportunities.",
+      meta_description:
+        "Skills development and job placement program expands to reach more young professionals seeking employment opportunities.",
       content: `
         <p>Our Community Job Training Program is expanding its reach with the addition of 10 new cities, bringing our total coverage to 25 cities across our client network.</p>
         
@@ -270,14 +283,16 @@ const NewsDetail = () => {
       created_at: "2024-07-22T00:00:00Z",
       author: "Training Team",
       category: "Education",
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
-      view_count: 98
+      image:
+        "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
+      view_count: 98,
     },
     {
       id: 6,
       slug: "o-secours-emergency-assistance-milestone",
       title: "Ô Secours Program Provides Emergency Aid to 50,000 Families",
-      meta_description: "Our emergency financial assistance program reaches significant milestone, helping families in crisis across our client network.",
+      meta_description:
+        "Our emergency financial assistance program reaches significant milestone, helping families in crisis across our client network.",
       content: `
         <p>The Ô Secours emergency financial assistance program has reached a significant milestone, providing critical support to over 50,000 families across our client network during times of crisis.</p>
         
@@ -327,16 +342,18 @@ const NewsDetail = () => {
       created_at: "2024-07-15T00:00:00Z",
       author: "Emergency Team",
       category: "Community Impact",
-      image: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
-      view_count: 203
-    }
+      image:
+        "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
+      view_count: 203,
+    },
   ];
 
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
         title: article.title,
-        text: article.meta_description || article.content.substring(0, 200) + '...',
+        text:
+          article.meta_description || article.content.substring(0, 200) + "...",
         url: window.location.href,
       });
     } else {
@@ -364,7 +381,7 @@ const NewsDetail = () => {
         <div className="container mx-auto px-4 py-16">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Article Not Found</h1>
-            <Button onClick={() => navigate('/about/news')}>
+            <Button onClick={() => navigate("/about/news")}>
               Back to News
             </Button>
           </div>
@@ -377,7 +394,10 @@ const NewsDetail = () => {
     <Layout>
       <PremiumBanner
         title={article.title}
-        description={article.meta_description || `Published on ${new Date(article.created_at).toLocaleDateString()}`}
+        description={
+          article.meta_description ||
+          `Published on ${new Date(article.created_at).toLocaleDateString()}`
+        }
         backgroundImage={article.image}
         showBackButton
         backUrl="/about/news"
@@ -392,7 +412,7 @@ const NewsDetail = () => {
                 <div className="mb-8">
                   <div className="flex flex-wrap items-center gap-4 mb-4">
                     <Badge className="bg-purple-100 text-purple-800">
-                      {article.category || 'News'}
+                      {article.category || "News"}
                     </Badge>
                     <div className="flex items-center text-sm text-gray-500">
                       <Calendar className="h-4 w-4 mr-1" />
@@ -405,16 +425,16 @@ const NewsDetail = () => {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => navigate('/about/news')}
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate("/about/news")}
                       className="flex items-center gap-2"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       Back to News
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={handleShare}
                       className="flex items-center gap-2"
                     >
@@ -427,8 +447,8 @@ const NewsDetail = () => {
                 {/* Article Image */}
                 {article.image && (
                   <div className="mb-8 rounded-lg overflow-hidden">
-                    <img 
-                      src={article.image} 
+                    <img
+                      src={article.image}
                       alt={article.title}
                       className="w-full h-64 md:h-96 object-cover"
                     />
@@ -437,10 +457,10 @@ const NewsDetail = () => {
 
                 {/* Article Content */}
                 <div className="prose prose-lg max-w-none">
-                  <div 
-                    dangerouslySetInnerHTML={{ 
-                      __html: article.content.replace(/\n/g, '<br>') 
-                    }} 
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: article.content.replace(/\n/g, "<br>"),
+                    }}
                   />
                 </div>
 
@@ -451,15 +471,13 @@ const NewsDetail = () => {
                       Views: {article.view_count || 0}
                     </div>
                     <div className="flex items-center gap-4">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => navigate('/about/news')}
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate("/about/news")}
                       >
                         More News
                       </Button>
-                      <Button onClick={handleShare}>
-                        Share Article
-                      </Button>
+                      <Button onClick={handleShare}>Share Article</Button>
                     </div>
                   </div>
                 </div>

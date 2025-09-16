@@ -25,7 +25,7 @@ const AffiliateProgram = () => {
     {
       title: "10% Commission Rate",
       description:
-        "Earn 10% commission on all membership fees paid by your referrals",
+        "Earn 10% commission on all clients fees paid by your referrals",
       icon: DollarSign,
       color: "text-green-600",
     },
@@ -71,7 +71,7 @@ const AffiliateProgram = () => {
     {
       step: 4,
       title: "Earn Commissions",
-      description: "Receive 10% commission when they become members",
+      description: "Receive 10% commission when they become a client",
     },
   ];
 

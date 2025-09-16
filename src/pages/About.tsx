@@ -231,7 +231,7 @@ const About = () => {
                     size="lg"
                     className="bg-purple-600 hover:bg-purple-700"
                   >
-                    <Link to="/selectCountry">Contact Us</Link>
+                    <Link to="/about/contact">Contact Us</Link>
                   </Button>
                 </CardContent>
               </Card>

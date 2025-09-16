@@ -53,11 +53,7 @@ const Cards = () => {
       title: 'Secure Transactions',
       description: 'Advanced security features and fraud protection'
     },
-    {
-      icon: Gift,
-      title: 'Reward Points',
-      description: 'Earn points on every transaction and redeem for prizes'
-    },
+   
     {
       icon: Users,
       title: 'VIP Status',
