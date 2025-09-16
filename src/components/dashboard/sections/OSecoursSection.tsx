@@ -109,6 +109,14 @@ const TOKEN_TYPES: TokenType[] = [
     icon: '📱',
     color: '#f3e8ff',
   },
+  {
+    id: 'first_aid',
+    name: 'Premiers secours',
+    description: 'Assistance premiers secours',
+    price: 250,
+    icon: '🩺',
+    color: '#f3e8ff',
+  },
 ];
 
 export const MIN_PURCHASE_PER_SERVICE = 10;

@@ -309,7 +309,7 @@ const PaymentsSection = () => {
                   CFA {stats.monthlySpent?.toLocaleString() || '0'}
                 </p>
               </div>
-              <DollarSign className="h-8 w-8 text-blue-600" />
+             
             </div>
           </CardContent>
         </Card>

@@ -22,7 +22,8 @@ import {
   Send,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  ArrowUpToLine
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -41,8 +42,7 @@ const AffiliateSection = () => {
   useEffect(() => {
     if (user?.id) {
       fetchAffiliateData();
-      fetchReferrals();
-      fetchLeaderboard();
+   
     }
   }, [user]);
 
@@ -69,36 +69,9 @@ const AffiliateSection = () => {
     }
   };
 
-  const fetchReferrals = async () => {
-    if (!user?.id) return;
-    try {
-      // Mock referrals list
-      const data = [
-         { id: 'ref-1', name: 'John Doe', email: 'john@example.com', joinDate: new Date().toISOString(), plan: 'Essential', status: 'active', earnings: 0 },
-      ];
-      setReferrals(data);
-    } catch (error) {
-      console.error('Error fetching referrals:', error);
-    }
-  };
+ 
   const VITE_APP_URL = import.meta.env.VITE_APP_URL as string;
 
-  const fetchLeaderboard = async () => {
-    try {
-      // Mock leaderboard
-      const data = [
-        { rank: 1, name: 'Alice', referrals: 25, earnings: 150000 },
-        { rank: 2, name: 'Bob', referrals: 18, earnings: 110000 },
-        { rank: 3, name: 'Charlie', referrals: 12, earnings: 80000 },
-        { rank: 4, name: 'You', referrals: affiliateData?.totalReferrals || 0, earnings: affiliateData?.totalEarnings || 0 },
-      ];
-      setLeaderboard(data);
-    } catch (error) {
-      console.error('Error fetching leaderboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const copyReferralCode = () => {
     if (affiliateData?.referralCode) {
@@ -174,7 +147,7 @@ const AffiliateSection = () => {
                   <span className="inline-block h-6 w-24 bg-gray-200 rounded animate-pulse mt-1 align-middle"></span>
                 ) : (
                   <p className="text-2xl font-bold text-green-600">
-                    CFA {(affiliateData.totalEarnings || 0).toLocaleString()}
+                     {(affiliateData.totalEarnings || 0).toLocaleString()} FCFA
                   </p>
                 )}
                 <Button
@@ -186,7 +159,7 @@ const AffiliateSection = () => {
                   Withdraw
                 </Button>
               </div>
-              <DollarSign className="h-8 w-8 text-green-600" />
+              
             </div>
           </CardContent>
         </Card>
@@ -222,13 +195,13 @@ const AffiliateSection = () => {
                   </p>
                 )}
                 <Button
-                  onClick={handleWithdraw}
+                 
                   variant="outline"
-                  className="mt-2 border-purple-600 text-purple-600 hover:bg-purple-50"
+                  className="mt-2 border-purple-600 text-purple-600"
                   size="sm"
                 >
-                  <ArrowDownToLine className="h-4 w-4 mr-2" />
-                  Request Payout
+                  <ArrowUpToLine className="h-4 w-4 mr-2" />
+                   Payout
                 </Button>
               </div>
               <TrendingUp className="h-8 w-8 text-purple-600" />
@@ -284,7 +257,7 @@ const AffiliateSection = () => {
               <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Link</label>
               <div className="flex gap-2">
                 <Input
-                  value={affiliateData?.referralCode ? `http://localhost:5173/register?ref=${affiliateData.referralCode}` : 'Loading...'}
+                  value={affiliateData?.referralCode ? `https://elverraglobalml.com/register?ref=${affiliateData.referralCode}` : 'Loading...'}
                   readOnly
                   className="text-sm"
                 />
@@ -299,9 +272,9 @@ const AffiliateSection = () => {
               <h4 className="font-semibold mb-2">How to Earn:</h4>
               <ul className="text-sm space-y-1 text-gray-700">
                 <li>• Share your referral code with friends</li>
-                <li>• Earn {affiliateData?.commissionRate || 0}% commission on their payments</li>
-                <li>• Get bonuses for active referrals</li>
-                <li>• Monthly payouts on the 15th</li>
+                <li>• Earn {affiliateData?.commissionRate || 0}% commission on card purchase & renewals</li>
+              
+                <li>• At any time</li>
               </ul>
             </div>
           </CardContent>
@@ -315,28 +288,7 @@ const AffiliateSection = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Pending Payout</p>
-                <p className="text-lg font-bold text-orange-600">
-                  {loading ? (
-                    <span className="inline-block h-5 w-20 bg-gray-200 rounded animate-pulse align-middle"></span>
-                  ) : (
-                    `CFA ${(affiliateData?.pendingPayouts || 0).toLocaleString()}`
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Next Payout</p>
-                <p className="text-lg font-bold text-blue-600">
-                  {loading ? (
-                    <span className="inline-block h-5 w-24 bg-gray-200 rounded animate-pulse align-middle"></span>
-                  ) : (
-                    affiliateData?.nextPayoutDate || 'N/A'
-                  )}
-                </p>
-              </div>
-            </div>
+          
 
             <div className="bg-green-50 p-4 rounded-lg">
               <h4 className="font-semibold mb-2">Commission Info:</h4>
@@ -351,15 +303,12 @@ const AffiliateSection = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Payout Schedule:</span>
-                  <span>Monthly on 15th</span>
+                  <span>At any time</span>
                 </div>
               </div>
             </div>
 
-            <Button className="w-full bg-green-600 hover:bg-green-700">
-              <Calendar className="h-4 w-4 mr-2" />
-              Request Early Payout
-            </Button>
+          
           </CardContent>
         </Card>
       </div>

@@ -203,7 +203,7 @@ const AffiliateProgram = () => {
                       CFA 10,000/ans
                     </div>
                     <p className="text-sm text-gray-600">
-                      Per referral (10% of CFA 1000)
+                      Per referral (10% of CFA 10,000)
                     </p>
                     <div className="mt-4 text-sm">
                       <div>
@@ -223,7 +223,7 @@ const AffiliateProgram = () => {
                       CFA 10,000/ans
                     </div>
                     <p className="text-sm text-gray-600">
-                      Per referral (10% of CFA 1000)
+                      Per referral (10% of CFA 10,000)
                     </p>
                     <div className="mt-4 text-sm">
                       <div>
@@ -240,7 +240,7 @@ const AffiliateProgram = () => {
                       CFA 10,000/ans
                     </div>
                     <p className="text-sm text-gray-600">
-                      Per referral (10% of CFA 1000))
+                      Per referral (10% of CFA 10,000))
                     </p>
                     <div className="mt-4 text-sm">
                       <div>
@@ -248,6 +248,25 @@ const AffiliateProgram = () => {
                       </div>
                       <div>
                         10 referrals = <strong>CFA 10,000/ans</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-6 text-center">
+                    <h3 className="text-lg font-semibold mb-2">
+                      Kiddies Clients
+                    </h3>
+                    <div className="text-2xl font-bold text-yellow-600 mb-2">
+                      CFA 5,000/ans
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Per referral (10% of CFA 5,000))
+                    </p>
+                    <div className="mt-4 text-sm">
+                      <div>
+                        7 referrals = <strong>CFA 3,500/ans</strong>
+                      </div>
+                      <div>
+                        10 referrals = <strong>CFA 5,000/ans</strong>
                       </div>
                     </div>
                   </div>
