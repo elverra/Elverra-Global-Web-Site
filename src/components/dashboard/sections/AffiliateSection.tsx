@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Users, 
   DollarSign, 
@@ -16,11 +18,16 @@ import {
   Eye,
   Link,
   Wallet,
-  ArrowDownToLine
+  ArrowDownToLine,
+  Send,
+  Clock,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabaseClient';
 
 const AffiliateSection = () => {
   const { user } = useAuth();

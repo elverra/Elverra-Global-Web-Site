@@ -38,6 +38,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Routes
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/secours', require('./routes/secours'));
+app.use('/api/client', require('./routes/client'));
 
 // Health check
 app.get('/api/health', (req, res) => {

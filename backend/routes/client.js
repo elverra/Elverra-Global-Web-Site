@@ -1,6 +1,15 @@
-import { supabase } from '@/lib/supabaseClient';
+const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
 
-export default async function handler(req, res) {
+const router = express.Router();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// GET /api/client/billing
+router.get('/billing', async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -28,15 +37,23 @@ export default async function handler(req, res) {
       throw subscriptionError;
     }
 
-    // Get user profile for address and name
-    const { data: userProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (profileError && profileError.code !== 'PGRST116') {
-      throw profileError;
+    // Get user profile for address and name - handle permission errors gracefully
+    let userProfile = null;
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.warn('Profile query failed, using fallback:', profileError.message);
+      } else {
+        userProfile = profile;
+      }
+    } catch (err) {
+      console.warn('Profile access denied, using fallback data:', err.message);
+      userProfile = null;
     }
 
     // Get user's payment history for subscription
@@ -186,4 +203,6 @@ export default async function handler(req, res) {
       userId: req.query.userId 
     });
   }
-}
+});
+
+module.exports = router;

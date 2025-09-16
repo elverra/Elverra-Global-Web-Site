@@ -2,10 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Language = 'en' | 'fr';
 
-type TranslationKey = string;
-type TranslationValue = string | Record<string, string | Record<string, string>>;
-type Translations = Record<string, Record<string, string>>;
-
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -98,6 +94,9 @@ const translations = {
     'dashboard.history': 'History',
     'dashboard.top_up': 'Top-Up',
     'dashboard.upgrade_now': 'Upgrade Now',
+    
+    // Subscriptions
+    'subscriptions.title': 'Subscriptions',
     'dashboard.see_details': 'See Details',
     'dashboard.show_all': 'Show All My Transactions',
     

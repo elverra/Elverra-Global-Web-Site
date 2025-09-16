@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
-import { getActiveSubscription } from '@/utils/subscriptionService';
 
 // Global cache to prevent multiple API calls
 let membershipCache: { [userId: string]: Membership | null } = {};
@@ -78,36 +77,63 @@ export const useMembership = () => {
       
       const fetchPromise = (async () => {
         try {
-          // Use subscription service for direct Supabase query
-          const data = await getActiveSubscription(user.id);
+          // Get all active subscriptions for the user (child + adult)
+          const { data: subscriptions, error } = await supabase
+            .from('subscriptions')
+            .select('id, user_id, product_id, status, start_date, end_date, is_child')
+            .eq('user_id', user.id)
+            .eq('status', 'active');
 
-          // Infer tier from actual schema
-          let inferredTier: 'essential' | 'premium' | 'elite' | 'child' | null = null;
-          if (data) {
-            if (data.is_child) {
-              inferredTier = 'child';
-            } else {
-              // Fetch product to infer adult tier by name
-              const { data: product } = await supabase
-                .from('membership_products')
-                .select('name')
-                .eq('id', data.product_id)
-                .maybeSingle();
-              const n = (product?.name || '').toLowerCase();
-              inferredTier = n.includes('elite') ? 'elite' : n.includes('premium') ? 'premium' : 'essential';
-            }
+          if (error) throw error;
+
+          if (!subscriptions || subscriptions.length === 0) {
+            membershipCache[user.id] = null;
+            return null;
           }
 
-          const membership = data ? {
-            id: data.id,
-            user_id: data.user_id,
-            tier: inferredTier as 'essential' | 'premium' | 'elite' | 'child',
-            is_active: data.status === 'active',
-            start_date: data.start_date,
-            expiry_date: data.end_date,
+          // Find child subscription
+          const childSub = subscriptions.find(s => s.is_child === true);
+          
+          // Find adult subscription (prefer active, else any non-child)
+          const adultSub = subscriptions.find(s => s.is_child !== true);
+
+          // If we have an adult subscription, use that as primary membership
+          // If only child, use child as primary
+          const primarySub = adultSub || childSub;
+          
+          if (!primarySub) {
+            membershipCache[user.id] = null;
+            return null;
+          }
+
+          // Infer tier from primary subscription
+          let inferredTier: 'essential' | 'premium' | 'elite' | 'child' = 'essential';
+          if (primarySub.is_child) {
+            inferredTier = 'child';
+          } else {
+            // Fetch product to infer adult tier by name
+            const { data: product } = await supabase
+              .from('membership_products')
+              .select('name')
+              .eq('id', primarySub.product_id)
+              .maybeSingle();
+            const n = (product?.name || '').toLowerCase();
+            inferredTier = n.includes('elite') ? 'elite' : n.includes('premium') ? 'premium' : 'essential';
+          }
+
+          const membership = {
+            id: primarySub.id,
+            user_id: primarySub.user_id,
+            tier: inferredTier,
+            is_active: true,
+            start_date: primarySub.start_date,
+            expiry_date: primarySub.end_date,
             physical_card_requested: false,
-            member_id: data.id
-          } : null;
+            member_id: primarySub.id,
+            // Store info about multiple subscriptions
+            hasChildCard: !!childSub,
+            hasAdultCard: !!adultSub
+          } as any;
 
           membershipCache[user.id] = membership;
           return membership;
@@ -140,6 +166,10 @@ export const useMembership = () => {
     // Check if membership record exists and is active
     const hasActiveMembership = !!membership && membership.is_active;
     const membershipTier = hasActiveMembership ? membership.tier : null;
+    
+    // Check for multiple cards (child + adult)
+    const hasChildCard = !!(membership as any)?.hasChildCard;
+    const hasAdultCard = !!(membership as any)?.hasAdultCard;
 
     if (!hasActiveMembership) {
       return {
@@ -158,12 +188,16 @@ export const useMembership = () => {
       };
     }
 
-    // Define access levels based on membership tier
-    switch (membershipTier) {
+    // If user has adult card, use adult permissions regardless of primary tier
+    // If only child card, use child permissions
+    const effectiveTier = hasAdultCard ? (membershipTier === 'child' ? 'essential' : membershipTier) : membershipTier;
+
+    // Define access levels based on effective tier
+    switch (effectiveTier) {
       case 'essential':
         return {
           hasActiveMembership: true,
-          membershipTier: 'essential',
+          membershipTier: effectiveTier,
           canAccessDiscounts: false,
           canAccessJobs: true,
           canAccessAffiliates: false,
@@ -178,7 +212,7 @@ export const useMembership = () => {
       case 'premium':
         return {
           hasActiveMembership: true,
-          membershipTier: 'premium',
+          membershipTier: effectiveTier,
           canAccessDiscounts: false,
           canAccessJobs: true,
           canAccessAffiliates: true,
@@ -193,7 +227,7 @@ export const useMembership = () => {
       case 'elite':
         return {
           hasActiveMembership: true,
-          membershipTier: 'elite',
+          membershipTier: effectiveTier,
           canAccessDiscounts: false,
           canAccessJobs: true,
           canAccessAffiliates: true,
@@ -208,7 +242,7 @@ export const useMembership = () => {
       case 'child':
         return {
           hasActiveMembership: true,
-          membershipTier: 'child',
+          membershipTier: effectiveTier,
           canAccessDiscounts: false,
           canAccessJobs: false,
           canAccessAffiliates: false,
@@ -221,7 +255,6 @@ export const useMembership = () => {
           discountLevel: 0
         };
       default:
-        // Si le tier n'est pas reconnu, considérer comme pas d'abonnement
         return {
           hasActiveMembership: false,
           membershipTier: null,

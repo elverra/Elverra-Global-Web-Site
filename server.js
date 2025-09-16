@@ -46,6 +46,11 @@ const productsPaymentHandler = require('./api/products/initiate-payment.js');
 app.all('/api/products/count', productsCountHandler.default || productsCountHandler);
 app.all('/api/products/initiate-payment', productsPaymentHandler.default || productsPaymentHandler);
 
+// Client endpoints
+const clientBillingHandler = require('./api/client/billing.js');
+
+app.get('/api/client/billing', clientBillingHandler);
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -69,9 +74,12 @@ app.use((req, res) => {
   });
 });
 
+// Force restart by adding a comment
 app.listen(PORT, () => {
-  console.log(`API server running on http://localhost:${PORT}`);
-  console.log('Available endpoints:');
+  console.log(`🚀 Elverra Backend running on port ${PORT}`);
+  console.log(`📱 Frontend URL: http://localhost:5173`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+  console.log('📋 Available endpoints:');
   console.log('- GET/POST /api/subscriptions');
   console.log('- POST /api/payments/verify');
   console.log('- POST /api/notifications/whatsapp');
@@ -84,4 +92,8 @@ app.listen(PORT, () => {
   console.log('- GET/POST /api/secours/requests');
   console.log('- GET /api/products/count');
   console.log('- POST /api/products/initiate-payment');
+  console.log('- ✅ GET /api/client/billing');
+  
+  // Test if billing handler is loaded
+  console.log('🔍 Billing handler loaded:', typeof clientBillingHandler === 'function');
 });

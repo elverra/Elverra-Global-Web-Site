@@ -47,6 +47,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/lib/supabaseClient';
 
 const ModernDashboard = () => {
   const { user, signOut } = useAuth();
@@ -54,6 +55,69 @@ const ModernDashboard = () => {
   const { membership } = useMembership();
   const { t } = useLanguage();
   const [activeSection, setActiveSection] = useState('dashboard');
+
+  // Track card types (essential, premium, elite, child) to support multiple cards display
+  const [cardTypes, setCardTypes] = useState<Array<'essential' | 'premium' | 'elite' | 'child'>>([]);
+
+  useEffect(() => {
+    const fetchCards = async () => {
+      try {
+        if (!user?.id) return;
+        
+        // Get subscriptions directly from Supabase
+        const { data: subs, error } = await supabase
+          .from('subscriptions')
+          .select('id, is_child, product_id, status, start_date, end_date, created_at')
+          .eq('user_id', user.id);
+
+        if (!error && Array.isArray(subs)) {
+          const ACTIVE = (s: any) => s.status === 'active';
+          const sortByStartDesc = (a: any, b: any) => new Date(b.start_date || b.created_at || 0).getTime() - new Date(a.start_date || a.created_at || 0).getTime();
+
+          // Determine child subscription: prefer active, else latest
+          const childSubs = subs.filter((s: any) => s.is_child === true);
+          const childSub = (childSubs.find(ACTIVE) || childSubs.sort(sortByStartDesc)[0]) as any;
+
+          // Determine one adult subscription: prefer active, else latest
+          const adultSubs = subs.filter((s: any) => s.is_child !== true);
+          const adultSub = (adultSubs.find(ACTIVE) || adultSubs.sort(sortByStartDesc)[0]) as any;
+
+          // Fetch product names only for the chosen adult sub
+          let productNameById: Record<string, string> = {};
+          if (adultSub?.product_id) {
+            const { data: products } = await supabase
+              .from('membership_products')
+              .select('id, name')
+              .in('id', [adultSub.product_id]);
+            (products || []).forEach((p: any) => { productNameById[p.id] = (p.name || '').toLowerCase(); });
+          }
+
+          const inferred: Array<'essential' | 'premium' | 'elite' | 'child'> = [];
+          if (childSub) inferred.push('child');
+          if (adultSub) {
+            const n = productNameById[adultSub.product_id] || '';
+            const tier: 'elite' | 'premium' | 'essential' = n.includes('elite') ? 'elite' : n.includes('premium') ? 'premium' : 'essential';
+            inferred.push(tier);
+          }
+
+          if (inferred.length > 0) {
+            setCardTypes(inferred);
+            console.debug('[Dashboard] Inferred card types from subscriptions (strict):', inferred);
+          } else if (membership?.tier && ['essential', 'premium', 'elite', 'child'].includes(membership.tier)) {
+            setCardTypes([membership.tier as 'essential' | 'premium' | 'elite' | 'child']);
+          }
+        } else if (membership?.tier && ['essential', 'premium', 'elite', 'child'].includes(membership.tier)) {
+          setCardTypes([membership.tier as 'essential' | 'premium' | 'elite' | 'child']);
+        }
+      } catch (e) {
+        // On error, fallback to membership tier if present
+        if (membership?.tier && ['essential', 'premium', 'elite', 'child'].includes(membership.tier)) {
+          setCardTypes([membership.tier as 'essential' | 'premium' | 'elite' | 'child']);
+        }
+      }
+    };
+    fetchCards();
+  }, [user?.id, membership?.tier]);
 
   // Mock data for demonstration
   const [transactions] = useState([
@@ -114,6 +178,31 @@ const ModernDashboard = () => {
   };
 
   const membershipTier = membership?.tier || 'elite';
+  // Determine which types to display: at most 2 (child + one adult with priority elite > premium > essential)
+  const displayedTypes: Array<'essential' | 'premium' | 'elite' | 'child'> = (() => {
+    if (!cardTypes || cardTypes.length === 0) return [];
+    const set = new Set(cardTypes);
+    const out: Array<'essential' | 'premium' | 'elite' | 'child'> = [];
+    if (set.has('child')) out.push('child');
+    const adultPriority: Array<'elite' | 'premium' | 'essential'> = ['elite', 'premium', 'essential'];
+    const adult = adultPriority.find((t) => set.has(t));
+    if (adult) out.push(adult);
+    return out;
+  })();
+
+  // Build header label from displayed types or fall back to membership tier
+  const headerTierLabel = (displayedTypes.length > 0
+    ? displayedTypes
+        .map((t) => t.charAt(0).toUpperCase() + t.slice(1))
+        .join(' & ')
+    : membershipTier.charAt(0).toUpperCase() + membershipTier.slice(1)) + ' Client';
+
+  const badgeStyles: Record<'essential' | 'premium' | 'elite' | 'child', string> = {
+    essential: 'bg-gray-100 text-gray-800 border border-gray-200',
+    premium: 'bg-blue-100 text-blue-800 border border-blue-200',
+    elite: 'bg-purple-100 text-purple-800 border border-purple-200',
+    child: 'bg-pink-100 text-pink-800 border border-pink-200',
+  };
   // Robust fallback: profile full_name -> auth user fullName -> email username -> 'User'
   const memberName = (profile?.full_name && profile.full_name.trim())
     || (user?.fullName && user.fullName.trim())
@@ -121,16 +210,19 @@ const ModernDashboard = () => {
     || 'User';
 
   const handleSignOut = async () => {
-    null;
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error);
+    }
   };
 
   const renderActiveSection = () => {
     switch (activeSection) {
-     
       case 'job-center':
         return <JobCenterSection />;
-        case 'payments':
-          return <PaymentsSection />;
+      case 'payments':
+        return <PaymentsSection />;
       case 'affiliate':
         return <AffiliateSection />;
       case 'o-secours':
@@ -149,7 +241,7 @@ const ModernDashboard = () => {
       default:
         return (
           <>
-           <AccountSection />
+            <AccountSection />
           </>
         );
     }
@@ -164,16 +256,13 @@ const ModernDashboard = () => {
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">
-                   <Link to="/" className="flex items-center">
-                <img
-              src={"/lovable-uploads/logo.png"}
-              alt="Elverra Global"
-              className="h-10 w-auto object-contain"
-              
-            />
-            </Link>
-                </span>
+                <Link to="/" className="flex items-center">
+                  <img
+                    src={"/lovable-uploads/logo.png"}
+                    alt="Elverra Global"
+                    className="h-8 w-auto object-contain"
+                  />
+                </Link>
               </div>
             </div>
             <div>
@@ -207,22 +296,22 @@ const ModernDashboard = () => {
         {/* Logout */}
         <div className="flex gap-3 p-4 border-t border-blue-500">
           <button
-           onClick={() => setActiveSection("account")}
-           className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-            activeSection === "account"
-              ? 'bg-blue-700 text-white'
-              : 'text-blue-100 hover:bg-blue-500 hover:text-white'
-          }`}
+            onClick={() => setActiveSection("account")}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+              activeSection === "account"
+                ? 'bg-blue-700 text-white'
+                : 'text-blue-100 hover:bg-blue-500 hover:text-white'
+            }`}
           >
             <User className="h-5 w-5" />
             <span className="text-sm font-medium">{t('nav.account')}</span>
           </button>
           <button
             onClick={handleSignOut}
-            className=" flex items-center space-x-3 px-4 py-3 text-blue-100 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
+            className="flex items-center justify-center px-4 py-3 text-blue-100 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
+            title="Se déconnecter"
           >
             <LogOut className="h-5 w-5" />
-            
           </button>
         </div>
       </div>
@@ -242,9 +331,18 @@ const ModernDashboard = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">{memberName}</h1>
-                <p className="text-sm text-gray-600">
-                  {membershipTier.charAt(0).toUpperCase() + membershipTier.slice(1)} Member
-                </p>
+                {displayedTypes.length > 1 ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    {displayedTypes.map((t) => (
+                      <span key={t} className={`text-xs px-2 py-0.5 rounded-full ${badgeStyles[t]}`}>
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </span>
+                    ))}
+                    <span className="text-xs text-gray-500">Client</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">{headerTierLabel}</p>
+                )}
               </div>
             </div>
             <div className="flex items-center space-x-4">
