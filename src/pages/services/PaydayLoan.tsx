@@ -338,9 +338,7 @@ const PaydayLoan = () => {
               Our Payday Loan service offers quick access to funds with competitive rates for 
               Club66 Global members. Apply today and receive a decision quickly.
             </p>
-            <Button className="bg-club66-purple hover:bg-club66-darkpurple" size="lg">
-              Apply Now
-            </Button>
+           
           </div>
         </div>
       </div>

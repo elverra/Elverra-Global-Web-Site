@@ -243,7 +243,7 @@ const Header = () => {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/services/o-secours-info">Ô Secours</Link>
+                  <Link to="/services/o-secours">Ô Secours</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/services/credit-system">Credit System</Link>
@@ -290,39 +290,12 @@ const Header = () => {
             </Link>
 
             {/* Our Affiliates Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="text-gray-600 hover:text-purple-600 font-medium"
-                  style={{ fontSize: "15px" }}
-                >
-                  Our Affiliates
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-56 bg-white border shadow-lg"
-              >
-                <DropdownMenuItem asChild>
-                  <Link to="/affiliates/members">Client Affiliate</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/affiliates/merchants">Merchant Affiliate</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/affiliate-dashboard">Affiliate Dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/affiliate-program">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Join Affiliate Program
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Link
+              to="/affiliate-program"
+              className="text-gray-600 hover:text-purple-600 transition-colors font-medium"
+            >
+              Affiliate Program
+            </Link>
 
             <Link
               to="/discounts"

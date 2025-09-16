@@ -4,7 +4,7 @@ import PremiumBanner from '@/components/layout/PremiumBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Smartphone, Shield, CheckCircle, Zap } from 'lucide-react';
+import { Phone, Smartphone, Shield, CheckCircle, Zap, Link } from 'lucide-react';
 
 const MobilePhones = () => {
   const services = [
@@ -123,10 +123,12 @@ const MobilePhones = () => {
                   Don't let a broken phone break your connections. Stay protected with our emergency service.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button size="lg" variant="outline" className="bg-white text-green-600 hover:bg-gray-100">
-                    <Phone className="h-5 w-5 mr-2" />
-                    Subscribe Now
-                  </Button>
+                  <Link to="/dashboard">
+                    <Button size="lg" variant="outline" className="bg-white text-green-600 hover:bg-gray-100">
+                      <Phone className="h-5 w-5 mr-2" />
+                      Subscribe Now
+                    </Button>
+                  </Link>
                   <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-green-600">
                     <Shield className="h-5 w-5 mr-2" />
                     Emergency Help

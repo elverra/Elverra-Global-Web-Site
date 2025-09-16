@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import Layout from '@/components/layout/Layout';
 
 interface Event {
   id: string;
@@ -168,6 +169,7 @@ const Events = () => {
   const uniqueLocations = [...new Set(events.map(event => event.location))];
 
   return (
+     <Layout>
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
@@ -424,6 +426,7 @@ const Events = () => {
         )}
       </div>
     </div>
+    </Layout>
   );
 };
 

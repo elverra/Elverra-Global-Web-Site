@@ -20,7 +20,7 @@ const contactInfo = [
   {
     icon: Mail,
     title: 'Email',
-    details: ['info@elverraglobal.com'],
+    details: ['info@elverraglobalml.com'],
     description: 'We respond within 24 hours'
   },
   {
@@ -42,7 +42,7 @@ const offices = [
     city: 'Bamako, Mali',
     address: 'Faladiè-Sema, Carrefour IJA, Rue 801, Bamako, MALI',
     phone: '+223 44 94 38 44',
-    email: 'info@elverraglobal.com',
+    email: 'info@elverraglobalml.com',
     type: 'Headquarters'
   }
 ];
@@ -297,24 +297,7 @@ const Contact = () => {
                 </div>
 
                 {/* Emergency Contact */}
-                <Card className="bg-red-50 border-red-200">
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-red-900 mb-3">Emergency Support</h3>
-                    <p className="text-red-700 text-sm mb-4">
-                      For urgent issues requiring immediate assistance, use our Ô Secours emergency service.
-                    </p>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center text-red-700">
-                        <Phone className="h-4 w-4 mr-2" />
-                        Emergency Hotline: +223 XX XX XX XX
-                      </div>
-                      <div className="flex items-center text-red-700">
-                        <Mail className="h-4 w-4 mr-2" />
-                        emergency@elverra.com
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+               
               </div>
             </div>
           </div>

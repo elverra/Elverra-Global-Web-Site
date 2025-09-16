@@ -1,79 +1,70 @@
-import Layout from '@/components/layout/Layout';
-import PremiumBanner from '@/components/layout/PremiumBanner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mail, Linkedin, Twitter } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import Layout from "@/components/layout/Layout";
+import PremiumBanner from "@/components/layout/PremiumBanner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 
-const teamMembers = [
+const teamRoles = [
   {
     id: 1,
-    name: 'Dr. Amara Kone',
-    position: 'Chief Executive Officer',
-    bio: 'Leading Elverra Global with over 15 years of experience in client services and business development across our client network.',
-    image: 'https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-    email: 'amara.kone@elverra.com',
-    linkedin: '#',
-    twitter: '#'
+    position: "Executive Director - CEO",
+    bio: "Providing strategic leadership and overseeing the overall operations and growth of the organization.",
   },
   {
     id: 2,
-    name: 'Ibrahim Traore',
-    position: 'Chief Technology Officer',
-    bio: 'Driving innovation and technology solutions to enhance our client experience across our network.',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-    email: 'ibrahim.traore@elverra.com',
-    linkedin: '#',
-    twitter: '#'
+    position: "Executive Director - Deputy CEO",
+    bio: "Supporting the CEO in managing operations and implementing the organization’s vision and goals.",
   },
   {
     id: 3,
-    name: 'Fatou Diallo',
-    position: 'Head of Client Relations',
-    bio: 'Ensuring exceptional service delivery and building strong relationships with our clients.',
-    image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-    email: 'fatou.diallo@elverra.com',
-    linkedin: '#',
-    twitter: '#'
+    position: "Head of Department - Acting Head of Sales and Marketing",
+    bio: "Driving sales strategies, marketing initiatives, and ensuring customer satisfaction.",
   },
   {
     id: 4,
-    name: 'Mamadou Sidibe',
-    position: 'Financial Services Director',
-    bio: 'Managing our payday loans, ZENIKA card services, and financial solutions for clients.',
-    image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-    email: 'mamadou.sidibe@elverra.com',
-    linkedin: '#',
-    twitter: '#'
+    position:
+      "Executive Director - Administration, Procurement and Facilities Management",
+    bio: "Managing administrative services, procurement activities, and maintaining facilities efficiency.",
   },
   {
     id: 5,
-    name: 'Aicha Ouattara',
-    position: 'Operations Manager',
-    bio: 'Overseeing daily operations and ensuring smooth service delivery across our client network.',
-    image: 'https://images.unsplash.com/photo-1494790108755-2616b612b242?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-    email: 'aicha.ouattara@elverra.com',
-    linkedin: '#',
-    twitter: '#'
+    position: "Head of Department - Partnerships and Sponsorships",
+    bio: "Building partnerships, securing sponsorships, and fostering relationships with external stakeholders.",
   },
   {
     id: 6,
-    name: 'Boubacar Cisse',
-    position: 'Community Outreach Lead',
-    bio: 'Building partnerships and expanding our reach within local communities and client networks.',
-    image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-    email: 'boubacar.cisse@elverra.com',
-    linkedin: '#',
-    twitter: '#'
-  }
+    position: "Head of Department - Acting Head of Accounting",
+    bio: "Overseeing financial reporting, accounting processes, and ensuring compliance with standards.",
+  },
+  {
+    id: 7,
+    position: "Head of Department - Human Resources",
+    bio: "Managing talent acquisition, employee relations, training, and overall workforce development.",
+  },
+  {
+    id: 8,
+    position: "Head of Department - IT and Technology",
+    bio: "Leading technology initiatives, ensuring IT infrastructure efficiency, and supporting digital transformation.",
+  },
+  {
+    id: 9,
+    position: "Head of Department - Communication and Compliance",
+    bio: "Overseeing internal and external communication, while ensuring compliance with regulations and standards.",
+  },
+  {
+    id: 10,
+    position: "Head of Department - Legal",
+    bio: "Providing legal guidance, ensuring regulatory compliance, and safeguarding the organization’s interests.",
+  },
 ];
 
 const AssociationMembers = () => {
   return (
     <Layout>
       <PremiumBanner
-        title="Our Team"
-        description="Meet the dedicated professionals behind Elverra Global who work tirelessly to serve our client network."
+        title="Our Leadership Team"
+        description="Meet the executives and department heads who guide our mission and drive organizational success."
         backgroundImage="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
       />
 
@@ -82,7 +73,11 @@ const AssociationMembers = () => {
           <div className="max-w-6xl mx-auto">
             {/* Back Button */}
             <div className="mb-8">
-              <Button asChild variant="ghost" className="text-purple-600 hover:text-purple-700">
+              <Button
+                asChild
+                variant="ghost"
+                className="text-purple-600 hover:text-purple-700"
+              >
                 <Link to="/about" className="flex items-center">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to About
@@ -92,52 +87,30 @@ const AssociationMembers = () => {
 
             {/* Page Header */}
             <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">Meet Our Team</h1>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                Meet Our Leadership
+              </h1>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Our diverse team of professionals brings together expertise in technology, finance, 
-                client relations, and community development to serve our client network.
+                Our leadership team ensures effective governance, innovation,
+                and growth, while delivering exceptional value to our
+                stakeholders.
               </p>
             </div>
 
             {/* Team Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {teamMembers.map((member) => (
-                <Card key={member.id} className="hover:shadow-lg transition-shadow duration-300">
-                  <CardHeader className="text-center pb-4">
-                    <div className="relative">
-                      <img 
-                        src={member.image} 
-                        alt={member.name}
-                        className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-purple-100"
-                      />
-                    </div>
-                    <CardTitle className="text-xl text-gray-900">{member.name}</CardTitle>
-                    <p className="text-purple-600 font-semibold">{member.position}</p>
+              {teamRoles.map((role) => (
+                <Card
+                  key={role.id}
+                  className="hover:shadow-lg transition-shadow duration-300"
+                >
+                  <CardHeader className="text-center pb-2">
+                    <CardTitle className="text-xl text-gray-900">
+                      {role.position}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="text-center">
-                    <p className="text-gray-600 mb-6 leading-relaxed">{member.bio}</p>
-                    
-                    {/* Social Links */}
-                    <div className="flex justify-center space-x-4">
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={`mailto:${member.email}`} className="flex items-center">
-                          <Mail className="h-4 w-4 mr-1" />
-                          Email
-                        </a>
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center">
-                          <Linkedin className="h-4 w-4 mr-1" />
-                          LinkedIn
-                        </a>
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={member.twitter} target="_blank" rel="noopener noreferrer" className="flex items-center">
-                          <Twitter className="h-4 w-4 mr-1" />
-                          Twitter
-                        </a>
-                      </Button>
-                    </div>
+                    <p className="text-gray-600 leading-relaxed">{role.bio}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -149,8 +122,8 @@ const AssociationMembers = () => {
                 <CardContent className="p-8">
                   <h3 className="text-2xl font-bold mb-4">Join Our Team</h3>
                   <p className="text-purple-100 mb-6 text-lg">
-                    Interested in making a difference in our client network? 
-                    We're always looking for passionate individuals to join our mission.
+                    Interested in making a difference? We are always looking for
+                    passionate individuals to join our mission.
                   </p>
                   <Button asChild size="lg" variant="secondary">
                     <Link to="/jobs">View Open Positions</Link>

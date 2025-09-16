@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { School, Clock, Shield, CheckCircle, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const SchoolFees = () => {
   const features = [
@@ -91,10 +92,12 @@ const SchoolFees = () => {
                   Join thousands of parents who trust us to protect their children's education
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button size="lg" variant="outline" className="bg-white text-blue-600 hover:bg-gray-100">
-                    <Shield className="h-5 w-5 mr-2" />
-                    Subscribe Now
-                  </Button>
+                <Link to="/dashboard">
+                    <Button size="lg" variant="outline" className="bg-white text-green-600 hover:bg-gray-100">
+                      <Shield className="h-5 w-5 mr-2" />
+                      Subscribe Now
+                    </Button>
+                  </Link>
                   <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-blue-600">
                     <Clock className="h-5 w-5 mr-2" />
                     Learn More

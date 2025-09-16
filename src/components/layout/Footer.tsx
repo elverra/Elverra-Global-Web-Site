@@ -145,7 +145,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link
-                  to="/competitions"
+                  to="/events"
                   className="text-gray-300 hover:text-club66-gold text-sm"
                 >
                   Competitions
@@ -153,7 +153,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link
-                  to="/affiliates"
+                  to="/affiliate-program"
                   className="text-gray-300 hover:text-club66-gold text-sm"
                 >
                   Affiliates

@@ -138,9 +138,7 @@ const PaydayAdvancePage = () => {
                           <Badge variant="outline">{loan.rate}</Badge>
                         </div>
                       </div>
-                      <Button className="w-full bg-orange-600 hover:bg-orange-700">
-                        Apply Now
-                      </Button>
+                   
                     </CardContent>
                   </Card>
                 ))}

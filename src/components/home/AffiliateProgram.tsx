@@ -1,5 +1,5 @@
-import { Users, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ArrowRight, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface CMSPage {
@@ -18,7 +18,7 @@ interface AffiliateProgramProps {
   cmsContent?: CMSPage;
 }
 
-const AffiliateProgram = () => {
+const AffiliateProgram = ({ cmsContent }: AffiliateProgramProps) => {
   return (
     <section className="py-16 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <div className="container mx-auto px-4">
@@ -75,7 +75,7 @@ const AffiliateProgram = () => {
               >
                 <Link
                   to="/affiliate-program"
-                  className="inline-flex items-center"
+                  className="inline-flex items-center text-white"
                 >
                   Learn More
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -92,9 +92,9 @@ const AffiliateProgram = () => {
                 <div className="space-y-6">
                   <div className="bg-gray-700/50 rounded-md p-4">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-300">Essential Client</span>
+                      <span className="text-gray-300">Essential Clientx</span>
                       <div className="text-club66-gold font-semibold">
-                        CFA 1,000/yearly
+                        CFA 10,000/yearly
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
@@ -102,7 +102,7 @@ const AffiliateProgram = () => {
                         Your commission (10%)
                       </span>
                       <div className="text-club66-gold font-bold">
-                        CFA 100/yearly
+                        CFA 1000/yearly
                       </div>
                     </div>
                   </div>
@@ -111,7 +111,7 @@ const AffiliateProgram = () => {
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-300">Premium Client</span>
                       <div className="text-club66-gold font-semibold">
-                        CFA 2,000/yearly
+                        CFA 10,000/yearly
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
@@ -119,7 +119,7 @@ const AffiliateProgram = () => {
                         Your commission (10%)
                       </span>
                       <div className="text-club66-gold font-bold">
-                        CFA 200/yearly
+                        CFA 1000/yearly
                       </div>
                     </div>
                   </div>
@@ -128,7 +128,7 @@ const AffiliateProgram = () => {
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-300">Elite Client</span>
                       <div className="text-club66-gold font-semibold">
-                        CFA 5,000/yearly
+                        CFA 10,000/yearly
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
@@ -136,7 +136,7 @@ const AffiliateProgram = () => {
                         Your commission (10%)
                       </span>
                       <div className="text-club66-gold font-bold">
-                        CFA 500/yearly
+                        CFA 1000/yearly
                       </div>
                     </div>
                   </div>
@@ -145,7 +145,7 @@ const AffiliateProgram = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-300">10 Elite Referrals</span>
                       <div className="text-club66-gold font-bold">
-                        CFA 5,000/yearly
+                        CFA 10,000/yearly
                       </div>
                     </div>
                   </div>

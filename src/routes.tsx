@@ -106,6 +106,7 @@ import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import CareerJobsManagement from './pages/admin/CareerJobsManagement';
 import EventsManagement from './pages/admin/EventsManagement'
+import OSecours from './pages/services/OSecours';
 
 // Add the new route to the existing routes array
 const routes = [
@@ -188,6 +189,10 @@ const routes = [
   {
     path: '/services',
     element: <Services />,
+  },
+  {
+    path: '/services/o-secours',
+    element: <OSecours />,
   },
   {
     path: '/services/credit-account',

@@ -1,59 +1,98 @@
-
-import Layout from '@/components/layout/Layout';
-import PremiumBanner from '@/components/layout/PremiumBanner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { 
-  CreditCard, 
-  DollarSign, 
-  ShoppingCart, 
+import Layout from "@/components/layout/Layout";
+import PremiumBanner from "@/components/layout/PremiumBanner";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  AlertTriangle,
+  Book,
+  Briefcase,
+  CreditCard,
   PiggyBank,
   Shield,
-  AlertTriangle,
-  Store
-} from 'lucide-react';
+  ShoppingCart,
+  Store,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Services = () => {
   const products = [
     {
-      title: 'ZENIKA Card',
-      description: 'Premium value card with exclusive benefits and discounts',
+      title: "ZENIKA Card",
+      description: "Premium value card with exclusive benefits and discounts",
       icon: CreditCard,
-      path: '/cards',
-      color: 'bg-gold-500'
-    }
+      path: "/cards",
+      color: "bg-gold-500",
+    },
+    {
+      title: "ZENIKA Kiddies Card",
+      description:
+        "Premium value card with exclusive benefits and discounts for kids",
+      icon: CreditCard,
+      path: "/cards",
+      color: "bg-gold-500",
+    },
   ];
 
   const services = [
     {
-      title: 'Online Store',
-      description: 'Buy and sell products directly with other members. Post your items for sale or browse available products.',
+      title: "Online Store",
+      description:
+        "Buy and sell products directly with other members. Post your items for sale or browse available products.",
       icon: Store,
-      path: '/services/online-store',
-      color: 'bg-green-500'
+      path: "/services/online-store",
+      color: "bg-green-500",
     },
     {
-      title: 'Ô Secours',
-      description: 'Emergency assistance through token-based subscriptions',
+      title: "Ô Secours",
+      description: "Emergency assistance through token-based subscriptions",
       icon: AlertTriangle,
-      path: '/services/o-secours',
-      color: 'bg-red-500'
+      path: "/services/o-secours",
+      color: "bg-red-500",
     },
     {
-      title: 'Hire Purchase',
-      description: 'We facilitate your hire purchase request for you through our various partners for electronics, furniture, and more',
+      title: "Hire Purchase",
+      description:
+        "We facilitate your hire purchase request for you through our various partners for electronics, furniture, and more",
       icon: ShoppingCart,
-      path: '/services/hire-purchase',
-      color: 'bg-purple-500'
+      path: "/services/hire-purchase",
+      color: "bg-purple-500",
     },
     {
-      title: 'Payday Advance',
-      description: 'Quick cash advances for your immediate needs',
+      title: "Payday Advance",
+      description: "Quick cash advances for your immediate needs",
       icon: PiggyBank,
-      path: '/services/payday-advance',
-      color: 'bg-orange-500'
-    }
+      path: "/services/payday-advance",
+      color: "bg-orange-500",
+    },
+    {
+      title: "E-Book Library",
+      description: "Access range of e-books across various genres",
+      icon: Book,
+      path: "/ebooks",
+      color: "bg-blue-500",
+    },
+    {
+      title: "Job Center",
+      description:
+        "Connect with top employers and advance your professional journey.",
+      icon: Briefcase,
+      path: "/job-center",
+      color: "bg-yellow-500",
+    },
+    {
+      title: "Credit system",
+      description:
+        "Earn credits for your purchases and redeem them for rewards.",
+      icon: CreditCard,
+      path: "/credit-system",
+      color: "bg-yellow-500",
+    },
   ];
 
   return (
@@ -68,9 +107,12 @@ const Services = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Our Products and Services</h2>
+              <h2 className="text-3xl font-bold mb-4">
+                Our Products and Services
+              </h2>
               <p className="text-lg text-gray-600">
-                Explore our range of products and services designed to support your goals
+                Explore our range of products and services designed to support
+                your goals
               </p>
             </div>
 
@@ -81,21 +123,26 @@ const Services = () => {
                 {products.map((product, index) => {
                   const Icon = product.icon;
                   return (
-                    <Card key={index} className="hover:shadow-lg transition-shadow">
+                    <Card
+                      key={index}
+                      className="hover:shadow-lg transition-shadow"
+                    >
                       <CardHeader>
-                        <div className={`w-12 h-12 rounded-lg ${product.color} flex items-center justify-center mb-4`}>
+                        <div
+                          className={`w-12 h-12 rounded-lg ${product.color} flex items-center justify-center mb-4`}
+                        >
                           <Icon className="h-6 w-6 text-white" />
                         </div>
-                        <CardTitle className="text-xl">{product.title}</CardTitle>
+                        <CardTitle className="text-xl">
+                          {product.title}
+                        </CardTitle>
                         <CardDescription className="text-gray-600">
                           {product.description}
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <Button asChild className="w-full">
-                          <Link to={product.path}>
-                            Learn More
-                          </Link>
+                          <Link to={product.path}>Learn More</Link>
                         </Button>
                       </CardContent>
                     </Card>
@@ -111,21 +158,26 @@ const Services = () => {
                 {services.map((service, index) => {
                   const Icon = service.icon;
                   return (
-                    <Card key={index} className="hover:shadow-lg transition-shadow">
+                    <Card
+                      key={index}
+                      className="hover:shadow-lg transition-shadow"
+                    >
                       <CardHeader>
-                        <div className={`w-12 h-12 rounded-lg ${service.color} flex items-center justify-center mb-4`}>
+                        <div
+                          className={`w-12 h-12 rounded-lg ${service.color} flex items-center justify-center mb-4`}
+                        >
                           <Icon className="h-6 w-6 text-white" />
                         </div>
-                        <CardTitle className="text-xl">{service.title}</CardTitle>
+                        <CardTitle className="text-xl">
+                          {service.title}
+                        </CardTitle>
                         <CardDescription className="text-gray-600">
                           {service.description}
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <Button asChild className="w-full">
-                          <Link to={service.path}>
-                            Learn More
-                          </Link>
+                          <Link to={service.path}>Learn More</Link>
                         </Button>
                       </CardContent>
                     </Card>
@@ -140,14 +192,13 @@ const Services = () => {
                   <Shield className="h-12 w-12 text-blue-600 mx-auto mb-4" />
                   <CardTitle>Why Choose Our Services?</CardTitle>
                   <CardDescription>
-                    Our expert team is here to help you choose the right product or service for your needs.
+                    Our expert team is here to help you choose the right product
+                    or service for your needs.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button asChild size="lg">
-                    <Link to="/about/contact">
-                      Contact Our Team
-                    </Link>
+                    <Link to="/about/contact">Contact Our Team</Link>
                   </Button>
                 </CardContent>
               </Card>

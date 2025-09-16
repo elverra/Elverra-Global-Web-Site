@@ -1,10 +1,17 @@
-import Layout from '@/components/layout/Layout';
-import PremiumBanner from '@/components/layout/PremiumBanner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Users, Target, Heart, Globe, Eye, Lightbulb } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import Layout from "@/components/layout/Layout";
+import PremiumBanner from "@/components/layout/PremiumBanner";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Eye, Globe, Heart, Target, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const About = () => {
   const { toast } = useToast();
@@ -18,16 +25,16 @@ const About = () => {
   const fetchAboutContent = async () => {
     try {
       // Fetch about page content from the server API
-      const response = null;
-      
+      const response = await fetch("/api/cms/about");
+
       if (response.ok) {
         const data = await response.json();
         setPageContent(data);
       } else {
-        console.log('No about content found, usings default conent');
+        console.log("No about content found, usings default conent");
       }
     } catch (error: any) {
-      console.error('Error fetching about content:', error);
+      console.error("Error fetching about content:", error);
       toast({
         title: "Error",
         description: "Failed to load about content",
@@ -53,16 +60,36 @@ const About = () => {
             <div className="mb-16">
               <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl mb-8">
                 <CardContent className="p-8 md:p-12">
-                  <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">About Elverra Global</h2>
+                  <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">
+                    Welcome to Elverra Global SA
+                  </h2>
                   <div className="prose prose-lg max-w-none text-gray-700 text-center leading-relaxed">
                     <p className="text-xl mb-6">
-                      <strong>Elverra Global</strong> is a company that offers a diverse range of services and platforms through our unique all-in-one astonishing product called <strong>ZENIKA</strong>. Our Zenika Card enables our clients to access discounts and special privileges on purchases of goods and services across our client network.
+                      At <strong>Elverra Global SA</strong>, we're driven by a
+                      singular vision: to leave an indelible mark across the
+                      vibrant markets of Africa, Asia, and the Middle East. Our
+                      mission is to provide bespoke services that not only meet
+                      but exceed the unique standards of each market, all under
+                      the esteemed umbrella of our <strong>ZENIKA</strong>{" "}
+                      Branded Card.
                     </p>
                     <p className="text-lg mb-6">
-                      Our service basket includes a Job Centre, Payday Loans, an Online Store with low hosting fees, a Free Online Library, and our most passionate "Ô Secours" services. Our mission is to provide valuable resources and opportunities for our clients.
+                      Our Ecosystem: Adaptive by Design What sets us apart is
+                      our adaptive ecosystem – a dynamic model that allows us to
+                      navigate the diverse landscapes of our target markets with
+                      agility and precision. This flexibility enables us to
+                      tailor our services to the specific needs of each market,
+                      ensuring that we deliver exceptional value to our clients
+                      and partners.
                     </p>
                     <p className="text-lg mb-6">
-                      Through our TikTok campaign, <em>"empowerment and progress really means to me,"</em> we're gathering feedback and stories to improve our services and better serve our community. With exciting initiatives and benefits, Elverra Global aims to make a positive impact and support the growth and well-being of our clients worldwide.
+                      Through our TikTok campaign,{" "}
+                      <em>"empowerment and progress really means to me,"</em>{" "}
+                      we're gathering feedback and stories to improve our
+                      services and better serve our community. With exciting
+                      initiatives and benefits, Elverra Global aims to make a
+                      positive impact and support the growth and well-being of
+                      our clients worldwide.
                     </p>
                   </div>
                 </CardContent>
@@ -78,11 +105,16 @@ const About = () => {
                         <Target className="h-8 w-8 text-purple-600" />
                       </div>
                     </div>
-                    <CardTitle className="text-2xl text-purple-900">Our Mission</CardTitle>
+                    <CardTitle className="text-2xl text-purple-900">
+                      Our Mission
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 pt-0">
                     <p className="text-gray-700 text-lg leading-relaxed text-center">
-                      We are a company driven to expose our clients to easy and most affordable access to basic goods and services across our entire network of service centers and that of our partners.
+                      We are a company driven to expose our clients to easy and
+                      most affordable access to basic goods and services across
+                      our entire network of service centers and that of our
+                      partners.
                     </p>
                   </CardContent>
                 </Card>
@@ -95,11 +127,17 @@ const About = () => {
                         <Eye className="h-8 w-8 text-purple-600" />
                       </div>
                     </div>
-                    <CardTitle className="text-2xl text-purple-900">Our Vision</CardTitle>
+                    <CardTitle className="text-2xl text-purple-900">
+                      Our Vision
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 pt-0">
                     <p className="text-gray-700 text-lg leading-relaxed text-center">
-                      We will invest in sectors that will change lives every day by making enormous savings for clients across our entire network service outlets through our special discounts and privileges on goods and service offers from our very own outlets.
+                      We will invest in sectors that will change lives every day
+                      by making enormous savings for clients across our entire
+                      network service outlets through our special discounts and
+                      privileges on goods and service offers from our very own
+                      outlets.
                     </p>
                   </CardContent>
                 </Card>
@@ -111,7 +149,7 @@ const About = () => {
               <div className="text-center mb-16">
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                   <CardContent className="p-8 md:p-12">
-                    <div 
+                    <div
                       className="prose prose-lg max-w-none text-gray-700"
                       dangerouslySetInnerHTML={{ __html: pageContent.content }}
                     />
@@ -126,7 +164,9 @@ const About = () => {
                 <CardHeader className="text-center">
                   <Users className="h-8 w-8 text-purple-600 mx-auto mb-2" />
                   <CardTitle className="text-lg">Our Team</CardTitle>
-                  <CardDescription>Meet the people behind Elverra</CardDescription>
+                  <CardDescription>
+                    Meet the people behind Elverra
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="text-center">
                   <Button asChild variant="outline" className="w-full">
@@ -139,7 +179,9 @@ const About = () => {
                 <CardHeader className="text-center">
                   <Target className="h-8 w-8 text-purple-600 mx-auto mb-2" />
                   <CardTitle className="text-lg">Our Projects</CardTitle>
-                  <CardDescription>Community impact initiatives</CardDescription>
+                  <CardDescription>
+                    Community impact initiatives
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="text-center">
                   <Button asChild variant="outline" className="w-full">
@@ -181,11 +223,15 @@ const About = () => {
                 <CardContent className="p-8">
                   <h3 className="text-2xl font-bold mb-4">Get in Touch</h3>
                   <p className="text-gray-600 mb-6">
-                    Have questions about our services or want to learn more? 
+                    Have questions about our services or want to learn more?
                     We'd love to hear from you.
                   </p>
-                  <Button asChild size="lg" className="bg-purple-600 hover:bg-purple-700">
-                    <Link to="/about/contact">Contact Us</Link>
+                  <Button
+                    asChild
+                    size="lg"
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Link to="/selectCountry">Contact Us</Link>
                   </Button>
                 </CardContent>
               </Card>

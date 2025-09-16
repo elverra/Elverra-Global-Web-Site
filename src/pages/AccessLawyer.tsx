@@ -548,21 +548,21 @@ const AccessLawyer = () => {
                     <Phone className="h-5 w-5 text-purple-600" />
                     <div>
                       <p className="font-medium">Phone</p>
-                      <p className="text-gray-600">+223 20 XX XX XX</p>
+                      <p className="text-gray-600">+223 44 94 38 44</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Mail className="h-5 w-5 text-purple-600" />
                     <div>
                       <p className="font-medium">Email</p>
-                      <p className="text-gray-600">legal@elverra.com</p>
+                      <p className="text-gray-600">info@elverraglobalml.com</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Clock className="h-5 w-5 text-purple-600" />
                     <div>
                       <p className="font-medium">Office Hours</p>
-                      <p className="text-gray-600">Mon-Fri: 8AM-6PM</p>
+                      <p className="text-gray-600">Mon-Fri: 8AM-5PM</p>
                       <p className="text-gray-600">Emergency: 24/7</p>
                     </div>
                   </div>

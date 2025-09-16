@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import Layout from '@/components/layout/Layout';
 
 interface ElverraJob {
   id: string;
@@ -145,6 +146,7 @@ const Career = () => {
   const uniqueLocations = [...new Set(jobs.map(job => job.location))];
 
   return (
+     <Layout>
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-16">
@@ -349,6 +351,7 @@ const Career = () => {
         )}
       </div>
     </div>
+    </Layout>
   );
 };
 

@@ -9,22 +9,12 @@ const MotorbikesSupport = () => {
   const services = ["Emergency repair coverage", "24/7 helpline"];
 
   const emergencyTypes = [
-    {
-      title: "Engine Breakdown",
-      description: "Complete engine failure or major mechanical issues",
-    },
+  
     {
       title: "Accident Damage",
       description: "Repair costs from accidents and collisions",
     },
-    {
-      title: "Electrical Problems",
-      description: "Battery, wiring, and electrical system failures",
-    },
-    {
-      title: "Tire & Brake Issues",
-      description: "Emergency tire replacement and brake repairs",
-    },
+   
   ];
 
   return (
