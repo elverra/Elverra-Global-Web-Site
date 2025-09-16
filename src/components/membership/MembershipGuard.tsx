@@ -51,28 +51,6 @@ const MembershipGuard = ({
     );
   }
 
-  // Check if user has a membership tier
-  if (!user?.membershipTier) {
-    return (
-      <Card className="max-w-md mx-auto">
-        <CardContent className="p-8 text-center">
-          <Shield className="h-16 w-16 text-orange-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Accès Réservé</h3>
-          <p className="text-gray-600 mb-6">
-            Vous devez souscrire à un abonnement pour accéder à cette page.
-          </p>
-          <Button 
-            onClick={() => navigate('/client-subscription')} 
-            className="w-full bg-purple-600 hover:bg-purple-700"
-          >
-            <Crown className="h-4 w-4 mr-2" />
-            Souscrire maintenant
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const access = getMembershipAccess();
 
   // Check if user has active membership

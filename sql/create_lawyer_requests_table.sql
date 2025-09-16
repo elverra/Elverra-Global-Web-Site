@@ -1,14 +1,3 @@
-# Database Migration Instructions - Lawyer Requests System
-
-## 🚨 URGENT: Table Creation Required
-
-The `lawyer_requests` table does not exist in your Supabase database. You must create it before the lawyer access system will work.
-
-## Step 1: Create the Table
-
-**Execute this in Supabase SQL Editor:**
-
-```sql
 -- Création de la table pour les demandes d'assistance juridique
 CREATE TABLE IF NOT EXISTS lawyer_requests (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -30,6 +19,33 @@ CREATE INDEX IF NOT EXISTS idx_lawyer_requests_status ON lawyer_requests(status)
 CREATE INDEX IF NOT EXISTS idx_lawyer_requests_created_at ON lawyer_requests(created_at);
 CREATE INDEX IF NOT EXISTS idx_lawyer_requests_case_type ON lawyer_requests(case_type);
 
+-- RLS (Row Level Security) policies
+ALTER TABLE lawyer_requests ENABLE ROW LEVEL SECURITY;
+
+-- Policy pour permettre l'insertion publique (pour les demandes)
+CREATE POLICY "Allow public insert" ON lawyer_requests
+  FOR INSERT WITH CHECK (true);
+
+-- Policy pour permettre la lecture aux admins seulement
+CREATE POLICY "Allow admin read" ON lawyer_requests
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM user_roles 
+      WHERE user_id = auth.uid() 
+      AND role IN ('SUPPORT', 'SUPERADMIN')
+    )
+  );
+
+-- Policy pour permettre la mise à jour aux admins seulement
+CREATE POLICY "Allow admin update" ON lawyer_requests
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM user_roles 
+      WHERE user_id = auth.uid() 
+      AND role IN ('SUPPORT', 'SUPERADMIN')
+    )
+  );
+
 -- Trigger pour mettre à jour automatiquement updated_at
 CREATE OR REPLACE FUNCTION update_lawyer_requests_updated_at()
 RETURNS TRIGGER AS $$
@@ -43,32 +59,3 @@ CREATE TRIGGER trigger_update_lawyer_requests_updated_at
   BEFORE UPDATE ON lawyer_requests
   FOR EACH ROW
   EXECUTE FUNCTION update_lawyer_requests_updated_at();
-```
-
-## Step 2: Disable RLS (Quick Fix)
-
-**Execute this immediately after:**
-
-```sql
-ALTER TABLE lawyer_requests DISABLE ROW LEVEL SECURITY;
-```
-
-## How to Apply
-
-1. **Supabase Dashboard** → [supabase.com](https://supabase.com)
-2. **SQL Editor** → **New Query**
-3. **Copy-paste Step 1 script** → **Run** ▶️
-4. **Copy-paste Step 2 script** → **Run** ▶️
-5. **Test the lawyer access form**
-
-## Expected Result
-
-After execution:
-- ✅ Table `lawyer_requests` created with all columns
-- ✅ Audio upload works: `lawyer-audio` bucket
-- ✅ Database insertion works: No more 403 errors
-- ✅ Complete system functional
-
-## Files Reference
-- `sql/create_lawyer_requests_table.sql` - Full table creation
-- `sql/disable_rls_lawyer_requests.sql` - RLS disable command

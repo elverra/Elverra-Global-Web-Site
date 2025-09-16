@@ -12,10 +12,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'User ID is required' });
     }
 
-    // Get user's subscription information (can have multiple: child card + adult card variants)
+    // Get user's subscriptions (child + adult). Actual schema: product_id, status, start_date, end_date, is_recurring, metadata, is_child
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select('id, user_id, product_id, status, start_date, end_date, is_child')
       .eq('user_id', userId);
 
     if (subscriptionError) {
@@ -46,55 +46,75 @@ export default async function handler(req, res) {
       throw paymentsError;
     }
 
-    // Generate card data for each subscription (child card + adult card variants)
+    // Resolve product info for subscriptions (to detect adult tier) and fetch membership_cards for visual card data
+    const subIds = subscriptions?.map(s => s.id) || [];
+    const productIds = [...new Set((subscriptions || []).map(s => s.product_id).filter(Boolean))];
+
+    let productsById = {};
+    if (productIds.length > 0) {
+      const { data: products } = await supabase
+        .from('membership_products')
+        .select('id, name')
+        .in('id', productIds);
+      (products || []).forEach(p => { productsById[p.id] = p; });
+    }
+
+    let cardsRows = [];
+    if (subIds.length > 0) {
+      const { data: mCards } = await supabase
+        .from('membership_cards')
+        .select('id, card_identifier, holder_full_name, holder_city, owner_user_id, subscription_id, product_id, status, issued_at, card_expiry_date, qr_data')
+        .eq('owner_user_id', userId)
+        .in('subscription_id', subIds);
+      cardsRows = mCards || [];
+    }
+
+    // Helper to infer adult tier from product name
+    const inferTier = (name) => {
+      const n = (name || '').toLowerCase();
+      if (n.includes('premium')) return 'premium';
+      if (n.includes('elite')) return 'elite';
+      return 'essential';
+    };
+
     const cards = [];
-    
-    // Check for child card (unique, no variants)
-    const childCard = subscriptions?.find(sub => sub.card_type === 'child');
-    if (childCard) {
+    // Child card
+    const childSub = (subscriptions || []).find(s => s.is_child === true);
+    if (childSub) {
+      const card = cardsRows.find(c => c.subscription_id === childSub.id);
       cards.push({
-        cardNumber: childCard.member_id ? `**** **** **** ${childCard.member_id.slice(-4)}` : `**** **** **** ${userId.slice(-4)}`,
-        expiryDate: childCard.expiry_date ? new Date(childCard.expiry_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : '12/25',
+        cardNumber: card?.card_identifier ? `**** **** **** ${card.card_identifier.slice(-4)}` : `**** **** **** ${userId.slice(-4)}`,
+        expiryDate: card?.card_expiry_date ? new Date(card.card_expiry_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : (childSub.end_date ? new Date(childSub.end_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : '12/25'),
         cardType: 'child',
-        status: childCard.is_active ? 'Active' : 'Inactive',
-        issueDate: childCard.start_date || new Date().toISOString().split('T')[0],
+        status: (card?.status || childSub.status) === 'active' ? 'Active' : 'Inactive',
+        issueDate: card?.issued_at || childSub.start_date || new Date().toISOString().split('T')[0],
         lastTransactionDate: payments?.[0]?.created_at || new Date().toISOString().split('T')[0],
-        holderName: userProfile?.full_name || userProfile?.email?.split('@')[0] || 'Client',
-        address: userProfile?.address || 'Bamako, Mali',
-        qrCodeData: JSON.stringify({
-          clientId: userId,
-          cardType: 'child',
-          status: childCard.is_active ? 'active' : 'inactive',
-          expiryDate: childCard.expiry_date,
-          holderName: userProfile?.full_name || 'Client'
-        })
+        holderName: card?.holder_full_name || userProfile?.full_name || 'Client',
+        address: card?.holder_city || userProfile?.city || 'Bamako, Mali',
+        qrCodeData: JSON.stringify(card?.qr_data || { clientId: userId, cardType: 'child', status: childSub.status, expiryDate: childSub.end_date, holderName: userProfile?.full_name || 'Client' })
       });
     }
-    
-    // Check for adult card (can have variants: essential, premium, elite)
-    const adultCard = subscriptions?.find(sub => sub.card_type === 'adult' || !sub.card_type);
-    if (adultCard) {
+
+    // Adult card (single variant)
+    const adultSub = (subscriptions || []).find(s => s.is_child === false);
+    if (adultSub) {
+      const card = cardsRows.find(c => c.subscription_id === adultSub.id);
+      const productName = productsById[adultSub.product_id]?.name || '';
+      const tier = inferTier(productName);
       cards.push({
-        cardNumber: adultCard.member_id ? `**** **** **** ${adultCard.member_id.slice(-4)}` : `**** **** **** ${userId.slice(-4)}`,
-        expiryDate: adultCard.expiry_date ? new Date(adultCard.expiry_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : '12/25',
-        cardType: adultCard.tier || 'essential',
-        status: adultCard.is_active ? 'Active' : 'Inactive',
-        issueDate: adultCard.start_date || new Date().toISOString().split('T')[0],
+        cardNumber: card?.card_identifier ? `**** **** **** ${card.card_identifier.slice(-4)}` : `**** **** **** ${userId.slice(-4)}`,
+        expiryDate: card?.card_expiry_date ? new Date(card.card_expiry_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : (adultSub.end_date ? new Date(adultSub.end_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : '12/25'),
+        cardType: tier,
+        status: (card?.status || adultSub.status) === 'active' ? 'Active' : 'Inactive',
+        issueDate: card?.issued_at || adultSub.start_date || new Date().toISOString().split('T')[0],
         lastTransactionDate: payments?.[0]?.created_at || new Date().toISOString().split('T')[0],
-        holderName: userProfile?.full_name || userProfile?.email?.split('@')[0] || 'Client',
-        address: userProfile?.address || 'Bamako, Mali',
-        qrCodeData: JSON.stringify({
-          clientId: userId,
-          cardType: 'adult',
-          plan: adultCard.tier || 'essential',
-          status: adultCard.is_active ? 'active' : 'inactive',
-          expiryDate: adultCard.expiry_date,
-          holderName: userProfile?.full_name || 'Client'
-        })
+        holderName: card?.holder_full_name || userProfile?.full_name || 'Client',
+        address: card?.holder_city || userProfile?.city || 'Bamako, Mali',
+        qrCodeData: JSON.stringify(card?.qr_data || { clientId: userId, cardType: 'adult', plan: tier, status: adultSub.status, expiryDate: adultSub.end_date, holderName: userProfile?.full_name || 'Client' })
       });
     }
-    
-    // If no cards exist, return default adult essential card structure
+
+    // Default when no subs found
     if (cards.length === 0) {
       cards.push({
         cardNumber: `**** **** **** ${userId.slice(-4)}`,
@@ -103,16 +123,9 @@ export default async function handler(req, res) {
         status: 'Inactive',
         issueDate: new Date().toISOString().split('T')[0],
         lastTransactionDate: new Date().toISOString().split('T')[0],
-        holderName: userProfile?.full_name || userProfile?.email?.split('@')[0] || 'Client',
-        address: userProfile?.address || 'Bamako, Mali',
-        qrCodeData: JSON.stringify({
-          clientId: userId,
-          cardType: 'adult',
-          plan: 'essential',
-          status: 'inactive',
-          expiryDate: null,
-          holderName: userProfile?.full_name || 'Client'
-        })
+        holderName: userProfile?.full_name || 'Client',
+        address: userProfile?.city || 'Bamako, Mali',
+        qrCodeData: JSON.stringify({ clientId: userId, cardType: 'adult', plan: 'essential', status: 'inactive', expiryDate: null, holderName: userProfile?.full_name || 'Client' })
       });
     }
 
@@ -121,7 +134,7 @@ export default async function handler(req, res) {
       id: payment.id,
       type: payment.status === 'completed' ? 'debit' : 'pending',
       amount: payment.amount,
-      description: payment.description || `${payment.payment_method} Payment`,
+      description: `${(payment.payment_method || 'payment').replace('_', ' ')}${payment.metadata?.label ? ` - ${payment.metadata.label}` : payment.metadata?.tier ? ` - ${payment.metadata.tier}` : ''}`,
       date: payment.created_at.split('T')[0],
       category: 'Subscription',
       merchant: payment.payment_method === 'orange_money' ? 'Orange Money' : 

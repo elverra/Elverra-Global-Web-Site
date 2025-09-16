@@ -12,10 +12,12 @@ app.use(express.json());
 // Import API routes
 const subscriptionsHandler = require('./api/subscriptions.js');
 const verifyHandler = require('./api/payments/verify.js');
+const whatsappNotifyHandler = require('./api/notifications/whatsapp.js');
 
 // API Routes
 app.all('/api/subscriptions', subscriptionsHandler.default || subscriptionsHandler);
 app.all('/api/payments/verify', verifyHandler.default || verifyHandler);
+app.all('/api/notifications/whatsapp', whatsappNotifyHandler.default || whatsappNotifyHandler);
 
 // Import other API handlers
 const orangeMoneyHandler = require('./api/payments/initiate-orange-money.js');
@@ -72,6 +74,7 @@ app.listen(PORT, () => {
   console.log('Available endpoints:');
   console.log('- GET/POST /api/subscriptions');
   console.log('- POST /api/payments/verify');
+  console.log('- POST /api/notifications/whatsapp');
   console.log('- POST /api/payments/initiate-orange-money');
   console.log('- POST /api/payments/initiate-sama-money');
   console.log('- POST /api/payments/cinetpay-webhook');

@@ -4,26 +4,128 @@ import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
+import { verifyPayment } from "@/api/client/billingClient";
+
+type PaymentStatus = 'success' | 'failed' | 'pending' | 'cancelled' | 'canceled';
+
+const isValidStatus = (status: string): status is PaymentStatus => {
+  return ['success', 'failed', 'pending', 'cancelled', 'canceled'].includes(status);
+};
+
+// Composant de chargement
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+  </div>
+);
+
+// Composant d'erreur
+const ErrorDisplay = ({ error }: { error: string }) => (
+  <div className="min-h-screen flex items-center justify-center bg-red-50 p-4">
+    <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+      <div className="text-red-500 text-5xl mb-4">⚠️</div>
+      <h2 className="text-2xl font-bold text-red-700 mb-2">Erreur</h2>
+      <p className="text-gray-600 mb-6">{error}</p>
+      <button 
+        onClick={() => window.location.reload()} 
+        className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition-colors"
+      >
+        Réessayer
+      </button>
+    </div>
+  </div>
+);
 
 const PaymentStatus = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('pending');
   
+  // Récupération des paramètres d'URL avec des valeurs par défaut
   const status = searchParams.get("status") || "pending";
-  const reference = searchParams.get("reference");
-  const amount = searchParams.get("amount");
-  const method = searchParams.get("method");
-  const reason = searchParams.get("reason");
+  const reference = searchParams.get("reference") || "";
+  const amount = searchParams.get("amount") || "";
+  const method = searchParams.get("method") || "";
+  const reason = searchParams.get("reason") || "";
+  const returnTo = searchParams.get("returnTo") || "/dashboard";
+  const tab = searchParams.get("tab") || "";
 
+  // Journalisation des paramètres pour le débogage
   useEffect(() => {
-    // Simulate loading time for better UX
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    return () => clearTimeout(timer);
+    console.log('PaymentStatus - Paramètres URL:', {
+      status,
+      reference,
+      amount,
+      method,
+      reason,
+      returnTo,
+      tab
+    });
   }, []);
 
+  useEffect(() => {
+    const checkPaymentStatus = async () => {
+      try {
+        if (reference) {
+          // Vérifier le statut réel du paiement avec le backend
+          const result = await verifyPayment(reference);
+          console.log('Résultat de la vérification du paiement:', result);
+          
+          if (!result || !result.status) {
+            throw new Error('Réponse invalide du serveur');
+          }
+          
+          setPaymentStatus(result.status);
+          
+          // Si le paiement est réussi, on peut rediriger après un délai
+          if (result.status === 'success') {
+            setTimeout(() => {
+              const returnUrl = getReturnUrl();
+              console.log('Redirection vers:', returnUrl);
+              navigate(returnUrl, { 
+                state: { 
+                  paymentSuccess: true,
+                  paymentReference: reference,
+                  amount: amount
+                } 
+              });
+            }, 3000); // Redirige après 3 secondes
+          }
+        } else {
+          // Si pas de référence, on se base sur le statut de l'URL mais avec prudence
+          const newStatus = status === "success" ? "pending" : status;
+          const validStatus = isValidStatus(newStatus) ? newStatus : 'pending';
+          console.log('Utilisation du statut de l\'URL:', validStatus);
+          setPaymentStatus(validStatus);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+        console.error("Erreur lors de la vérification du paiement:", error);
+        setError(`Impossible de vérifier le statut du paiement: ${errorMessage}`);
+        setPaymentStatus("failed" as PaymentStatus);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkPaymentStatus();
+    
+    // Nettoyage
+    return () => {
+      // Annuler les timeouts ou abonnements si nécessaire
+    };
+  }, [reference, status, amount, navigate, returnTo, tab]);
+
+  // Construire l'URL de retour avec l'onglet si spécifié
+  const getReturnUrl = () => {
+    if (!returnTo) return "/dashboard";
+    return tab ? `${returnTo}?tab=${encodeURIComponent(tab)}` : returnTo;
+  };
+
   const getStatusConfig = () => {
-    switch (status) {
+    switch (paymentStatus) {
       case "success":
         return {
           icon: CheckCircle,
@@ -31,9 +133,11 @@ const PaymentStatus = () => {
           bgColor: "bg-green-50",
           borderColor: "border-green-200",
           title: "Paiement Réussi !",
-          message: "Votre paiement a été traité avec succès. Votre carte ZENIKA est maintenant active.",
-          buttonText: "Accéder au Tableau de Bord",
-          buttonAction: () => navigate("/dashboard")
+          message: reference 
+            ? `Paiement de ${amount || ''} FCFA effectué avec succès. Référence: ${reference}`
+            : "Votre paiement a été traité avec succès.",
+          buttonText: "Retour",
+          buttonAction: () => navigate(getReturnUrl(), { state: { paymentSuccess: true } })
         };
       case "failed":
         return {
@@ -45,19 +149,20 @@ const PaymentStatus = () => {
           message: reason === "insufficient_funds" 
             ? "Solde insuffisant. Veuillez recharger votre compte et réessayer."
             : "Le paiement n'a pas pu être traité. Veuillez vérifier vos informations et réessayer.",
-          buttonText: "Réessayer le Paiement",
-          buttonAction: () => navigate("/client-subscription")
+          buttonText: "Réessayer",
+          buttonAction: () => navigate(-1) // Retour à la page précédente
         };
       case "cancelled":
+      case "canceled":
         return {
           icon: AlertCircle,
           color: "text-orange-500",
           bgColor: "bg-orange-50",
           borderColor: "border-orange-200",
           title: "Paiement Annulé",
-          message: "Vous avez annulé le paiement. Vous pouvez reprendre le processus à tout moment.",
-          buttonText: "Reprendre le Paiement",
-          buttonAction: () => navigate("/client-subscription")
+          message: "Vous avez annulé le paiement. Aucun débit n'a été effectué.",
+          buttonText: "Retour",
+          buttonAction: () => navigate(-1) // Retour à la page précédente
         };
       case "pending":
       default:
@@ -67,8 +172,10 @@ const PaymentStatus = () => {
           bgColor: "bg-blue-50",
           borderColor: "border-blue-200",
           title: "Paiement en Attente",
-          message: "Votre paiement est en cours de traitement. Vous recevrez une confirmation sous peu.",
-          buttonText: "Vérifier le Statut",
+          message: reference
+            ? `Votre paiement de ${amount || ''} FCFA est en cours de traitement. Référence: ${reference}`
+            : "Votre paiement est en cours de traitement. Vous recevrez une confirmation sous peu.",
+          buttonText: "Actualiser",
           buttonAction: () => window.location.reload()
         };
     }
@@ -77,17 +184,14 @@ const PaymentStatus = () => {
   const config = getStatusConfig();
   const StatusIcon = config.icon;
 
+  // Afficher l'erreur si elle existe
+  if (error) {
+    return <ErrorDisplay error={error} />;
+  }
+
+  // Afficher le chargement
   if (isLoading) {
-    return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-          <div className="text-center">
-            <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-600">Vérification du statut du paiement...</p>
-          </div>
-        </div>
-      </Layout>
-    );
+    return <LoadingSpinner />;
   }
 
   return (

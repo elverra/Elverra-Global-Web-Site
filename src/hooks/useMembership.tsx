@@ -13,7 +13,7 @@ export interface Membership {
   tier: 'essential' | 'premium' | 'elite' | 'child';
   is_active: boolean;
   start_date: string;
-  expiry_date: string;
+  expiry_date: string | null;
   physical_card_requested: boolean;
   member_id?: string;
 }
@@ -81,10 +81,27 @@ export const useMembership = () => {
           // Use subscription service for direct Supabase query
           const data = await getActiveSubscription(user.id);
 
+          // Infer tier from actual schema
+          let inferredTier: 'essential' | 'premium' | 'elite' | 'child' | null = null;
+          if (data) {
+            if (data.is_child) {
+              inferredTier = 'child';
+            } else {
+              // Fetch product to infer adult tier by name
+              const { data: product } = await supabase
+                .from('membership_products')
+                .select('name')
+                .eq('id', data.product_id)
+                .maybeSingle();
+              const n = (product?.name || '').toLowerCase();
+              inferredTier = n.includes('elite') ? 'elite' : n.includes('premium') ? 'premium' : 'essential';
+            }
+          }
+
           const membership = data ? {
             id: data.id,
             user_id: data.user_id,
-            tier: data.plan,
+            tier: inferredTier as 'essential' | 'premium' | 'elite' | 'child',
             is_active: data.status === 'active',
             start_date: data.start_date,
             expiry_date: data.end_date,
@@ -233,7 +250,7 @@ export const useMembership = () => {
   };
 
   const isExpiringSoon = (): boolean => {
-    if (!membership) return false;
+    if (!membership || !membership.expiry_date) return false;
     const expiryDate = new Date(membership.expiry_date);
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
