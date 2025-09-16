@@ -24,8 +24,8 @@ const CardShowcase = () => {
   return (
     <div className="py-4 bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-5">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 ">
             Your ZENIKA CARD, Your Identity
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -97,7 +97,7 @@ const CardShowcase = () => {
             Join the community of fortunate clients and consumers
           </span>
           <button className="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition-colors">
-            <Link to="/selectCountry">Get Your Card</Link>
+            <Link to="/dashboard">Get Your Card</Link>
           </button>
         </div>
       </div>
