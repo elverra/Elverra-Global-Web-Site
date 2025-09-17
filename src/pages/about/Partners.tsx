@@ -249,22 +249,7 @@ const Partners = () => {
               ))}
             </div>
 
-            {/* Become a Partner CTA */}
-            <div className="mt-16 text-center">
-              <Card className="bg-purple-600 text-white">
-                <CardContent className="p-8">
-                  <h3 className="text-2xl font-bold mb-4">
-                    Become Our Partner
-                  </h3>
-                  <p className="text-purple-100 mb-6 text-lg">
-                    Join our network of trusted partners and help us serve our
-                    client community better. Together, we can create more
-                    opportunities and value.
-                  </p>
-                
-                </CardContent>
-              </Card>
-            </div>
+        
           </div>
         </div>
       </div>
