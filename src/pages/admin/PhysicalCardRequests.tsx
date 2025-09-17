@@ -78,7 +78,9 @@ const PhysicalCardRequests = () => {
     const matchesSearch = 
       request.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (request.affiliate_code?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
-      request.phone.includes(searchTerm);
+      request.phone.includes(searchTerm) ||
+      request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (request.physical_card_tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
     
     const matchesStatus = statusFilter === 'all' || request.physical_card_status === statusFilter;
     
@@ -248,7 +250,7 @@ const PhysicalCardRequests = () => {
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                       id="search"
-                      placeholder="Search by name, affiliate code, or phone..."
+                      placeholder="Search by name, phone, user ID, card reference, or affiliate code..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -305,6 +307,8 @@ const PhysicalCardRequests = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Customer</TableHead>
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Card Reference</TableHead>
                         <TableHead>Membership</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Request Date</TableHead>
@@ -323,6 +327,27 @@ const PhysicalCardRequests = () => {
                               <div>
                                 <div className="font-medium">{request.full_name}</div>
                                 <div className="text-sm text-gray-500">{request.phone}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                                {request.id.substring(0, 8)}...
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                Full: {request.id}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-mono text-sm">
+                                {request.physical_card_tracking_number ? (
+                                  <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                    {request.physical_card_tracking_number}
+                                  </div>
+                                ) : (
+                                  <div className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs">
+                                    No reference
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -427,6 +452,24 @@ const RequestDetailsModal = ({
         <div>
           <Label className="text-sm font-medium text-gray-700">Phone</Label>
           <p className="mt-1 text-sm text-gray-900">{request.phone}</p>
+        </div>
+        <div>
+          <Label className="text-sm font-medium text-gray-700">User ID</Label>
+          <p className="mt-1 text-xs text-gray-900 font-mono bg-gray-100 p-2 rounded break-all">
+            {request.id}
+          </p>
+        </div>
+        <div>
+          <Label className="text-sm font-medium text-gray-700">Card Reference</Label>
+          <p className="mt-1 text-sm text-gray-900 font-mono">
+            {request.physical_card_tracking_number ? (
+              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                {request.physical_card_tracking_number}
+              </span>
+            ) : (
+              <span className="text-gray-500">Not assigned</span>
+            )}
+          </p>
         </div>
         <div>
           <Label className="text-sm font-medium text-gray-700">Membership Tier</Label>
