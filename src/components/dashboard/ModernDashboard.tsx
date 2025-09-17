@@ -119,40 +119,7 @@ const ModernDashboard = () => {
     fetchCards();
   }, [user?.id, membership?.tier]);
 
-  // Mock data for demonstration
-  const [transactions] = useState([
-    {
-      id: 1,
-      purpose: 'Fauget Cafe',
-      category: 'Coffee Shop',
-      date: 'Today',
-      time: '10h ago',
-      amount: 'CFA 500',
-      type: 'QR Code',
-      status: 'Done'
-    },
-    {
-      id: 2,
-      purpose: 'Claudia Store',
-      category: 'Accessories',
-      date: 'Today',
-      time: '12h ago',
-      amount: 'CFA 1000',
-      type: 'Transfer',
-      status: 'Done'
-    },
-    {
-      id: 3,
-      purpose: 'Chidi Barber',
-      category: 'Barber Shop',
-      date: 'Today',
-      time: '1h ago',
-      amount: 'CFA 500',
-      type: 'QR Code',
-      status: 'Done'
-    }
-  ]);
-
+ 
   const sidebarItems = [
     { id: 'affiliate', label: t('affiliate.program'), icon: Users },
     { id: 'o-secours', label: t('nav.services.osecours'), icon: HeartHandshake },

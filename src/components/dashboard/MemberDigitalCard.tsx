@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, QrCode } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import QRCodeGenerator from '@/components/utilities/QRCodeGenerator';
 
 interface MemberDigitalCardProps {
   memberName: string;
@@ -27,8 +29,25 @@ const MemberDigitalCard = ({
   isPaymentComplete = true,
   subscriptionStatus = 'active'
 }: MemberDigitalCardProps) => {
+  const [showQR, setShowQR] = useState(false);
+  
   // Generate serial number if not provided
   const cardSerialNumber = serialNumber || `ELV-${membershipTier.toUpperCase()}-${Date.now().toString().slice(-6)}`;
+  
+  // Create comprehensive QR data for the card
+  const qrData = JSON.stringify({
+    memberID,
+    name: memberName,
+    tier: membershipTier,
+    expiry: expiryDate,
+    serialNumber: cardSerialNumber,
+    city: city || 'N/A',
+    address: address || 'N/A',
+    subscriptionStatus,
+    isActive: subscriptionStatus === 'active',
+    issueDate: new Date().toISOString().split('T')[0],
+    cardType: membershipTier === 'Child' ? 'child' : 'adult'
+  });
 
   // Don't show card if payment is not complete
   if (!isPaymentComplete) {
@@ -185,8 +204,8 @@ const MemberDigitalCard = ({
             )}
             
             <div className="flex items-center">
-              <span className="w-20 font-medium">Nom:</span>
-              <span className="font-medium">{memberName || 'N/A'}</span>
+              <span className="w-20 font-medium">ID:</span>
+              <span className="font-mono">{memberID || 'N/A'}</span>
             </div>
             
             <div className="flex items-center">
@@ -195,11 +214,15 @@ const MemberDigitalCard = ({
             </div>
           </div>
           
-          {/* Card Identifier */}
-          <div className="absolute bottom-4 right-4 text-right">
-            <p className="text-xs font-mono font-bold bg-black bg-opacity-50 px-2 py-1 rounded">
-              ID: {memberID}
-            </p>
+          {/* QR Code */}
+          <div className="absolute bottom-4 right-4 bg-white p-1.5 rounded">
+            <QRCodeGenerator
+              data={qrData}
+              size={60}
+              showDownload={false}
+              showShare={false}
+              showData={false}
+            />
           </div>
         </div>
       </div>

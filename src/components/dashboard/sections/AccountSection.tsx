@@ -38,9 +38,15 @@ const AccountSection = () => {
   const { membership } = useMembership();
   const { t, language, setLanguage } = useLanguage();
   
-  // Mock profile data state
+  // Get member name using the same logic as in ModernDashboard
+  const memberName = (profile?.full_name && profile.full_name.trim())
+    || (user?.fullName && user.fullName.trim())
+    || (user?.email ? user.email.split('@')[0] : '')
+    || 'User';
+
+  // Profile data state
   const [profileData, setProfileData] = useState({
-    fullName: profile?.full_name || '',
+    fullName: memberName,
     email: user?.email || '',
     phone: profile?.phone || '',
     address: profile?.address || '',
@@ -133,7 +139,7 @@ const AccountSection = () => {
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <img
-                    src={profile?.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.fullName || 'User')}&background=3b82f6&color=ffffff&size=128`}
+                    src={profile?.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff&size=128`}
                     alt="Profile"
                     className="w-24 h-24 rounded-full object-cover"
                   />

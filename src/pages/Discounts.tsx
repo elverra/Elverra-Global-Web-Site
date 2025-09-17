@@ -162,7 +162,7 @@ const Discounts = () => {
       <Layout>
         <PremiumBanner
           title="Client Discounts"
-          description="Unlock exclusive savings across our client network with Club66 Global client benefits"
+          description="Unlock exclusive savings across our client network with Elverra Global client benefits"
           backgroundImage="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
         />
         <div className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
