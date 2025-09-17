@@ -14,11 +14,28 @@ export default function PaymentSuccess() {
     const checkPaymentStatus = async () => {
       try {
         const transactionId = searchParams.get('transaction_id') || searchParams.get('reference');
-        const status = searchParams.get('status');
+        const paymentStatus = searchParams.get('status');
+        const paymentMethod = searchParams.get('payment_method');
 
-        if (status === 'success' || transactionId) {
+        // Only show success if we have explicit success indicators
+        if (paymentStatus === 'success' || paymentStatus === 'completed' || paymentStatus === 'ACCEPTED') {
           setStatus('success');
+        } else if (transactionId && paymentMethod) {
+          // If we have transaction ID and payment method, verify with backend
+          try {
+            const response = await fetch(`/api/payments/verify-payment?transaction_id=${transactionId}&method=${paymentMethod}`);
+            if (response.ok) {
+              const data = await response.json();
+              setStatus(data.success ? 'success' : 'error');
+            } else {
+              setStatus('error');
+            }
+          } catch (verifyError) {
+            console.error('Error verifying payment:', verifyError);
+            setStatus('error');
+          }
         } else {
+          // No clear success indicators
           setStatus('error');
         }
       } catch (error) {
@@ -31,7 +48,7 @@ export default function PaymentSuccess() {
   }, [searchParams]);
 
   const handleContinue = () => {
-    navigate('/my-account');
+    navigate('/dashboard');
   };
 
   if (status === 'loading') {
@@ -46,6 +63,45 @@ export default function PaymentSuccess() {
             <p className="text-gray-600 text-center">
               Nous vérifions le statut de votre paiement...
             </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
+                <div className="h-8 w-8 text-red-600">❌</div>
+              </div>
+            </div>
+            <CardTitle className="text-2xl text-red-700">
+              Paiement échoué
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">
+              Votre paiement n'a pas pu être traité. Veuillez réessayer.
+            </p>
+            <div className="bg-red-50 p-4 rounded-lg">
+              <p className="text-sm text-red-800">
+                ❌ Paiement non confirmé<br />
+                ❌ Abonnement non activé<br />
+                💡 Veuillez réessayer le paiement
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate('/client-payment')} className="flex-1 bg-purple-600 hover:bg-purple-700">
+                Réessayer le paiement
+              </Button>
+              <Button onClick={() => navigate('/')} variant="outline" className="flex-1">
+                Retour à l'accueil
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -75,7 +131,7 @@ export default function PaymentSuccess() {
             </p>
           </div>
           <Button onClick={handleContinue} className="w-full">
-            Continuer vers mon compte
+            Continuer vers le tableau de bord
           </Button>
         </CardContent>
       </Card>

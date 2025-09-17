@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Crown, Lock, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { useMembership } from '@/hooks/useMembership';
 
 interface MembershipGuardProps {
   children: ReactNode;
@@ -78,7 +80,7 @@ const MembershipGuard = ({
 
   // Check specific feature access
   if (requiredFeature && !access[requiredFeature]) {
-    const tierNames = {
+    const tierNames: { [key: string]: string } = {
       essential: 'Essential',
       premium: 'Premium', 
       elite: 'Elite'
@@ -117,12 +119,12 @@ const MembershipGuard = ({
 
   // Check tier requirement
   if (requiredTier && access.membershipTier) {
-    const tierHierarchy = { essential: 1, premium: 2, elite: 3 };
+    const tierHierarchy: { [key: string]: number } = { essential: 1, premium: 2, elite: 3 };
     const userTierLevel = tierHierarchy[access.membershipTier];
     const requiredTierLevel = tierHierarchy[requiredTier];
 
     if (userTierLevel < requiredTierLevel) {
-      const tierNames = {
+      const tierNames: { [key: string]: string } = {
         essential: 'Essential',
         premium: 'Premium', 
         elite: 'Elite'
