@@ -6,6 +6,13 @@ import { supabase } from '@/lib/supabaseClient';
 let membershipCache: { [userId: string]: Membership | null } = {};
 let fetchPromises: { [userId: string]: Promise<Membership | null> } = {};
 
+// Global function to clear all cache (useful for debugging)
+(window as any).clearMembershipCache = () => {
+  membershipCache = {};
+  fetchPromises = {};
+  console.log('Membership cache cleared');
+};
+
 export interface Membership {
   id: string;
   user_id: string;
@@ -87,6 +94,33 @@ export const useMembership = () => {
           if (error) throw error;
 
           if (!subscriptions || subscriptions.length === 0) {
+            // Fallback: Check user's membership_tier directly from users table
+            const { data: userData } = await supabase
+              .from('users')
+              .select('membership_tier')
+              .eq('id', user.id)
+              .maybeSingle();
+            
+            if (userData?.membership_tier && userData.membership_tier !== 'none') {
+              // Create a fallback membership object
+              const fallbackMembership = {
+                id: `fallback-${user.id}`,
+                user_id: user.id,
+                tier: userData.membership_tier as 'essential' | 'premium' | 'elite' | 'child',
+                is_active: true,
+                start_date: new Date().toISOString(),
+                expiry_date: null,
+                physical_card_requested: false,
+                member_id: user.id,
+                hasChildCard: userData.membership_tier === 'child',
+                hasAdultCard: userData.membership_tier !== 'child'
+              } as any;
+              
+              console.log('Using fallback membership from users table:', fallbackMembership);
+              membershipCache[user.id] = fallbackMembership;
+              return fallbackMembership;
+            }
+            
             membershipCache[user.id] = null;
             return null;
           }
@@ -171,6 +205,15 @@ export const useMembership = () => {
     const hasChildCard = !!(membership as any)?.hasChildCard;
     const hasAdultCard = !!(membership as any)?.hasAdultCard;
 
+    // Debug logging
+    console.log('Membership Debug:', {
+      membership,
+      hasActiveMembership,
+      membershipTier,
+      hasChildCard,
+      hasAdultCard
+    });
+
     if (!hasActiveMembership) {
       return {
         hasActiveMembership: false,
@@ -198,37 +241,37 @@ export const useMembership = () => {
         return {
           hasActiveMembership: true,
           membershipTier: effectiveTier,
-          canAccessDiscounts: false,
-          canAccessJobs: true,
-          canAccessAffiliates: false,
-          canAccessOSecours: true,
-          canAccessShop: true,
-          canPostJobs: false,
-          canPostProducts: true,
-          maxJobApplications: 5,
-          maxProductListings: 3,
-          discountLevel: 0
-        };
-      case 'premium':
-        return {
-          hasActiveMembership: true,
-          membershipTier: effectiveTier,
-          canAccessDiscounts: false,
+          canAccessDiscounts: true, // Essential members can access basic discounts
           canAccessJobs: true,
           canAccessAffiliates: true,
           canAccessOSecours: true,
           canAccessShop: true,
           canPostJobs: true,
           canPostProducts: true,
-          maxJobApplications: 15,
-          maxProductListings: 10,
-          discountLevel: 0
+          maxJobApplications: -1,
+          maxProductListings: -1,
+          discountLevel: 5 // 5% discount level
+        };
+      case 'premium':
+        return {
+          hasActiveMembership: true,
+          membershipTier: effectiveTier,
+          canAccessDiscounts: true, // Premium members can access discounts
+          canAccessJobs: true,
+          canAccessAffiliates: true,
+          canAccessOSecours: true,
+          canAccessShop: true,
+          canPostJobs: true,
+          canPostProducts: true,
+          maxJobApplications: -1,
+          maxProductListings: -1,
+          discountLevel: 10 // 10% discount level
         };
       case 'elite':
         return {
           hasActiveMembership: true,
           membershipTier: effectiveTier,
-          canAccessDiscounts: false,
+          canAccessDiscounts: true, // Elite members can access all discounts
           canAccessJobs: true,
           canAccessAffiliates: true,
           canAccessOSecours: true,
@@ -237,19 +280,19 @@ export const useMembership = () => {
           canPostProducts: true,
           maxJobApplications: -1, // Unlimited
           maxProductListings: -1, // Unlimited
-          discountLevel: 0
+          discountLevel: 20 // 20% discount level
         };
       case 'child':
         return {
           hasActiveMembership: true,
           membershipTier: effectiveTier,
-          canAccessDiscounts: false,
-          canAccessJobs: false,
-          canAccessAffiliates: false,
-          canAccessOSecours: false,
-          canAccessShop: false,
-          canPostJobs: false,
-          canPostProducts: false,
+          canAccessDiscounts: true,
+          canAccessJobs: true,
+          canAccessAffiliates: true,
+          canAccessOSecours: true,
+          canAccessShop: true,
+          canPostJobs: true,
+          canPostProducts: true,
           maxJobApplications: 0,
           maxProductListings: 0,
           discountLevel: 0

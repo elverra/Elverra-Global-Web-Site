@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useMembership } from "@/hooks/useMembership";
 import { supabase } from "@/lib/supabaseClient";
+import MembershipGuard from "@/components/auth/MembershipGuard";
 
 const Discounts = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -189,6 +190,7 @@ const Discounts = () => {
   };
 
   return (
+    <MembershipGuard requiredFeature="discounts">
     <Layout>
       <PremiumBanner
         title="Client Discounts"
@@ -494,6 +496,7 @@ const Discounts = () => {
         </div>
       </div>
     </Layout>
+    </MembershipGuard>
   );
 };
 

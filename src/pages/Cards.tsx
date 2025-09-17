@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CreditCard, Star, Shield, Globe, Gift, Users, Percent, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import MembershipPlans from '@/components/home/MembershipPlans';
 
 const Cards = () => {
   const { user } = useAuth();
@@ -137,50 +138,7 @@ const Cards = () => {
             </div>
 
             {/* Membership Tiers */}
-            <div className="mb-16">
-              <h3 className="text-3xl font-bold text-center mb-12">Choose Your Client Tier</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {membershipTiers.map((tier, index) => (
-                  <Card key={index} className={`relative overflow-hidden ${index === 1 ? 'ring-2 ring-purple-500 scale-105' : ''}`}>
-                    {index === 1 && (
-                      <Badge className="absolute top-4 right-4 bg-purple-500">
-                        Most Popular
-                      </Badge>
-                    )}
-                    <CardHeader className="text-center">
-                      <div className={`w-16 h-16 ${tier.color} rounded-full mx-auto mb-4 flex items-center justify-center`}>
-                        <Star className="h-8 w-8 text-white" />
-                      </div>
-                      <CardTitle className="text-2xl">{tier.name}</CardTitle>
-                      <CardDescription className="text-3xl font-bold text-gray-900">
-                        {tier.price}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-3 mb-6">
-                        {tier.features.map((feature, featureIndex) => (
-                          <li key={featureIndex} className="flex items-center">
-                            <Badge variant="outline" className="mr-3 bg-green-50 text-green-700">
-                              ✓
-                            </Badge>
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                      <Button 
-                        className="w-full" 
-                        variant={index === 1 ? 'default' : 'outline'}
-                        asChild
-                      >
-                        <Link to={getCardActionUrl(tier.name)}>
-                          {getCardActionText(tier.name)}
-                        </Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
+            <MembershipPlans />
 
             {/* Benefits Summary */}
             <Card className="mb-16 bg-gradient-to-r from-blue-600 to-purple-600 text-white">

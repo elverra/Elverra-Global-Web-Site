@@ -90,32 +90,7 @@ const partners = [
     phone: "+223 XX XX XX XX",
     email: "info@edualliance.org",
   },
-  {
-    id: 7,
-    name: "Community Health Network",
-    type: "Healthcare",
-    description:
-      "Healthcare providers offering medical services and health programs to our clients.",
-    logo: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-    services: ["Primary Healthcare", "Health Insurance", "Wellness Programs"],
-    partnership: "Healthcare Partner",
-    website: "#",
-    phone: "+223 XX XX XX XX",
-    email: "partnerships@healthnet.org",
-  },
-  {
-    id: 8,
-    name: "Agricultural Cooperative Union",
-    type: "Agriculture",
-    description:
-      "Supporting farmers and agricultural businesses with financial services and market access.",
-    logo: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-    services: ["Agricultural Loans", "Market Access", "Farming Equipment"],
-    partnership: "Agricultural Partner",
-    website: "#",
-    phone: "+223 XX XX XX XX",
-    email: "partnership@agricoop.org",
-  },
+  
 ];
 
 const partnerCategories = [
@@ -286,19 +261,7 @@ const Partners = () => {
                     client community better. Together, we can create more
                     opportunities and value.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button asChild size="lg" variant="secondary">
-                      <Link to="/about/contact">Contact Partnership Team</Link>
-                    </Button>
-                    <Button
-                      asChild
-                      size="lg"
-                      variant="outline"
-                      className="border-white text-black hover:bg-white hover:text-purple-600"
-                    >
-                      <Link to="/selectCountry">Apply to Partner</Link>
-                    </Button>
-                  </div>
+                
                 </CardContent>
               </Card>
             </div>
