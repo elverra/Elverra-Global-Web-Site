@@ -63,7 +63,7 @@ const HeroSlider = ({ cmsContent }: HeroSliderProps) => {
       description:
         "Enjoy your digital value card with QR code for quick access to services and exclusive discounts across our service and partnership network.",
       backgroundImage:
-        "/lovable-uploads/c94bd4e1-3730-468c-8b9b-8b350b608a41.png",
+        "/lovable-uploads/0.jpeg",
       primaryButton: { text: "Get My Card", link: "/register" },
       secondaryButton: { text: "View Benefits", link: "/cards" },
     },
@@ -74,7 +74,7 @@ const HeroSlider = ({ cmsContent }: HeroSliderProps) => {
       description:
         "Innovative financial solutions, strategic advice and partnership opportunities to develop your professional activity.",
       backgroundImage:
-        "/lovable-uploads/a271f525-8c4f-49b3-9a86-3a96666d8730.png",
+        "/lovable-uploads/1.jpeg",
       primaryButton: { text: "Pro Services", link: "/services" },
       secondaryButton: { text: "Become Partner", link: "/affiliates" },
     },
@@ -85,7 +85,7 @@ const HeroSlider = ({ cmsContent }: HeroSliderProps) => {
       description:
         "Find your dream job or recruit the best talent through our platform dedicated to our client network.",
       backgroundImage:
-        "/lovable-uploads/611d8d2c-d919-40e6-8768-c63118ad2867.png",
+        "/lovable-uploads/2.jpeg",
       primaryButton: { text: "Find a Job", link: "/jobs" },
       secondaryButton: { text: "Recruit", link: "/post-job" },
     },
@@ -96,7 +96,7 @@ const HeroSlider = ({ cmsContent }: HeroSliderProps) => {
       description:
         "Access scholarships, educational projects and personal development programs for our youths network.",
       backgroundImage:
-        "/lovable-uploads/4c42bd0e-c389-4a41-881c-ca7ea44a1451.png",
+        "/lovable-uploads/3.jpeg",
       primaryButton: { text: "View Projects", link: "/about/projects" },
       secondaryButton: {
         text: "Apply for Scholarship",
