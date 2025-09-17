@@ -31,7 +31,7 @@ const MembershipPlans = () => {
 
   const plans = [
     {
-      name: "Carte Kiddies",
+      name: "Kiddies Card",
       price: "5,000",
       monthly: "500",
       discount: "100%",
