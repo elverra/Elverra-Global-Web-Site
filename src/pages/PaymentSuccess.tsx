@@ -20,13 +20,17 @@ export default function PaymentSuccess() {
         // Only show success if we have explicit success indicators
         if (paymentStatus === 'success' || paymentStatus === 'completed' || paymentStatus === 'ACCEPTED') {
           setStatus('success');
-        } else if (transactionId && paymentMethod) {
-          // If we have transaction ID and payment method, verify with backend
+        } else if (transactionId) {
+          // Verify with backend to trigger subscription activation + affiliate commission
           try {
-            const response = await fetch(`/api/payments/verify-payment?transaction_id=${transactionId}&method=${paymentMethod}`);
+            const response = await fetch('/api/payments/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentId: transactionId, gateway: paymentMethod })
+            });
             if (response.ok) {
               const data = await response.json();
-              setStatus(data.success ? 'success' : 'error');
+              setStatus(data.status === 'completed' || data.success ? 'success' : 'error');
             } else {
               setStatus('error');
             }

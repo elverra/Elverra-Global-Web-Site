@@ -28,15 +28,16 @@ export function generateCardIdentifier(): string {
  * Uses alphanumeric characters excluding confusing ones
  */
 export function generateAffiliateCode(): string {
-  const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const length = Math.floor(Math.random() * 5) + 8; // Random length between 8-12
+  const prefix = 'ELV-';
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const length = 12; // exactly 12 characters after the prefix
   let code = '';
   
   for (let i = 0; i < length; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   
-  return code;
+  return `${prefix}${code}`;
 }
 
 /**
@@ -52,7 +53,7 @@ export function isValidCardIdentifier(identifier: string): boolean {
  * Validates affiliate code format
  */
 export function isValidAffiliateCode(code: string): boolean {
-  const pattern = /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8,12}$/;
+  const pattern = /^ELV-[0-9A-Z]{12}$/;
   return pattern.test(code);
 }
 

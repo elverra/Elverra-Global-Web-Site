@@ -106,14 +106,7 @@ const MotorbikesSupport = () => {
                     <Shield className="h-5 w-5 mr-2" />
                     Get Protected
                   </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="bg-transparent border-white text-white hover:bg-white hover:text-orange-600"
-                  >
-                    <Bike className="h-5 w-5 mr-2" />
-                    View Plans
-                  </Button>
+                
                 </div>
               </CardContent>
             </Card>

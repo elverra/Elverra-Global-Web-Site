@@ -18,8 +18,7 @@ interface PhysicalCardRequest {
   user_id: string;
   full_name: string;
   phone: string;
-  email?: string;
-  card_identifier: string;
+  affiliate_code?: string;
   membership_tier: string;
   delivery_address: string;
   delivery_city: string;
@@ -50,11 +49,27 @@ const PhysicalCardManagement = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('does not exist')) {
+          console.error('Table physical_card_requests does not exist');
+          toast.error("Table physical_card_requests n'existe pas. Veuillez exécuter le script SQL de création.");
+          setRequests([]);
+          return;
+        }
+        if (error.code === '42501' || error.message?.toLowerCase().includes('permission denied')) {
+          console.error('Permission denied for physical_card_requests table');
+          toast.error('Accès refusé à la table physical_card_requests. Vérifiez les politiques RLS.');
+          setRequests([]);
+          return;
+        }
+        throw error;
+      }
+
       setRequests(data || []);
     } catch (error) {
       console.error('Error fetching physical card requests:', error);
-      toast.error('Failed to load physical card requests');
+      toast.error('Erreur lors du chargement des demandes de cartes physiques');
+      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -68,8 +83,7 @@ const PhysicalCardManagement = () => {
   const filteredRequests = requests.filter(request => {
     const matchesSearch = 
       request.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.card_identifier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (request.affiliate_code?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       request.phone.includes(searchTerm);
     
     const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
@@ -86,23 +100,29 @@ const PhysicalCardManagement = () => {
         status: newStatus,
         updated_at: new Date().toISOString()
       };
-      
+
       if (trackingNumber) updateData.tracking_number = trackingNumber;
       if (notes) updateData.notes = notes;
-      
+
       const { error } = await supabase
         .from('physical_card_requests')
         .update(updateData)
         .eq('id', requestId);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501' || error.message?.toLowerCase().includes('permission denied')) {
+          toast.error('Accès refusé: vérifiez les politiques RLS pour permettre la mise à jour par les admins.');
+          throw error;
+        }
+        throw error;
+      }
       
-      toast.success('Request status updated successfully');
+      toast.success('Statut de la demande mis à jour avec succès');
       fetchRequests();
       setSelectedRequest(null);
     } catch (error) {
       console.error('Error updating request status:', error);
-      toast.error('Failed to update request status');
+      toast.error('Erreur lors de la mise à jour du statut');
     } finally {
       setUpdating(false);
     }
@@ -256,8 +276,31 @@ const PhysicalCardManagement = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : filteredRequests.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No physical card requests found
+                <div className="text-center py-8">
+                  <div className="text-gray-500 mb-4">
+                    Aucune demande de carte physique trouvée
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">
+                          Configuration requise
+                        </h3>
+                        <div className="mt-2 text-sm text-yellow-700">
+                          <p>
+                            La table <code className="bg-yellow-100 px-1 rounded">physical_card_requests</code> doit être créée dans Supabase.
+                            <br />
+                            Exécutez le script SQL : <code className="bg-yellow-100 px-1 rounded">fix_physical_card_requests_rls.sql</code>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -265,7 +308,7 @@ const PhysicalCardManagement = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Customer</TableHead>
-                        <TableHead>Card ID</TableHead>
+                        <TableHead>Affiliate</TableHead>
                         <TableHead>Tier</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Payment</TableHead>
@@ -285,15 +328,17 @@ const PhysicalCardManagement = () => {
                               <div>
                                 <div className="font-medium">{request.full_name}</div>
                                 <div className="text-sm text-gray-500">{request.phone}</div>
-                                {request.email && (
-                                  <div className="text-sm text-gray-500">{request.email}</div>
-                                )}
+                                {/* email removed per DB change */}
                               </div>
                             </TableCell>
                             <TableCell>
-                              <code className="bg-gray-100 px-2 py-1 rounded text-sm">
-                                {request.card_identifier}
-                              </code>
+                              {request.affiliate_code ? (
+                                <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                  {request.affiliate_code}
+                                </code>
+                              ) : (
+                                <span className="text-gray-400 text-sm">—</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline">{request.membership_tier}</Badge>

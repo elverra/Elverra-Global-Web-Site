@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabaseClient";
 import { uploadProfileImage, uploadIdentityCardImage, compressImage } from "@/utils/imageUpload";
-import { generateAffiliateCode } from "@/utils/cardUtils";
+import { generateAffiliateCode, isValidAffiliateCode } from "@/utils/cardUtils";
 import { Upload, X, Camera, FileText } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -93,6 +93,14 @@ const Register = () => {
         throw new Error("City is required");
       }
 
+      // Enforce required images (DB constraints require these to be NOT NULL)
+      if (!profileImage) {
+        throw new Error("Profile image is required");
+      }
+      if (!identityCardImage) {
+        throw new Error("Identity card image is required");
+      }
+
       // Validate email format if provided
       if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
         throw new Error("Please enter a valid email address");
@@ -117,6 +125,9 @@ const Register = () => {
 
       // Generate affiliate code only (card_identifier will be generated after membership purchase)
       const affiliateCode = generateAffiliateCode();
+      const referrerAffCode = data.referral_code && isValidAffiliateCode(data.referral_code)
+        ? data.referral_code
+        : null;
 
       // Use email or phone as auth identifier (email is optional)
       const authEmail = registrationData.email || `${registrationData.phone}@temp.elverra.ml`;
@@ -125,10 +136,10 @@ const Register = () => {
       const { data: supa, error } = await signUp(authEmail, registrationData.password, {
         full_name: registrationData.full_name,
         phone: registrationData.phone,
-        email: registrationData.email || null,
         referral_code: registrationData.referral_code,
         physical_card_requested: registrationData.physical_card_requested,
         affiliate_code: affiliateCode,
+        ...(referrerAffCode ? { referrer_affiliate_code: referrerAffCode } : {}),
         // pass location metadata for server trigger to mirror into profiles
         ...(registrationData.country ? { country: registrationData.country } : {} as any),
         ...(registrationData.city ? { city: registrationData.city } : {} as any),
@@ -165,11 +176,11 @@ const Register = () => {
           const updateData: any = {
             full_name: registrationData.full_name,
             phone: registrationData.phone,
-            email: registrationData.email || null,
             country: registrationData.country,
             city: registrationData.city,
             address: registrationData.address,
             affiliate_code: affiliateCode,
+            ...(referrerAffCode ? { referrer_affiliate_code: referrerAffCode } : {}),
             updated_at: new Date().toISOString(),
           };
 
@@ -211,17 +222,16 @@ const Register = () => {
                 user_id: uid,
                 full_name: registrationData.full_name,
                 phone: registrationData.phone,
-                email: registrationData.email,
                 address: registrationData.address,
                 city: registrationData.city,
                 country: registrationData.country,
                 membership_tier: 'essential', // Default tier
-                card_identifier: null, // Will be generated after membership purchase
                 status: 'pending_payment', // Waiting for membership payment
                 payment_amount: 0, // Physical card is free
                 delivery_address: registrationData.address,
                 delivery_city: registrationData.city,
                 delivery_country: registrationData.country,
+                ...(referrerAffCode ? { affiliate_code: referrerAffCode } : {}),
               });
           }
         }

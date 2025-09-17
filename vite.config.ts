@@ -51,6 +51,11 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
+      // Ensure assets are copied correctly
+      assetsDir: 'assets',
+      copyPublicDir: true,
     },
+    // Ensure public directory is properly handled
+    publicDir: 'public',
   };
 });

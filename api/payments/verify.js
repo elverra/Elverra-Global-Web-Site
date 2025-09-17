@@ -135,6 +135,23 @@ export default async function handler(req, res) {
                 })
                 .eq('id', payment.user_id);
             }
+
+            // Award affiliate commission (membership payment or renewal)
+            try {
+              const rewardType = (payment.metadata && (payment.metadata.type === 'renewal' || payment.metadata.isRenewal)) 
+                ? 'membership_renewal' 
+                : 'membership_payment';
+              const amountXof = Number(payment.amount || 0);
+              const ref = payment.reference || payment.transaction_id || payment.id;
+              await supabase.rpc('award_affiliate_commission', {
+                paying_user: payment.user_id,
+                amount_xof: amountXof,
+                payment_ref: ref,
+                reward: rewardType
+              });
+            } catch (rpcError) {
+              console.error('Failed to award affiliate commission:', rpcError);
+            }
           } catch (updateError) {
             console.error('Error updating subscription/user:', updateError);
             // Don't fail the verification, just log the error
