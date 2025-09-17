@@ -233,7 +233,7 @@ const PhysicalCardManagement = () => {
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                       id="search"
-                      placeholder="Search by name, card ID, email, or phone..."
+                      placeholder="Search by name, affiliate code, or phone..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -446,12 +446,12 @@ const RequestDetailsModal = ({
           <p className="mt-1 text-sm text-gray-900">{request.phone}</p>
         </div>
         <div>
-          <Label className="text-sm font-medium text-gray-700">Email</Label>
-          <p className="mt-1 text-sm text-gray-900">{request.email || 'Not provided'}</p>
+          <Label className="text-sm font-medium text-gray-700">Membership Tier</Label>
+          <p className="mt-1 text-sm text-gray-900">{request.membership_tier}</p>
         </div>
         <div>
-          <Label className="text-sm font-medium text-gray-700">Card Identifier</Label>
-          <p className="mt-1 text-sm text-gray-900 font-mono">{request.card_identifier}</p>
+          <Label className="text-sm font-medium text-gray-700">Affiliate Code</Label>
+          <p className="mt-1 text-sm text-gray-900 font-mono">{request.affiliate_code || 'None'}</p>
         </div>
       </div>
 

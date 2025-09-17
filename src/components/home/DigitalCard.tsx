@@ -39,10 +39,10 @@ const DigitalCard = ({ cmsContent }: DigitalCardProps) => {
                           <div
                             className="relative overflow-hidden  transform  z-10 transition-all duration-500 "
                             style={{
-                              backgroundImage: `url('/lovable-uploads/essential-card.png')`,
+                              backgroundImage: `url('/lovable-uploads/Cards.jpg')`,
                               backgroundSize: "cover",
                               backgroundPosition: "center",
-                              height: "120px",
+                              height: "250px",
                               width: "200px",
                             }}
                           ></div>
