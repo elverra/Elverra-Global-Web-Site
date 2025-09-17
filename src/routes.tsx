@@ -106,7 +106,7 @@ import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import CareerJobsManagement from './pages/admin/CareerJobsManagement';
 import EventsManagement from './pages/admin/EventsManagement';
-import PhysicalCardManagement from './pages/admin/PhysicalCardManagement';
+import PhysicalCardRequests from './pages/admin/PhysicalCardRequests';
 import SuperAdminPhysicalCardManagement from './pages/superadmin/PhysicalCardManagement';
 import OSecours from './pages/services/OSecours';
 
@@ -625,7 +625,7 @@ const routes = [
     path: '/admin/physical-cards',
     element: (
       <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
-        <PhysicalCardManagement />
+        <PhysicalCardRequests />
       </ProtectedRoute>
     ),
   },

@@ -214,25 +214,22 @@ const Register = () => {
             console.log('Profile updated successfully');
           }
 
-          // Create physical card request if requested
+          // Update physical card request status in profiles if requested
           if (registrationData.physical_card_requested) {
-            await supabase
-              .from('physical_card_requests')
-              .insert({
-                user_id: uid,
-                full_name: registrationData.full_name,
-                phone: registrationData.phone,
-                address: registrationData.address,
-                city: registrationData.city,
-                country: registrationData.country,
-                membership_tier: 'essential', // Default tier
-                status: 'pending_payment', // Waiting for membership payment
-                payment_amount: 0, // Physical card is free
-                delivery_address: registrationData.address,
-                delivery_city: registrationData.city,
-                delivery_country: registrationData.country,
-                ...(referrerAffCode ? { affiliate_code: referrerAffCode } : {}),
-              });
+            const { error: cardRequestError } = await supabase
+              .from('profiles')
+              .update({
+                physical_card_requested: true,
+                physical_card_status: 'requested',
+                physical_card_request_date: new Date().toISOString()
+              })
+              .eq('id', uid);
+            
+            if (cardRequestError) {
+              console.error('Error updating physical card request:', cardRequestError);
+            } else {
+              console.log('Physical card request recorded in profile');
+            }
           }
         }
       } catch (e) {
