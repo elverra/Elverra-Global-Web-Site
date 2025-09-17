@@ -16,7 +16,7 @@ const MembershipStatus = () => {
         <p className="text-sm text-gray-700">
           Votre statut client sera affiché ici. Pour l'instant, aucune vérification n'est requise.
         </p>
-        <Button onClick={() => navigate('/client-subscription')} variant="outline" className="w-full">
+        <Button onClick={() => navigate('/client-payment')} variant="outline" className="w-full">
           <Crown className="h-4 w-4 mr-2" />
           Gérer mon abonnement
         </Button>

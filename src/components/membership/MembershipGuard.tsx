@@ -65,7 +65,7 @@ const MembershipGuard = ({
             Please upgrade to a client plan to continue.
           </p>
           <Button 
-            onClick={() => navigate('/client-subscription')} 
+            onClick={() => navigate('/client-payment')} 
             className="w-full bg-purple-600 hover:bg-purple-700"
           >
             <Crown className="h-4 w-4 mr-2" />
@@ -103,7 +103,7 @@ const MembershipGuard = ({
           </p>
           {showUpgradePrompt && (
             <Button 
-              onClick={() => navigate('/client-subscription')} 
+              onClick={() => navigate('/client-payment')} 
               className="w-full bg-yellow-600 hover:bg-yellow-700"
             >
               <ArrowRight className="h-4 w-4 mr-2" />

@@ -115,7 +115,7 @@ const Jobs = () => {
     const access = getMembershipAccess();
     if (!access.hasActiveMembership) {
       toast.error("Membership required to apply for jobs");
-      navigate("/client-subscription");
+      navigate("/client-payment");
       return;
     }
 

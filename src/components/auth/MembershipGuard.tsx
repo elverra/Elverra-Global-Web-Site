@@ -92,7 +92,7 @@ const MembershipGuard: React.FC<MembershipGuardProps> = ({
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button 
-                    onClick={() => window.location.href = '/client-subscription'}
+                    onClick={() => window.location.href = '/client-payment'}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold flex items-center space-x-2"
                   >
                     <CreditCard className="w-5 h-5" />

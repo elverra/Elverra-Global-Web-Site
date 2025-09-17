@@ -363,7 +363,7 @@ const Shop = () => {
                       Valid until {new Date(offer.valid_until).toLocaleDateString()}
                     </span>
                     {offer.premium_only && !isPremiumMember && (
-                      <Button size="sm" variant="outline" onClick={() => navigate('/client-subscription')}>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/client-payment')}>
                         Get Membership
                       </Button>
                     )}

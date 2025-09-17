@@ -19,7 +19,7 @@ const Cards = () => {
 
   const getCardActionUrl = (tierName: string) => {
     if (user) {
-      return `/client-subscription?tier=${tierName.toLowerCase()}`;
+      return `/client-payment?tier=${tierName.toLowerCase()}`;
     }
     return '/register';
   };

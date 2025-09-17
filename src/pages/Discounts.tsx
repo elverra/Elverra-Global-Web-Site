@@ -142,7 +142,7 @@ const Discounts = () => {
     const access = getMembershipAccess();
     if (!access.hasActiveMembership) {
       toast.error("You need an active membership to claim discounts");
-      navigate("/client-subscription");
+      navigate("/client-payment");
       return;
     }
 

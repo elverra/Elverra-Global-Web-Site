@@ -44,7 +44,7 @@ const JobDetail = () => {
     const access = getMembershipAccess();
     if (!access.hasActiveMembership) {
       toast.error('Membership required to apply for jobs');
-      navigate('/client-subscription');
+      navigate('/client-payment');
       return;
     }
     setShowApplicationForm(true);
@@ -54,7 +54,7 @@ const JobDetail = () => {
     const access = getMembershipAccess();
     if (!access.hasActiveMembership) {
       toast.error('Membership required to bookmark jobs');
-      navigate('/client-subscription');
+      navigate('/client-payment');
       return;
     }
     toggleBookmark();
