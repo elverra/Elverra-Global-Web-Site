@@ -51,6 +51,10 @@ const clientBillingHandler = require('./api/client/billing.js');
 
 app.get('/api/client/billing', clientBillingHandler);
 
+// Admin endpoints
+const adminRoutes = require('./api/admin/index.js');
+app.use('/api/admin', adminRoutes);
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

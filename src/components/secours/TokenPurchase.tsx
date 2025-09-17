@@ -66,7 +66,35 @@ const TokenPurchase = () => {
         }
 
         // Generate unique reference for payment
-        const reference = `TOKENS_${subscription.subscription_type.toUpperCase()}_${Date.now()}`;
+        const reference = `TOKENS_${subscription.subscription_type.toUpperCase()}_${user?.id}_${Date.now()}`;
+        
+        // Create payment attempt record first
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('Authentication required');
+        }
+
+        // Create payment attempt record
+        const attemptResponse = await fetch('/api/secours/payment-attempts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            reference,
+            user_id: user?.id,
+            service_type: subscription.subscription_type,
+            tokens: purchaseData.tokenAmount,
+            amount_fcfa: purchaseData.tokenAmount * tokenValue,
+            payment_method: 'sama_money',
+            status: 'pending'
+          })
+        });
+
+        if (!attemptResponse.ok) {
+          throw new Error('Failed to create payment attempt record');
+        }
         
         // Use backend API for mobile money payment
         const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin;
@@ -92,6 +120,20 @@ const TokenPurchase = () => {
         if (!paymentResponse.ok) {
           const errorData = await paymentResponse.json();
           console.log('[DEBUG] SAMA Money error response:', errorData);
+          
+          // Mark payment attempt as failed
+          await fetch('/api/secours/payment-attempts', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              reference,
+              status: 'failed'
+            })
+          });
+          
           // Display user-friendly error message from backend
           throw new Error(errorData.message || 'Échec du paiement SAMA Money');
         }
@@ -101,6 +143,56 @@ const TokenPurchase = () => {
         // For SAMA Money, show success message as payment is initiated via USSD/App
         if (paymentData.success) {
           toast.success('Demande de paiement envoyée! Vérifiez votre téléphone pour confirmer le paiement SAMA Money.');
+          
+          // Start polling for payment status
+          const pollPaymentStatus = async () => {
+            try {
+              const statusResponse = await fetch('/api/payments/verify', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  paymentId: reference,
+                  gateway: 'sama_money'
+                })
+              });
+              
+              const statusData = await statusResponse.json();
+              
+              if (statusData.success && statusData.status === 'completed') {
+                toast.success('Paiement confirmé! Vos tokens ont été ajoutés à votre compte.');
+                queryClient.invalidateQueries({ queryKey: ['secours-subscriptions'] });
+                queryClient.invalidateQueries({ queryKey: ['token-transactions'] });
+                return true;
+              } else if (statusData.success && statusData.status === 'failed') {
+                toast.error('Paiement échoué ou annulé.');
+                return true;
+              }
+              
+              return false;
+            } catch (error) {
+              console.error('Error checking payment status:', error);
+              return false;
+            }
+          };
+          
+          // Poll every 5 seconds for up to 5 minutes
+          let attempts = 0;
+          const maxAttempts = 60;
+          const pollInterval = setInterval(async () => {
+            attempts++;
+            const completed = await pollPaymentStatus();
+            
+            if (completed || attempts >= maxAttempts) {
+              clearInterval(pollInterval);
+              if (attempts >= maxAttempts) {
+                toast.info('Vérification du paiement en cours. Vos tokens seront ajoutés automatiquement une fois le paiement confirmé.');
+              }
+            }
+          }, 5000);
+          
           return paymentData;
         }
       }
@@ -178,7 +270,8 @@ const TokenPurchase = () => {
       telephone: 250,
       auto: 750,
       cata_catanis: 500,
-      school_fees: 500
+      school_fees: 500,
+      first_aid: 250
     };
     return values[subscriptionType] || 0;
   };
@@ -189,7 +282,8 @@ const TokenPurchase = () => {
       telephone: { min: 30, max: 60 },
       auto: { min: 30, max: 60 },
       cata_catanis: { min: 30, max: 60 },
-      school_fees: { min: 30, max: 60 }
+      school_fees: { min: 30, max: 60 },
+      first_aid: { min: 30, max: 60 }
     };
     return limits[subscriptionType] || { min: 30, max: 60 };
   };

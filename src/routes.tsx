@@ -105,7 +105,9 @@ import CareerJobDetail from './pages/CareerJobDetail';
 import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import CareerJobsManagement from './pages/admin/CareerJobsManagement';
-import EventsManagement from './pages/admin/EventsManagement'
+import EventsManagement from './pages/admin/EventsManagement';
+import PhysicalCardManagement from './pages/admin/PhysicalCardManagement';
+import SuperAdminPhysicalCardManagement from './pages/superadmin/PhysicalCardManagement';
 import OSecours from './pages/services/OSecours';
 
 // Add the new route to the existing routes array
@@ -616,6 +618,22 @@ const routes = [
     element: (
       <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
         <SuperAdminDiscountManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/physical-cards',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
+        <PhysicalCardManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/superadmin/physical-cards',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <SuperAdminPhysicalCardManagement />
       </ProtectedRoute>
     ),
   },

@@ -172,6 +172,13 @@ const AdminDashboard = () => {
       color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
     {
+      title: "Physical Card Management",
+      description: "Manage physical membership card requests and deliveries",
+      icon: CreditCard,
+      route: "/admin/physical-cards",
+      color: "bg-green-50 hover:bg-green-100 border-green-200"
+    },
+    {
       title: "Projects Management",
       description: "Manage funding projects and initiatives",
       icon: TrendingUp,

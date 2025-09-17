@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatCardNumber } from '@/utils/cardUtils';
 
 const SubscriptionsSection = () => {
   const { user } = useAuth();
@@ -144,7 +145,7 @@ const SubscriptionsSection = () => {
         if (childSub) {
           const card = cardsRows.find(c => c.subscription_id === childSub.id);
           cards.push({
-            cardNumber: card?.card_identifier ? `**** **** **** ${card.card_identifier.slice(-4)}` : `**** **** **** ${user.id.slice(-4)}`,
+            cardNumber: card?.card_identifier ? formatCardNumber(card.card_identifier) : `**** **** **** ${user.id.slice(-4)}`,
             expiryDate: card?.card_expiry_date ? new Date(card.card_expiry_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : (childSub.end_date ? new Date(childSub.end_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : '12/25'),
             cardType: 'child',
             status: (card?.status || childSub.status) === 'active' ? 'Active' : 'Inactive',
@@ -163,7 +164,7 @@ const SubscriptionsSection = () => {
           const productName = productsById[adultSub.product_id]?.name || '';
           const tier = inferTier(productName) as 'essential' | 'premium' | 'elite';
           cards.push({
-            cardNumber: card?.card_identifier ? `**** **** **** ${card.card_identifier.slice(-4)}` : `**** **** **** ${user.id.slice(-4)}`,
+            cardNumber: card?.card_identifier ? formatCardNumber(card.card_identifier) : `**** **** **** ${user.id.slice(-4)}`,
             expiryDate: card?.card_expiry_date ? new Date(card.card_expiry_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : (adultSub.end_date ? new Date(adultSub.end_date).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/') : '12/25'),
             cardType: tier,
             status: (card?.status || adultSub.status) === 'active' ? 'Active' : 'Inactive',

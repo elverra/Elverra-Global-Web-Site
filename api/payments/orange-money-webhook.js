@@ -11,7 +11,8 @@ const TOKEN_VALUES = {
   cata_catanis: 500,
   school_fees: 500,
   motors: 250,
-  telephone: 250
+  telephone: 250,
+  first_aid: 250
 };
 
 // Credit tokens after successful payment

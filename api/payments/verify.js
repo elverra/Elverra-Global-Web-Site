@@ -32,78 +32,131 @@ export default async function handler(req, res) {
       });
     }
 
-    // Check payment status in payments table
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .select('*')
-      .or(`transaction_id.eq.${paymentId},reference.eq.${paymentId},id.eq.${paymentId}`)
-      .single();
+    // Check if this is a token purchase or subscription payment
+    const isTokenPurchase = paymentId.includes('TOKENS_');
+    const isSubscriptionPayment = paymentId.includes('SUB_') || paymentId.includes('ELV');
 
-    if (paymentError && paymentError.code !== 'PGRST116') {
-      console.error('Payment lookup error:', paymentError);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to verify payment',
-        error: paymentError.message 
-      });
-    }
+    if (isTokenPurchase) {
+      // Check token payment attempts table
+      const { data: attempt, error: attemptError } = await supabase
+        .from('secours_payment_attempts')
+        .select('*')
+        .eq('reference', paymentId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (!payment) {
-      // Payment not found, still pending
+      if (attemptError && attemptError.code !== 'PGRST116') {
+        console.error('Token payment lookup error:', attemptError);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Failed to verify token payment',
+          error: attemptError.message 
+        });
+      }
+
+      if (!attempt) {
+        return res.status(200).json({ 
+          success: true, 
+          status: 'pending',
+          message: 'Token payment verification in progress' 
+        });
+      }
+
+      let status = 'pending';
+      if (attempt.status === 'completed') {
+        status = 'completed';
+      } else if (attempt.status === 'failed') {
+        status = 'failed';
+      }
+
       return res.status(200).json({ 
         success: true, 
-        status: 'pending',
-        message: 'Payment verification in progress' 
+        status,
+        payment: {
+          id: attempt.id,
+          amount: attempt.amount_fcfa,
+          currency: 'XOF',
+          status: attempt.status,
+          created_at: attempt.created_at
+        }
+      });
+    } else {
+      // Check subscription payments table
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .select('*')
+        .or(`transaction_id.eq.${paymentId},reference.eq.${paymentId},id.eq.${paymentId}`)
+        .single();
+
+      if (paymentError && paymentError.code !== 'PGRST116') {
+        console.error('Payment lookup error:', paymentError);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Failed to verify payment',
+          error: paymentError.message 
+        });
+      }
+
+      if (!payment) {
+        // Payment not found, still pending
+        return res.status(200).json({ 
+          success: true, 
+          status: 'pending',
+          message: 'Payment verification in progress' 
+        });
+      }
+
+      // Check payment status
+      let status = 'pending';
+      if (payment.status === 'completed' || payment.status === 'success') {
+        status = 'completed';
+        
+        // If payment is completed, update user subscription/membership
+        if (payment.user_id && payment.subscription_id) {
+          try {
+            // Update subscription status
+            await supabase
+              .from('subscriptions')
+              .update({ 
+                status: 'active',
+                activated_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', payment.subscription_id);
+
+            // Update user membership tier if plan is specified
+            if (payment.metadata && payment.metadata.planType) {
+              await supabase
+                .from('users')
+                .update({ 
+                  membership_tier: payment.metadata.planType,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', payment.user_id);
+            }
+          } catch (updateError) {
+            console.error('Error updating subscription/user:', updateError);
+            // Don't fail the verification, just log the error
+          }
+        }
+      } else if (payment.status === 'failed' || payment.status === 'cancelled') {
+        status = 'failed';
+      }
+
+      return res.status(200).json({ 
+        success: true, 
+        status,
+        payment: {
+          id: payment.id,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          created_at: payment.created_at
+        }
       });
     }
 
-    // Check payment status
-    let status = 'pending';
-    if (payment.status === 'completed' || payment.status === 'success') {
-      status = 'completed';
-      
-      // If payment is completed, update user subscription/membership
-      if (payment.user_id && payment.subscription_id) {
-        try {
-          // Update subscription status
-          await supabase
-            .from('subscriptions')
-            .update({ 
-              status: 'active',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', payment.subscription_id);
-
-          // Update user membership tier if plan is specified
-          if (payment.metadata && payment.metadata.plan) {
-            await supabase
-              .from('users')
-              .update({ 
-                membership_tier: payment.metadata.plan,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', payment.user_id);
-          }
-        } catch (updateError) {
-          console.error('Error updating subscription/user:', updateError);
-          // Don't fail the verification, just log the error
-        }
-      }
-    } else if (payment.status === 'failed' || payment.status === 'cancelled') {
-      status = 'failed';
-    }
-
-    return res.status(200).json({ 
-      success: true, 
-      status,
-      payment: {
-        id: payment.id,
-        amount: payment.amount,
-        currency: payment.currency,
-        status: payment.status,
-        created_at: payment.created_at
-      }
-    });
 
   } catch (error) {
     console.error('Payment verification error:', error);
