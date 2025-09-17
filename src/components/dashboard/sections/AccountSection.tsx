@@ -528,13 +528,13 @@ const AccountSection = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Crown className="h-5 w-5" />
-                Membership & Digital Card
+                Subsciption & Digital Card
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Digital Card Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Your Digital Membership Card</h3>
+                <h3 className="text-lg font-semibold">Your Digital Client Card</h3>
                 <MemberDigitalCard
                   memberName={profile?.full_name || user?.email?.split('@')[0] || 'Member'}
                   memberID={user?.id?.slice(-8) || 'N/A'}

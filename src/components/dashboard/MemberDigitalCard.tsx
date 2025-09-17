@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Share2, QrCode } from 'lucide-react';
+import { Download, Share2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import QRCodeGenerator from '@/components/utilities/QRCodeGenerator';
 
 interface MemberDigitalCardProps {
   memberName: string;
@@ -29,25 +27,8 @@ const MemberDigitalCard = ({
   isPaymentComplete = true,
   subscriptionStatus = 'active'
 }: MemberDigitalCardProps) => {
-  const [showQR, setShowQR] = useState(false);
-  
   // Generate serial number if not provided
   const cardSerialNumber = serialNumber || `ELV-${membershipTier.toUpperCase()}-${Date.now().toString().slice(-6)}`;
-  
-  // Create comprehensive QR data for the card
-  const qrData = JSON.stringify({
-    memberID,
-    name: memberName,
-    tier: membershipTier,
-    expiry: expiryDate,
-    serialNumber: cardSerialNumber,
-    city: city || 'N/A',
-    address: address || 'N/A',
-    subscriptionStatus,
-    isActive: subscriptionStatus === 'active',
-    issueDate: new Date().toISOString().split('T')[0],
-    cardType: membershipTier === 'Child' ? 'child' : 'adult'
-  });
 
   // Don't show card if payment is not complete
   if (!isPaymentComplete) {
@@ -76,73 +57,76 @@ const MemberDigitalCard = ({
     );
   }
 
-  // Get card styling based on membership tier
-  const getTierColors = () => {
-    switch (membershipTier) {
-      case 'Essential':
-        return {
-          background: 'bg-white',
-          statusColor: 'text-gray-800',
-          border: 'border-gray-200'
-        };
-      case 'Premium':
-        return {
-          background: 'bg-gradient-to-br from-blue-600 to-blue-800',
-          statusColor: 'text-white',
-          border: 'border-blue-600'
-        };
-      case 'Elite':
-        return {
-          background: 'bg-gradient-to-br from-yellow-400 to-yellow-600',
-          statusColor: 'text-gray-900',
-          border: 'border-yellow-400'
-        };
-      case 'Child':
-        return {
-          background: 'bg-gradient-to-br from-pink-400 to-purple-500',
-          statusColor: 'text-white',
-          border: 'border-pink-400'
-        };
-      default:
-        return {
-          background: 'bg-white',
-          statusColor: 'text-gray-800',
-          border: 'border-gray-200'
-        };
-    }
-  };
-
-  const colors = getTierColors();
-
   // Function to download card as image
-  const handleDownload = async () => {
+  const handleDownload = () => {
     try {
-      const cardElement = document.getElementById('member-card');
-      if (!cardElement) return;
+      // Determine which image to use based on membership tier
+      let imageName = '';
+      switch (membershipTier) {
+        case 'Essential':
+          imageName = 'Carte 1.png';
+          break;
+        case 'Premium':
+          imageName = 'Carte2.png';
+          break;
+        case 'Elite':
+          imageName = 'Carte3.png';
+          break;
+        case 'Child':
+          imageName = 'Kiddies.png';
+          break;
+        default:
+          alert('No card available for this membership type.');
+          return;
+      }
 
-      // Use html2canvas to capture the card
-      const html2canvas = (null).default;
-      const canvas = await html2canvas(cardElement, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-      });
-
-      // Create download link
+      // Create a temporary link to trigger download
       const link = document.createElement('a');
-      link.download = `${memberName.replace(' ', '_')}_membership_card.png`;
-      link.href = canvas.toDataURL();
+      link.href = `/lovable-uploads/${imageName}`;
+      link.download = `${memberName.replace(/\s+/g, '_')}_${membershipTier}_card.png`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error('Error downloading card:', error);
-      // Fallback: show alert
-      alert('Download feature requires html2canvas library. Please contact support.');
+      alert('Error downloading card. Please try again or contact support.');
     }
   };
 
   // Mock function to share card
   const handleShare = () => {
     alert('Card sharing functionality would be implemented here.');
+  };
+
+  // Get the appropriate card image based on membership tier
+  const getCardImage = () => {
+    switch (membershipTier) {
+      case 'Essential':
+        return '/lovable-uploads/Carte 1.png';
+      case 'Premium':
+        return '/lovable-uploads/Carte2.png';
+      case 'Elite':
+        return '/lovable-uploads/Carte3.png';
+      case 'Child':
+        return '/lovable-uploads/Kiddies.png';
+      default:
+        return '';
+    }
+  };
+
+  const cardImage = getCardImage();
+
+  // Format date as DD/MM/YY
+  const formatDate = (dateString: string) => {
+    if (!dateString || dateString === 'N/A') return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    
+    return `${day}/${month}/${year}`;
   };
 
   return (
@@ -152,81 +136,70 @@ const MemberDigitalCard = ({
         <p className="text-sm text-gray-500">Present this at participating merchants for discounts</p>
       </div>
       
-      {/* ZENIKA Card Design */}
+      {/* Card Design */}
       <div 
         id="member-card"
         className="relative overflow-hidden rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl"
         style={{
-          border: '3px solid #22c55e',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
           aspectRatio: '1.6/1',
           width: '100%',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          backgroundImage: `url('${cardImage}')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          position: 'relative',
+          color: 'white',
+          textShadow: '1px 1px 2px rgba(0,0,0,0.7)'
         }}
       >
-        {/* Background wave pattern */}
-        <div className="absolute inset-0">
-          <svg viewBox="0 0 400 250" className="w-full h-full">
-            <path d="M0,150 Q100,100 200,120 T400,110 L400,250 L0,250 Z" fill="rgba(255,255,255,0.1)" />
-          </svg>
-        </div>
-        
-        {/* Globe and hand logo */}
-        <div className="absolute top-4 right-4 w-12 h-12">
-          <div className="relative w-full h-full">
-            <div className="absolute inset-0 bg-blue-500 rounded-full opacity-80"></div>
-            <div className="absolute top-1 right-1 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-              <div className="w-5 h-5 bg-white rounded-full opacity-90"></div>
+        {/* Card Content */}
+        <div className="relative p-6 h-full flex flex-col">
+          {/* Member Name and Status */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-1">{memberName}</h2>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs font-medium">
+                {membershipTier}
+              </span>
+              <span className="text-xs opacity-90">
+                {subscriptionStatus === 'active' ? '✅ Active' : 
+                 subscriptionStatus === 'expired' ? '❌ Expired' : '⏳ Pending'}
+              </span>
             </div>
           </div>
-        </div>
 
-        <div className="relative p-4 h-full flex flex-col">
-          {/* ZENIKA Header */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold tracking-wider text-green-500">
-              ZENIKA
-            </h2>
-          </div>
-
-          {/* Client Info */}
-          <div className="mt-auto text-white">
-            <div className="mb-3">
-              <h3 className="text-lg font-semibold">{memberName}</h3>
-              <p className="text-sm opacity-90">Status: {membershipTier}</p>
-              {city && (
-                <p className="text-sm opacity-90">{city}</p>
-              )}
-              {address && (
-                <p className="text-sm opacity-90">{address}</p>
-              )}
-              <p className="text-xs opacity-75">Serial: {cardSerialNumber}</p>
+          {/* Member Details */}
+          <div className="mt-auto space-y-2 text-sm">
+            {address && (
+              <div className="flex items-start">
+                <span className="w-20 font-medium">Address:</span>
+                <span className="flex-1">{address}</span>
+              </div>
+            )}
+            
+            {city && (
+              <div className="flex items-center">
+                <span className="w-20 font-medium">City:</span>
+                <span>{city}</span>
+              </div>
+            )}
+            
+            <div className="flex items-center">
+              <span className="w-20 font-medium">Nom:</span>
+              <span className="font-medium">{memberName || 'N/A'}</span>
             </div>
             
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs opacity-90">ID: {memberID}</p>
-                <p className="text-xs opacity-75">
-                  {subscriptionStatus === 'active' ? '✅ Active' : 
-                   subscriptionStatus === 'expired' ? '❌ Expired' : '⏳ Pending'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-bold">
-                  {new Date(expiryDate).toLocaleDateString('en-US', { month: '2-digit', year: '2-digit' })}
-                </span>
-                {/* QR Code */}
-                <div className="w-8 h-8 bg-white rounded border border-black flex items-center justify-center">
-                  <QRCodeGenerator
-                    data={qrData}
-                    size={28}
-                    showDownload={false}
-                    showShare={false}
-                    showData={false}
-                  />
-                </div>
-              </div>
+            <div className="flex items-center">
+              <span className="w-20 font-medium">Expires:</span>
+              <span>{formatDate(expiryDate)}</span>
             </div>
+          </div>
+          
+          {/* Card Identifier */}
+          <div className="absolute bottom-4 right-4 text-right">
+            <p className="text-xs font-mono font-bold bg-black bg-opacity-50 px-2 py-1 rounded">
+              ID: {memberID}
+            </p>
           </div>
         </div>
       </div>

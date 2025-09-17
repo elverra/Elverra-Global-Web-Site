@@ -14,8 +14,6 @@ import ThankYou from '@/pages/ThankYou';
 import ClientPayment from '@/pages/ClientPayment';
 import ClientSubscription from '@/pages/ClientSubscription';
 import Dashboard from '@/pages/Dashboard';
-import JobDashboardEmployee from '@/pages/job-dashboard/EmployeeDashboard';
-import JobDashboardEmployer from '@/pages/job-dashboard/EmployerDashboard';
 import AffiliateDashboard from '@/pages/AffiliateDashboard';
 import PostJob from '@/pages/PostJob';
 import Debug from '@/pages/Debug';
@@ -223,14 +221,6 @@ const routes = [
         <Dashboard />
       </ProtectedRoute>
     ),
-  },
-  {
-    path: '/job-dashboard/employee',
-    element: <JobDashboardEmployee />,
-  },
-  {
-    path: '/job-dashboard/employer',
-    element: <JobDashboardEmployer />,
   },
   {
     path: '/affiliate-dashboard',
