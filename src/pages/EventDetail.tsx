@@ -530,144 +530,153 @@ const EventDetail = () => {
                     </p>
                   </div>
                 ) : (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                        <Send className="h-4 w-4 mr-2" />
-                        {event.event_type === 'competition' ? 'Participer' : 'S\'inscrire'}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>
-                          {event.event_type === 'competition' ? 'Participer à' : 'S\'inscrire à'} {event.title}
-                        </DialogTitle>
-                      </DialogHeader>
+
+                  <div className="text-center">
+                  <p className="text-gray-600 mb-4">
+                    Cet événement n'a pas encore été lancé.
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Veuillez revenir plus tard.
+                  </p>
+                </div>
+                  // <Dialog>
+                  //   <DialogTrigger asChild>
+                  //     <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                  //       <Send className="h-4 w-4 mr-2" />
+                  //       {event.event_type === 'competition' ? 'Participer' : 'S\'inscrire'}
+                  //     </Button>
+                  //   </DialogTrigger>
+                  //   <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  //     <DialogHeader>
+                  //       <DialogTitle>
+                  //         {event.event_type === 'competition' ? 'Participer à' : 'S\'inscrire à'} {event.title}
+                  //       </DialogTitle>
+                  //     </DialogHeader>
                       
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="full_name">Nom complet *</Label>
-                            <Input
-                              id="full_name"
-                              value={participationForm.full_name}
-                              onChange={(e) => handleInputChange('full_name', e.target.value)}
-                              placeholder="Votre nom complet"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="email">Email *</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              value={participationForm.email}
-                              onChange={(e) => handleInputChange('email', e.target.value)}
-                              placeholder="votre@email.com"
-                            />
-                          </div>
-                        </div>
+                  //     <div className="space-y-4">
+                  //       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  //         <div>
+                  //           <Label htmlFor="full_name">Nom complet *</Label>
+                  //           <Input
+                  //             id="full_name"
+                  //             value={participationForm.full_name}
+                  //             onChange={(e) => handleInputChange('full_name', e.target.value)}
+                  //             placeholder="Votre nom complet"
+                  //           />
+                  //         </div>
+                  //         <div>
+                  //           <Label htmlFor="email">Email *</Label>
+                  //           <Input
+                  //             id="email"
+                  //             type="email"
+                  //             value={participationForm.email}
+                  //             onChange={(e) => handleInputChange('email', e.target.value)}
+                  //             placeholder="votre@email.com"
+                  //           />
+                  //         </div>
+                  //       </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="phone">Téléphone *</Label>
-                            <Input
-                              id="phone"
-                              value={participationForm.phone}
-                              onChange={(e) => handleInputChange('phone', e.target.value)}
-                              placeholder="+223 XX XX XX XX"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="organization">Organisation/Entreprise</Label>
-                            <Input
-                              id="organization"
-                              value={participationForm.organization}
-                              onChange={(e) => handleInputChange('organization', e.target.value)}
-                              placeholder="Votre entreprise ou école"
-                            />
-                          </div>
-                        </div>
+                  //       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  //         <div>
+                  //           <Label htmlFor="phone">Téléphone *</Label>
+                  //           <Input
+                  //             id="phone"
+                  //             value={participationForm.phone}
+                  //             onChange={(e) => handleInputChange('phone', e.target.value)}
+                  //             placeholder="+223 XX XX XX XX"
+                  //           />
+                  //         </div>
+                  //         <div>
+                  //           <Label htmlFor="organization">Organisation/Entreprise</Label>
+                  //           <Input
+                  //             id="organization"
+                  //             value={participationForm.organization}
+                  //             onChange={(e) => handleInputChange('organization', e.target.value)}
+                  //             placeholder="Votre entreprise ou école"
+                  //           />
+                  //         </div>
+                  //       </div>
 
-                        <div>
-                          <Label htmlFor="motivation">Motivation</Label>
-                          <Textarea
-                            id="motivation"
-                            value={participationForm.motivation}
-                            onChange={(e) => handleInputChange('motivation', e.target.value)}
-                            placeholder="Pourquoi souhaitez-vous participer à cet événement ?"
-                            rows={3}
-                          />
-                        </div>
+                  //       <div>
+                  //         <Label htmlFor="motivation">Motivation</Label>
+                  //         <Textarea
+                  //           id="motivation"
+                  //           value={participationForm.motivation}
+                  //           onChange={(e) => handleInputChange('motivation', e.target.value)}
+                  //           placeholder="Pourquoi souhaitez-vous participer à cet événement ?"
+                  //           rows={3}
+                  //         />
+                  //       </div>
 
-                        <div>
-                          <Label htmlFor="experience_level">Niveau d'expérience</Label>
-                          <Select value={participationForm.experience_level} onValueChange={(value) => handleInputChange('experience_level', value)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionnez votre niveau" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="beginner">Débutant</SelectItem>
-                              <SelectItem value="intermediate">Intermédiaire</SelectItem>
-                              <SelectItem value="advanced">Avancé</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  //       <div>
+                  //         <Label htmlFor="experience_level">Niveau d'expérience</Label>
+                  //         <Select value={participationForm.experience_level} onValueChange={(value) => handleInputChange('experience_level', value)}>
+                  //           <SelectTrigger>
+                  //             <SelectValue placeholder="Sélectionnez votre niveau" />
+                  //           </SelectTrigger>
+                  //           <SelectContent>
+                  //             <SelectItem value="beginner">Débutant</SelectItem>
+                  //             <SelectItem value="intermediate">Intermédiaire</SelectItem>
+                  //             <SelectItem value="advanced">Avancé</SelectItem>
+                  //           </SelectContent>
+                  //         </Select>
+                  //       </div>
 
-                        <div>
-                          <Label htmlFor="portfolio_url">Portfolio (URL)</Label>
-                          <Input
-                            id="portfolio_url"
-                            type="url"
-                            value={participationForm.portfolio_url}
-                            onChange={(e) => handleInputChange('portfolio_url', e.target.value)}
-                            placeholder="https://monportfolio.com"
-                          />
-                        </div>
+                  //       <div>
+                  //         <Label htmlFor="portfolio_url">Portfolio (URL)</Label>
+                  //         <Input
+                  //           id="portfolio_url"
+                  //           type="url"
+                  //           value={participationForm.portfolio_url}
+                  //           onChange={(e) => handleInputChange('portfolio_url', e.target.value)}
+                  //           placeholder="https://monportfolio.com"
+                  //         />
+                  //       </div>
 
-                        {event.event_type === 'competition' && (
-                          <div>
-                            <Label htmlFor="team_members">Membres de l'équipe (si applicable)</Label>
-                            <Textarea
-                              id="team_members"
-                              value={participationForm.team_members}
-                              onChange={(e) => handleInputChange('team_members', e.target.value)}
-                              placeholder="Noms et rôles des membres de votre équipe..."
-                              rows={2}
-                            />
-                          </div>
-                        )}
+                  //       {event.event_type === 'competition' && (
+                  //         <div>
+                  //           <Label htmlFor="team_members">Membres de l'équipe (si applicable)</Label>
+                  //           <Textarea
+                  //             id="team_members"
+                  //             value={participationForm.team_members}
+                  //             onChange={(e) => handleInputChange('team_members', e.target.value)}
+                  //             placeholder="Noms et rôles des membres de votre équipe..."
+                  //             rows={2}
+                  //           />
+                  //         </div>
+                  //       )}
 
-                        <div>
-                          <Label htmlFor="additional_info">Informations supplémentaires</Label>
-                          <Textarea
-                            id="additional_info"
-                            value={participationForm.additional_info}
-                            onChange={(e) => handleInputChange('additional_info', e.target.value)}
-                            placeholder="Toute information supplémentaire que vous souhaitez partager..."
-                            rows={2}
-                          />
-                        </div>
+                  //       <div>
+                  //         <Label htmlFor="additional_info">Informations supplémentaires</Label>
+                  //         <Textarea
+                  //           id="additional_info"
+                  //           value={participationForm.additional_info}
+                  //           onChange={(e) => handleInputChange('additional_info', e.target.value)}
+                  //           placeholder="Toute information supplémentaire que vous souhaitez partager..."
+                  //           rows={2}
+                  //         />
+                  //       </div>
 
-                        <Button 
-                          onClick={handleSubmitParticipation}
-                          disabled={participating}
-                          className="w-full bg-purple-600 hover:bg-purple-700"
-                        >
-                          {participating ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Envoi en cours...
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4 mr-2" />
-                              {event.event_type === 'competition' ? 'Confirmer ma participation' : 'Confirmer mon inscription'}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  //       <Button 
+                  //         onClick={handleSubmitParticipation}
+                  //         disabled={participating}
+                  //         className="w-full bg-purple-600 hover:bg-purple-700"
+                  //       >
+                  //         {participating ? (
+                  //           <>
+                  //             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  //             Envoi en cours...
+                  //           </>
+                  //         ) : (
+                  //           <>
+                  //             <Send className="h-4 w-4 mr-2" />
+                  //             {event.event_type === 'competition' ? 'Confirmer ma participation' : 'Confirmer mon inscription'}
+                  //           </>
+                  //         )}
+                  //       </Button>
+                  //     </div>
+                  //   </DialogContent>
+                  // </Dialog>
                 )}
               </CardContent>
             </Card>

@@ -400,7 +400,7 @@ const Events = () => {
                                 onClick={() => incrementEventViews(event.id)}
                               >
                                 <Link to={`/events/${event.id}`}>
-                                  {event.event_type === 'competition' ? 'Participer' : 'S\'inscrire'}
+                                  Voir Plus
                                 </Link>
                               </Button>
                             ) : (

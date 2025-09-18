@@ -22,7 +22,9 @@ import {
   ChevronRight,
   Bell,
   Crown,
-  HeartHandshake
+  HeartHandshake,
+  Menu,
+  X
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -55,6 +57,7 @@ const ModernDashboard = () => {
   const { membership } = useMembership();
   const { t } = useLanguage();
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Track card types (essential, premium, elite, child) to support multiple cards display
   const [cardTypes, setCardTypes] = useState<Array<'essential' | 'premium' | 'elite' | 'child'>>([]);
@@ -216,36 +219,61 @@ const ModernDashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Mobile menu overlay with transition */}
+      <div 
+        className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${
+          isMobileMenuOpen 
+            ? 'opacity-100 visible' 
+            : 'opacity-0 invisible'
+        }`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      >
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300" />
+      </div>
+
       {/* Sidebar */}
-      <div className="w-64 bg-blue-600 text-white flex flex-col">
+      <div className={`
+        fixed md:relative z-50
+        w-64 bg-blue-600 text-white flex flex-col
+        transform transition-all duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}
+        h-screen overflow-y-auto
+      `}>
         {/* Logo */}
-        <div className="p-6 border-b border-blue-500">
+        <div className="p-6 border-b border-blue-500 flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <Link to="/" className="flex items-center">
-                  <img
-                    src={"/lovable-uploads/logo.png"}
-                    alt="Elverra Global"
-                    className="h-8 w-auto object-contain"
-                  />
-                </Link>
-              </div>
+              <Link to="/" className="flex items-center">
+                <img
+                  src={"/lovable-uploads/logo.png"}
+                  alt="Elverra Global"
+                  className="h-8 w-auto object-contain"
+                />
+              </Link>
             </div>
             <div>
               <h2 className="font-bold text-lg">ELVERRA GLOBAL</h2>
               <p className="text-blue-200 text-sm">Client Dashboard</p>
             </div>
           </div>
+          <button 
+            className="md:hidden p-2 -mr-2"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6">
+        <nav className="flex-1 px-4 py-6 overflow-y-auto">
           <ul className="space-y-2">
             {sidebarItems.map((item) => (
               <li key={item.id}>
                 <button
-                  onClick={() => setActiveSection(item.id)}
+                  onClick={() => {
+                    setActiveSection(item.id);
+                    setIsMobileMenuOpen(false);
+                  }}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                     activeSection === item.id
                       ? 'bg-blue-700 text-white'
@@ -263,7 +291,10 @@ const ModernDashboard = () => {
         {/* Logout */}
         <div className="flex gap-3 p-4 border-t border-blue-500">
           <button
-            onClick={() => setActiveSection("account")}
+            onClick={() => {
+              setActiveSection("account");
+              setIsMobileMenuOpen(false);
+            }}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
               activeSection === "account"
                 ? 'bg-blue-700 text-white'
@@ -274,7 +305,10 @@ const ModernDashboard = () => {
             <span className="text-sm font-medium">{t('nav.account')}</span>
           </button>
           <button
-            onClick={handleSignOut}
+            onClick={() => {
+              handleSignOut();
+              setIsMobileMenuOpen(false);
+            }}
             className="flex items-center justify-center px-4 py-3 text-blue-100 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
             title="Se déconnecter"
           >
@@ -284,11 +318,17 @@ const ModernDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden md:ml-0 transition-all duration-300">
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
+              <button 
+                className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700"
+                onClick={() => setIsMobileMenuOpen(true)}
+              >
+                <Menu className="h-6 w-6" />
+              </button>
               <div className="w-12 h-12 rounded-full overflow-hidden">
                 <img 
                   src={profile?.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff`}

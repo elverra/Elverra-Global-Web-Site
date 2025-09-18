@@ -142,7 +142,7 @@ const translations = {
     'osecours_services': 'Ô Secours Services',
     'active': 'Active',
     'inactive': 'Inactive',
-    'help': 'Help',
+    'help': 'Disclaimer',
     'your_subscription': 'Your Subscription',
     'subscription_description': 'Manage your Ô Secours subscription and token balances.',
     'status': 'Status',
