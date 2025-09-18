@@ -112,9 +112,9 @@ const LoginForm = () => {
           } else if (/invalid phone format/i.test(error)) {
             friendly = 'Format du numéro invalide. Utilisez +223XXXXXXXX ou 8 chiffres (Mali).';
           }
-          const viaEmail = meta?.resolvedEmail ? ` (via ${meta.resolvedEmail})` : '';
-          toast({ title: 'Connexion échouée', description: friendly + viaEmail, variant: 'destructive' });
-          setStatus({ type: 'error', message: friendly + viaEmail });
+       
+       
+          setStatus({ type: 'error', message: friendly });
           setLoading(false);
           return;
         }
@@ -200,28 +200,10 @@ const LoginForm = () => {
             </form>
           </TabsContent>
 
-          <TabsContent value="faceid">
-            <div className="py-8 text-center space-y-4">
-              <div className="bg-gray-100 w-32 h-32 rounded-full mx-auto flex items-center justify-center">
-                <User className="h-16 w-16 text-gray-400" />
-              </div>
-              <p className="text-gray-600">
-                This feature requires the Elverra Mobile App
-              </p>
-              <Button className="bg-club66-purple hover:bg-club66-darkpurple">
-                Download Our App
-              </Button>
-            </div>
-          </TabsContent>
+          
         </Tabs>
       </CardContent>
       <CardFooter className="flex flex-col">
-        <div className="relative my-4 w-full">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200"></div>
-          </div>
-          <div className="relative flex justify-center text-xs"></div>
-        </div>
         
       </CardFooter>
     </Card>

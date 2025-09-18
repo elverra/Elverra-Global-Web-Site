@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { BookOpen, Plus, Edit, Trash2, Upload, Eye, Download, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Ebook {
   id: string;
@@ -44,6 +45,7 @@ const categories = [
 ];
 
 const EbookManagement = () => {
+  const { user } = useAuth();
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -92,97 +94,147 @@ const EbookManagement = () => {
   };
 
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
+    if (!user) {
+      toast.error('Vous devez être connecté pour téléverser des fichiers');
+      return null;
+    }
+
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${user.id}_${Date.now()}.${fileExt}`;
       const filePath = `${path}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('ebooks')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message.includes('duplicate')) {
+          throw new Error('Un fichier avec ce nom existe déjà');
+        }
+        throw uploadError;
+      }
 
-      const { data } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('ebooks')
         .getPublicUrl(filePath);
 
-      return data.publicUrl;
+      return publicUrl;
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Erreur de téléversement:', error);
+      toast.error(error instanceof Error ? error.message : 'Erreur lors du téléversement du fichier');
       return null;
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast.error('Vous devez être connecté pour effectuer cette action');
+      return;
+    }
+
     setUploading(true);
 
     try {
+      // Validation des champs requis
+      if (!formData.title || !formData.author || !formData.category) {
+        throw new Error('Veuillez remplir tous les champs obligatoires');
+      }
+
+      // Vérification des fichiers
+      if (!editingEbook && !ebookFile) {
+        throw new Error('Veuillez sélectionner un fichier pour l\'ebook');
+      }
+
+      if (ebookFile && ebookFile.size > 50 * 1024 * 1024) { // 50MB max
+        throw new Error('La taille du fichier ne doit pas dépasser 50MB');
+      }
+
       let coverImageUrl = editingEbook?.cover_image_url || '';
       let fileUrl = editingEbook?.file_url || '';
       let fileSizeMb = editingEbook?.file_size_mb || 0;
       let fileType = editingEbook?.file_type || 'pdf';
 
-      // Upload cover image if provided
+      // Téléverser l'image de couverture si fournie
       if (coverFile) {
         const uploadedCoverUrl = await uploadFile(coverFile, 'covers');
-        if (uploadedCoverUrl) coverImageUrl = uploadedCoverUrl;
+        if (!uploadedCoverUrl) {
+          throw new Error('Échec du téléversement de l\'image de couverture');
+        }
+        coverImageUrl = uploadedCoverUrl;
       }
 
-      // Upload ebook file if provided
+      // Téléverser le fichier de l'ebook si fourni
       if (ebookFile) {
         const uploadedFileUrl = await uploadFile(ebookFile, 'files');
-        if (uploadedFileUrl) {
-          fileUrl = uploadedFileUrl;
-          fileSizeMb = ebookFile.size / (1024 * 1024); // Convert to MB
-          fileType = ebookFile.name.split('.').pop()?.toLowerCase() || 'pdf';
+        if (!uploadedFileUrl) {
+          throw new Error('Échec du téléversement du fichier de l\'ebook');
         }
+        fileUrl = uploadedFileUrl;
+        fileSizeMb = parseFloat((ebookFile.size / (1024 * 1024)).toFixed(2)); // Convertir en MB avec 2 décimales
+        fileType = ebookFile.name.split('.').pop()?.toLowerCase() || 'pdf';
       }
 
       const ebookData = {
-        title: formData.title,
-        author: formData.author,
-        description: formData.description,
+        title: formData.title.trim(),
+        author: formData.author.trim(),
+        description: formData.description.trim(),
         category: formData.category,
-        pages: formData.pages,
-        publish_date: formData.publish_date,
+        pages: Number(formData.pages) || 0,
+        publish_date: formData.publish_date || new Date().toISOString().split('T')[0],
         cover_image_url: coverImageUrl,
         file_url: fileUrl,
         file_type: fileType,
         file_size_mb: fileSizeMb,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        tags: formData.tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(Boolean)
+          .slice(0, 10), // Limiter à 10 tags maximum
         featured: formData.featured,
         is_free: formData.is_free,
-        price: formData.is_free ? 0 : formData.price,
-        updated_at: new Date().toISOString()
+        price: formData.is_free ? 0 : Math.max(0, Number(formData.price) || 0),
+        updated_at: new Date().toISOString(),
+        created_by: user.id
       };
 
-      if (editingEbook) {
-        // Update existing ebook
-        const { error } = await supabase
-          .from('ebooks')
-          .update(ebookData)
-          .eq('id', editingEbook.id);
+      // Utiliser une transaction pour s'assurer que tout se passe bien
+      const { data, error } = editingEbook 
+        ? await supabase
+            .from('ebooks')
+            .update(ebookData)
+            .eq('id', editingEbook.id)
+            .select()
+        : await supabase
+            .from('ebooks')
+            .insert([ebookData])
+            .select();
 
-        if (error) throw error;
-        toast.success('Ebook updated successfully');
-      } else {
-        // Create new ebook
-        const { error } = await supabase
-          .from('ebooks')
-          .insert([{ ...ebookData, created_by: (await supabase.auth.getUser()).data.user?.id }]);
-
-        if (error) throw error;
-        toast.success('Ebook created successfully');
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error(`Erreur lors de la ${editingEbook ? 'mise à jour' : 'création'} de l'ebook`);
       }
 
+      if (!data || data.length === 0) {
+        throw new Error('Aucune donnée retournée après la sauvegarde');
+      }
+
+      toast.success(`Ebook ${editingEbook ? 'mis à jour' : 'créé'} avec succès`);
       setDialogOpen(false);
       resetForm();
-      fetchEbooks();
+      await fetchEbooks();
     } catch (error) {
       console.error('Error saving ebook:', error);
-      toast.error('Failed to save ebook');
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : `Erreur lors de la ${editingEbook ? 'mise à jour' : 'création'} de l'ebook`
+      );
     } finally {
       setUploading(false);
     }
@@ -206,36 +258,108 @@ const EbookManagement = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this ebook?')) return;
+    if (!user) {
+      toast.error('Vous devez être connecté pour supprimer un ebook');
+      return;
+    }
+
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet ebook ? Cette action est irréversible.')) {
+      return;
+    }
 
     try {
-      const { error } = await supabase
+      // Vérifier d'abord si l'utilisateur a les droits de suppression
+      const { data: ebook, error: fetchError } = await supabase
+        .from('ebooks')
+        .select('created_by')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Vérifier si l'utilisateur est l'auteur ou un administrateur
+      const { data: userData } = await supabase.auth.getUser();
+      const isAdmin = userData.user?.user_metadata?.role === 'admin';
+      
+      if (user.id !== ebook.created_by && !isAdmin) {
+        throw new Error('Vous n\'êtes pas autorisé à supprimer cet ebook');
+      }
+
+      // Supprimer d'abord les fichiers associés s'ils existent
+      if (editingEbook?.cover_image_url) {
+        const coverPath = editingEbook.cover_image_url.split('/').pop();
+        if (coverPath) {
+          await supabase.storage
+            .from('ebooks')
+            .remove([`covers/${coverPath}`]);
+        }
+      }
+
+      if (editingEbook?.file_url) {
+        const filePath = editingEbook.file_url.split('/').pop();
+        if (filePath) {
+          await supabase.storage
+            .from('ebooks')
+            .remove([`files/${filePath}`]);
+        }
+      }
+
+      // Ensuite supprimer l'entrée de la base de données
+      const { error: deleteError } = await supabase
         .from('ebooks')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
-      toast.success('Ebook deleted successfully');
-      fetchEbooks();
+      if (deleteError) throw deleteError;
+      
+      toast.success('Ebook supprimé avec succès');
+      await fetchEbooks();
     } catch (error) {
-      console.error('Error deleting ebook:', error);
-      toast.error('Failed to delete ebook');
+      console.error('Erreur lors de la suppression de l\'ebook:', error);
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : 'Une erreur est survenue lors de la suppression de l\'ebook'
+      );
     }
   };
 
   const toggleFeatured = async (id: string, featured: boolean) => {
+    if (!user) {
+      toast.error('Vous devez être connecté pour effectuer cette action');
+      return;
+    }
+
     try {
+      // Vérifier les droits d'administration
+      const { data: userData } = await supabase.auth.getUser();
+      const isAdmin = userData.user?.user_metadata?.role === 'admin';
+      
+      if (!isAdmin) {
+        throw new Error('Seuls les administrateurs peuvent mettre en avant des ebooks');
+      }
+
       const { error } = await supabase
         .from('ebooks')
-        .update({ featured: !featured })
+        .update({ 
+          featured: !featured,
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', id);
 
       if (error) throw error;
-      toast.success(`Ebook ${!featured ? 'featured' : 'unfeatured'} successfully`);
-      fetchEbooks();
+      
+      toast.success(
+        `Ebook ${!featured ? 'mis en avant' : 'retiré des mises en avant'} avec succès`
+      );
+      await fetchEbooks();
     } catch (error) {
-      console.error('Error updating ebook:', error);
-      toast.error('Failed to update ebook');
+      console.error('Erreur lors de la mise à jour de l\'ebook:', error);
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : 'Échec de la mise à jour de l\'ebook'
+      );
     }
   };
 
@@ -282,6 +406,9 @@ const EbookManagement = () => {
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingEbook ? 'Edit Ebook' : 'Add New Ebook'}</DialogTitle>
+              <DialogDescription id="dialog-description">
+        This is a description of what this dialog does.
+      </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

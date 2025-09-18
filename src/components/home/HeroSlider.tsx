@@ -76,7 +76,7 @@ const HeroSlider = ({ cmsContent }: HeroSliderProps) => {
       backgroundImage:
         "/lovable-uploads/1.jpeg",
       primaryButton: { text: "Pro Services", link: "/services" },
-      secondaryButton: { text: "Become Partner", link: "/dahsboard" },
+      secondaryButton: { text: "Become an affiliate", link: "/dashboard" },
     },
     {
       id: 3,
