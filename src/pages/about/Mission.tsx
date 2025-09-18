@@ -42,7 +42,7 @@ const Mission = () => {
                 </CardHeader>
                 <CardContent className="text-center">
                   <p className="text-lg leading-relaxed text-gray-700">
-                    We will invest in sectors that will change lives every day by making enormous savings for clients across our entire network service outlets through our special discounts and privileges on goods and service offers from our very own outlets.
+                    We will invest in sectors that will change lives every day by making enormous savings for clients across our entire network of service outlets through our special discounts and privileges on goods and service offers from our very own outlets.
                   </p>
                 </CardContent>
               </Card>

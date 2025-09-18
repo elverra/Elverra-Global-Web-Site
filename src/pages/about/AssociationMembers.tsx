@@ -18,7 +18,7 @@ const teamRoles = [
   },
   {
     id: 3,
-    position: "Head of Department - Acting Head of Sales and Marketing",
+    position: "Head of Department -  Head of Sales and Marketing",
     bio: "Driving sales strategies, marketing initiatives, and ensuring customer satisfaction.",
   },
   {
@@ -34,7 +34,7 @@ const teamRoles = [
   },
   {
     id: 6,
-    position: "Head of Department - Acting Head of Accounting",
+    position: "Head of Department -  Head of Accounting",
     bio: "Overseeing financial reporting, accounting processes, and ensuring compliance with standards.",
   },
   {

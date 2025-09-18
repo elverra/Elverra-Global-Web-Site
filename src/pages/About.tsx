@@ -135,7 +135,7 @@ const About = () => {
                     <p className="text-gray-700 text-lg leading-relaxed text-center">
                       We will invest in sectors that will change lives every day
                       by making enormous savings for clients across our entire
-                      network service outlets through our special discounts and
+                      network of service outlets through our special discounts and
                       privileges on goods and service offers from our very own
                       outlets.
                     </p>

@@ -33,7 +33,7 @@ const Team = () => {
     },
     {
       id: 6,
-      position: "Head of Department - Acting Head of Accounting",
+      position: "Head of Department - Head of Accounting",
       bio: "Overseeing financial reporting, accounting processes, and ensuring compliance with standards.",
     },
     {

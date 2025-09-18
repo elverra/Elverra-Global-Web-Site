@@ -65,7 +65,7 @@ const HeroSlider = ({ cmsContent }: HeroSliderProps) => {
       backgroundImage:
         "/lovable-uploads/0.jpeg",
       primaryButton: { text: "Get My Card", link: "/register" },
-      secondaryButton: { text: "View Benefits", link: "/cards" },
+      secondaryButton: { text: "View Benefits", link: "/about" },
     },
     {
       id: 2,
@@ -76,7 +76,7 @@ const HeroSlider = ({ cmsContent }: HeroSliderProps) => {
       backgroundImage:
         "/lovable-uploads/1.jpeg",
       primaryButton: { text: "Pro Services", link: "/services" },
-      secondaryButton: { text: "Become Partner", link: "/affiliates" },
+      secondaryButton: { text: "Become Partner", link: "/dahsboard" },
     },
     {
       id: 3,

@@ -39,8 +39,41 @@ const AccountSection = () => {
   const { membership } = useMembership();
   const { t, language, setLanguage } = useLanguage();
   
+  // Local profile state as fallback
+  const [localProfile, setLocalProfile] = useState<any>(null);
+  
+  // Fetch profile directly if useUserProfile fails
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        console.log('Direct profile fetch result:', { profileData, error });
+        
+        if (!error && profileData) {
+          setLocalProfile(profileData);
+        }
+      } catch (error) {
+        console.error('Error fetching profile directly:', error);
+      }
+    };
+    
+    if (!profile) {
+      fetchProfile();
+    }
+  }, [user?.id, profile]);
+  
+  // Use profile from hook or local fallback
+  const currentProfile = profile || localProfile;
+  
   // Get member name using the same logic as in ModernDashboard
-  const memberName = (profile?.full_name && profile.full_name.trim())
+  const memberName = (currentProfile?.full_name && currentProfile.full_name.trim())
     || (user?.fullName && user.fullName.trim())
     || (user?.email ? user.email.split('@')[0] : '')
     || 'User';
@@ -48,7 +81,7 @@ const AccountSection = () => {
   // State for card identifier
   const [cardIdentifier, setCardIdentifier] = useState<string>('N/A');
 
-  // Fetch card identifier from membership_cards table
+  // Fetch card identifier from membership_cards table using owner_user_id
   useEffect(() => {
     const fetchCardIdentifier = async () => {
       if (!user?.id) {
@@ -58,49 +91,69 @@ const AccountSection = () => {
       
       try {
         console.log('Fetching card identifier for user:', user.id);
-        const { data: membershipCards, error } = await supabase
+        
+        // Try membership_cards table with owner_user_id
+        const { data: membershipCards, error: cardsError } = await supabase
           .from('membership_cards')
-          .select('card_identifier, user_id, created_at')
-          .eq('user_id', user.id)
+          .select('card_identifier, owner_user_id, created_at')
+          .eq('owner_user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1);
 
-        console.log('Membership cards query result:', { membershipCards, error });
-
-        if (!error && membershipCards && membershipCards.length > 0) {
-          console.log('Setting card identifier:', membershipCards[0].card_identifier);
-          setCardIdentifier(membershipCards[0].card_identifier);
-        } else {
-          console.log('No membership cards found or error occurred');
-          // Fallback: try to get from membership table
-          const { data: membership, error: membershipError } = await supabase
-            .from('memberships')
-            .select('member_id')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-          
-          if (!membershipError && membership && membership.length > 0 && membership[0].member_id) {
-            console.log('Using member_id as fallback:', membership[0].member_id);
-            setCardIdentifier(membership[0].member_id);
-          }
+        console.log('Membership cards query result:', { membershipCards, cardsError });
+        
+        // Log the specific error for debugging
+        if (cardsError) {
+          console.log('Error details:', {
+            code: cardsError.code,
+            message: cardsError.message,
+            details: cardsError.details,
+            hint: cardsError.hint
+          });
         }
+
+        if (!cardsError && membershipCards && membershipCards.length > 0) {
+          const cardId = membershipCards[0].card_identifier;
+          console.log('✅ Found card identifier from membership_cards:', cardId);
+          setCardIdentifier(cardId);
+          return; // Success, exit early
+        }
+        
+        console.log('❌ No membership cards found or RLS error, trying fallback approaches...');
+        
+        // Fallback 1: Generate from membership ID if available
+        if (membership?.id) {
+          const membershipBasedId = `PRM-${membership.id.slice(-8)}`;
+          console.log('🔄 Using membership-based card identifier:', membershipBasedId);
+          setCardIdentifier(membershipBasedId);
+          return;
+        }
+        
+        // Fallback 2: Generate from user ID with better format
+        const fallbackId = `ELV-${user.id.slice(-8).toUpperCase()}`;
+        console.log('🔄 Using user ID fallback for card identifier:', fallbackId);
+        setCardIdentifier(fallbackId);
+        
       } catch (error) {
-        console.error('Error fetching card identifier:', error);
+        console.error('❌ Error fetching card identifier:', error);
+        // Final fallback
+        const fallbackId = `ELV-${user.id.slice(-8).toUpperCase()}`;
+        console.log('🔄 Final fallback card identifier:', fallbackId);
+        setCardIdentifier(fallbackId);
       }
     };
 
     fetchCardIdentifier();
-  }, [user?.id]);
+  }, [user?.id, membership?.id]);
 
   // Profile data state - Initialize with current data
   const [profileData, setProfileData] = useState({
     fullName: memberName,
     email: user?.email || '',
-    phone: profile?.phone || '',
-    address: profile?.address || '',
-    city: profile?.city || '',
-    country: profile?.country || 'Mali',
+    phone: currentProfile?.phone || '',
+    address: currentProfile?.address || '',
+    city: currentProfile?.city || '',
+    country: currentProfile?.country || 'Mali',
     bio: '',
     dateOfBirth: '',
     gender: '',
@@ -113,24 +166,26 @@ const AccountSection = () => {
       ...prev,
       fullName: memberName,
       email: user?.email || '',
-      phone: profile?.phone || '',
-      address: profile?.address || '',
-      city: profile?.city || '',
-      country: profile?.country || 'Mali'
+      phone: currentProfile?.phone || '',
+      address: currentProfile?.address || '',
+      city: currentProfile?.city || '',
+      country: currentProfile?.country || 'Mali'
     }));
-  }, [memberName, user?.email, profile?.phone, profile?.address, profile?.city, profile?.country]);
+  }, [memberName, user?.email, currentProfile?.phone, currentProfile?.address, currentProfile?.city, currentProfile?.country]);
 
   // Debug effect to log member data
   useEffect(() => {
     console.log('=== DEBUG - Member data ===');
     console.log('memberName:', memberName);
     console.log('cardIdentifier:', cardIdentifier);
-    console.log('profile object:', profile);
+    console.log('profile object (hook):', profile);
+    console.log('localProfile object:', localProfile);
+    console.log('currentProfile object:', currentProfile);
     console.log('user object:', user);
     console.log('membership object:', membership);
     console.log('profileData state:', profileData);
     console.log('========================');
-  }, [memberName, cardIdentifier, profile, user, membership, profileData]);
+  }, [memberName, cardIdentifier, profile, localProfile, currentProfile, user, membership, profileData]);
 
   // Security settings
   const [securitySettings, setSecuritySettings] = useState({
@@ -213,7 +268,7 @@ const AccountSection = () => {
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <img
-                    src={profile?.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff&size=128`}
+                    src={currentProfile?.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff&size=128`}
                     alt="Profile"
                     className="w-24 h-24 rounded-full object-cover"
                   />
@@ -618,11 +673,12 @@ const AccountSection = () => {
                 <MemberDigitalCard
                   memberName={memberName}
                   memberID={cardIdentifier}
+                  userID={user?.id || ''}
                   expiryDate={membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString() : 'N/A'}
                   membershipTier={membership?.tier ? (membership.tier.charAt(0).toUpperCase() + membership.tier.slice(1)) as 'Essential' | 'Premium' | 'Elite' | 'Child' : 'Essential'}
-                  profileImage={profile?.profile_image_url}
-                  address={profile?.address}
-                  city={profile?.city}
+                  profileImage={currentProfile?.profile_image_url}
+                  address={currentProfile?.address}
+                  city={currentProfile?.city}
                   serialNumber={membership?.member_id}
                   isPaymentComplete={membership?.is_active || false}
                   subscriptionStatus={membership?.is_active ? 'active' : 'expired'}

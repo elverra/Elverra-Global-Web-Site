@@ -153,18 +153,30 @@ const Register = () => {
       let identityCardUrl = null;
 
       if (supa.user?.id) {
+        console.log('Starting image uploads for user:', supa.user.id);
+        
         if (profileImage) {
+          console.log('Uploading profile image...');
           const compressedProfile = await compressImage(profileImage);
           const profileResult = await uploadProfileImage(compressedProfile, supa.user.id);
+          console.log('Profile image upload result:', profileResult);
           if (profileResult.success) {
             profileImageUrl = profileResult.url;
+            console.log('Profile image URL:', profileImageUrl);
+          } else {
+            console.error('Profile image upload failed:', profileResult.error);
           }
         }
 
         if (identityCardImage) {
+          console.log('Uploading identity card image...');
           const identityResult = await uploadIdentityCardImage(identityCardImage, supa.user.id);
+          console.log('Identity card upload result:', identityResult);
           if (identityResult.success) {
             identityCardUrl = identityResult.url;
+            console.log('Identity card URL:', identityCardUrl);
+          } else {
+            console.error('Identity card upload failed:', identityResult.error);
           }
         }
       }
@@ -192,27 +204,51 @@ const Register = () => {
           }
 
           console.log('Updating profile with data:', updateData);
+          console.log('Profile image URL to save:', profileImageUrl);
+          console.log('Identity card URL to save:', identityCardUrl);
           
-          const { error: updateError } = await supabase
+          // First, check if profile exists
+          const { data: existingProfile, error: checkError } = await supabase
             .from('profiles')
-            .update(updateData)
-            .eq('id', uid);
-            
-          if (updateError) {
-            console.error('Profile update error:', updateError);
-            // Try upsert instead
-            const { error: upsertError } = await supabase
+            .select('id')
+            .eq('id', uid)
+            .single();
+          
+          console.log('Existing profile check:', { existingProfile, checkError });
+          
+          if (existingProfile) {
+            // Profile exists, update it
+            const { error: updateError } = await supabase
               .from('profiles')
-              .upsert({ id: uid, ...updateData });
+              .update(updateData)
+              .eq('id', uid);
             
-            if (upsertError) {
-              console.error('Profile upsert error:', upsertError);
+            if (updateError) {
+              console.error('Profile update error:', updateError);
             } else {
-              console.log('Profile upserted successfully');
+              console.log('Profile updated successfully with image URLs');
             }
           } else {
-            console.log('Profile updated successfully');
+            // Profile doesn't exist, create it
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({ id: uid, ...updateData });
+            
+            if (insertError) {
+              console.error('Profile insert error:', insertError);
+            } else {
+              console.log('Profile created successfully with image URLs');
+            }
           }
+          
+          // Verify the data was saved
+          const { data: verifyProfile, error: verifyError } = await supabase
+            .from('profiles')
+            .select('profile_image_url, identity_card_image_url, full_name, city, address')
+            .eq('id', uid)
+            .single();
+          
+          console.log('Profile verification after save:', { verifyProfile, verifyError });
 
           // Update physical card request status in profiles if requested
           if (registrationData.physical_card_requested) {

@@ -6,7 +6,8 @@ import QRCodeGenerator from '@/components/utilities/QRCodeGenerator';
 
 interface MemberDigitalCardProps {
   memberName: string;
-  memberID: string;
+  memberID: string; // This is the card_identifier for display
+  userID: string; // This is the user ID for QR code
   expiryDate: string;
   membershipTier: 'Essential' | 'Premium' | 'Elite' | 'Child';
   profileImage?: string;
@@ -20,6 +21,7 @@ interface MemberDigitalCardProps {
 const MemberDigitalCard = ({ 
   memberName, 
   memberID, 
+  userID,
   expiryDate, 
   membershipTier,
   profileImage,
@@ -34,8 +36,19 @@ const MemberDigitalCard = ({
   // Generate serial number if not provided
   const cardSerialNumber = serialNumber || `ELV-${membershipTier.toUpperCase()}-${Date.now().toString().slice(-6)}`;
   
-  // Create QR data containing only user ID as requested
-  const qrData = memberID;
+  // Create QR data containing the user ID (not card_identifier)
+  const qrData = userID;
+  
+  // Debug: Log the data being used
+  console.log('MemberDigitalCard Debug:', {
+    memberName,
+    memberID, // This is the card_identifier for display
+    userID, // This is the user ID for QR code
+    qrData,
+    membershipTier,
+    address,
+    city
+  });
 
   // Don't show card if payment is not complete
   if (!isPaymentComplete) {

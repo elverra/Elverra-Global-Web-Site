@@ -357,10 +357,8 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
       return;
     }
 
-    console.log('Starting payment status polling for:', paymentReference);
     const interval = setInterval(async () => {
       try {
-        console.log('Polling payment status for ID:', paymentReference);
         const token = localStorage.getItem('token');
         if (!token) {
           console.warn('Authentication token is missing during polling');
@@ -383,10 +381,8 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
           }),
         });
         const data = await response.json();
-        console.log('Payment verification response:', data);
 
         if (data.success && data.status === 'completed') {
-          console.log('Payment completed successfully!');
           setPaymentInitiated(false);
           clearInterval(interval);
 
@@ -437,7 +433,7 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {paymentInitiated ? (
+          {/* {paymentInitiated ? (
             <div className="text-center space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
               <p className="text-lg font-semibold">Waiting for payment confirmation...</p>
@@ -622,7 +618,22 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
 
               {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700">{error}</div>}
             </>
-          )}
+          )} */}
+            <div className="text-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
+              <p className="text-lg font-semibold">Waiting for payment confirmation...</p>
+              <p className="text-sm text-gray-600">Please completed your payment with our marchang code #144#8*718285*price*secret code# ok</p>
+              <p className="text-sm text-gray-600">After payment comfirmation please call</p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPaymentInitiated(false);
+                  onClose?.();
+                }}
+              >
+                Cancel and Close
+              </Button>
+            </div>
         </CardContent>
       </Card>
     </div>
