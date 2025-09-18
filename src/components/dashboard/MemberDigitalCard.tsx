@@ -163,7 +163,7 @@ const MemberDigitalCard = ({
         style={{
           aspectRatio: '1.6/1',
           width: '100%',
-          maxWidth: '400px',
+          maxWidth: '480px',
           backgroundImage: `url('${cardImage}')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -173,50 +173,39 @@ const MemberDigitalCard = ({
         }}
       >
         {/* Card Content */}
-        <div className="relative p-6 h-full flex flex-col">
+        <div className="relative p-5 h-full flex flex-col">
           {/* Member Name and Status */}
-          <div className="mb-8">
+          <div className="mt-24">
             <h2 className="text-2xl font-bold mb-1">{memberName}</h2>
             <div className="flex items-center gap-2">
               <span className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs font-medium">
                 {membershipTier}
               </span>
-              <span className="text-xs opacity-90">
-                {subscriptionStatus === 'active' ? '✅ Active' : 
-                 subscriptionStatus === 'expired' ? '❌ Expired' : '⏳ Pending'}
-              </span>
+             
             </div>
           </div>
 
           {/* Member Details */}
           <div className="mt-auto space-y-2 text-sm">
-            {address && (
-              <div className="flex items-start">
-                <span className="w-20 font-medium">Address:</span>
-                <span className="flex-1">{address}</span>
-              </div>
-            )}
-            
             {city && (
               <div className="flex items-center">
-                <span className="w-20 font-medium">City:</span>
                 <span>{city}</span>
               </div>
             )}
             
             <div className="flex items-center">
-              <span className="w-20 font-medium">ID:</span>
+              <span className="w-10 font-medium">ID:</span>
               <span className="font-mono">{memberID || 'N/A'}</span>
             </div>
             
-            <div className="flex items-center">
-              <span className="w-20 font-medium">Expires:</span>
+            <div className="flex gap-28">
+              <span className="w-20 font-medium"></span>
               <span>{formatDate(expiryDate)}</span>
             </div>
           </div>
           
           {/* QR Code */}
-          <div className="absolute bottom-4 right-4 bg-white p-1.5 rounded">
+          <div className="absolute bottom-7 right-5 bg-white p-1.5 rounded">
             <QRCodeGenerator
               data={qrData}
               size={60}

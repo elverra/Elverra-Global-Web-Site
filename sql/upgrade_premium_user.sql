@@ -1,7 +1,7 @@
 DO $$
 DECLARE
   -- REMPLACEZ ICI: l'UUID du profil existant (public.profiles.id)
-  v_profile_id uuid := '44994c69-1d18-4fab-ae62-a5a20012fe60';
+  v_profile_id uuid := '24ec6031-5551-4e29-a959-7150c1c4de94';
 
   v_premium_names text[] := ARRAY['premium','adult premium','premium adulte','adult_premium'];
 

@@ -14,6 +14,26 @@ import { CreditCard, Search, Eye, Package, Truck, CheckCircle, XCircle, Clock, U
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
 
+
+interface MembershipCard {
+  id: string;
+  card_identifier: string;
+  owner_user_id: string;
+  product_id?: string;  // Optionnel car c'est une clé étrangère
+  qr_code: string;
+  created_at: string;
+  qr_data?: QrData; 
+  updated_at?: string;
+  // Ajoutez d'autres champs si nécessaire
+}
+interface QrData {
+  tier: string;
+  type: string;
+  user_id: string;
+  subscription_id: string;
+}
+
+
 interface PhysicalCardRequest {
   id: string;
   full_name: string;
@@ -24,6 +44,7 @@ interface PhysicalCardRequest {
   address: string;
   membership_tier: string;
   affiliate_code?: string;
+ 
   physical_card_requested: boolean;
   has_physical_card: boolean;
   physical_card_status: 'not_requested' | 'requested' | 'approved' | 'printing' | 'shipped' | 'delivered';
@@ -32,6 +53,7 @@ interface PhysicalCardRequest {
   physical_card_tracking_number?: string;
   physical_card_notes?: string;
   created_at: string;
+  membership_cards: MembershipCard[];  // Tableau de cartes
 }
 
 const PhysicalCardRequests = () => {
@@ -41,34 +63,73 @@ const PhysicalCardRequests = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRequest, setSelectedRequest] = useState<PhysicalCardRequest | null>(null);
   const [updating, setUpdating] = useState(false);
-
-  // Fetch physical card requests from profiles
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      console.log('🔄 Fetching card requests...');
+      
+      // Récupération des profils
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .eq('physical_card_requested', true)
         .order('physical_card_request_date', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching physical card requests:', error);
-        toast.error('Erreur lors du chargement des demandes de cartes physiques');
+  
+      if (profilesError) throw profilesError;
+      if (!profiles?.length) {
+        console.log('No profiles with card requests found');
         setRequests([]);
         return;
       }
-
-      setRequests(data || []);
+  
+      // Récupération des cartes
+      const { data: cards, error: cardsError } = await supabase
+        .from('membership_cards')
+        .select('*')
+        .in('owner_user_id', profiles.map(p => p.id));
+  
+      if (cardsError) throw cardsError;
+  
+      // Fusion et parsing des données
+      const profilesWithCards = profiles.map(profile => {
+        const userCards = cards?.filter(card => card.owner_user_id === profile.id) || [];
+        
+        // Parse qr_data pour chaque carte
+        const parsedCards = userCards.map(card => {
+          // Vérifier si qr_data est déjà un objet ou une chaîne JSON
+          let qrData = card.qr_data;
+          
+          if (typeof qrData === 'string') {
+            try {
+              qrData = JSON.parse(qrData);
+            } catch (e) {
+              console.error('Error parsing qr_data for card', card.id, e);
+              qrData = null;
+            }
+          }
+          
+          return {
+            ...card,
+            qr_data: qrData
+          };
+        });
+  
+        return {
+          ...profile,
+          membership_cards: parsedCards
+        };
+      });
+  
+      console.log('✅ Fetched profiles with cards:', profilesWithCards);
+      setRequests(profilesWithCards);
     } catch (error) {
-      console.error('Error fetching physical card requests:', error);
-      toast.error('Erreur lors du chargement des demandes de cartes physiques');
+      console.error('❌ Error in fetchRequests:', error);
+      toast.error('Erreur lors du chargement des demandes: ' + (error as Error).message);
       setRequests([]);
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchRequests();
   }, []);
@@ -308,10 +369,10 @@ const PhysicalCardRequests = () => {
                       <TableRow>
                         <TableHead>Customer</TableHead>
                         <TableHead>User ID</TableHead>
-                        <TableHead>Card Reference</TableHead>
                         <TableHead>Membership</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Request Date</TableHead>
+                        <TableHead>Card Reference</TableHead>
                         <TableHead>Location</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -323,6 +384,7 @@ const PhysicalCardRequests = () => {
                         
                         return (
                           <TableRow key={request.id}>
+                          
                             <TableCell>
                               <div>
                                 <div className="font-medium">{request.full_name}</div>
@@ -337,29 +399,29 @@ const PhysicalCardRequests = () => {
                                 Full: {request.id}
                               </div>
                             </TableCell>
+                          
+                          
                             <TableCell>
-                              <div className="font-mono text-sm">
-                                {request.physical_card_tracking_number ? (
-                                  <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                    {request.physical_card_tracking_number}
-                                  </div>
-                                ) : (
-                                  <div className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs">
-                                    No reference
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <Badge variant="outline">{request.membership_tier}</Badge>
-                                {request.affiliate_code && (
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    Ref: {request.affiliate_code}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
+  <div className="font-mono text-sm">
+    {request.membership_cards?.length > 0 ? (
+      <div className="space-y-1">
+        {request.membership_cards.map((card) => (
+          <div key={card.id} className="flex items-center">
+            {card.qr_data?.tier ? (
+              <Badge variant="outline" className="capitalize">
+                {card.qr_data.tier}
+              </Badge>
+            ) : (
+              <span className="text-xs text-gray-500">-</span>
+            )}
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="text-xs text-gray-500">Aucune carte</div>
+    )}
+  </div>
+</TableCell>
                             <TableCell>
                               <Badge variant={statusConfig.variant} className="flex items-center gap-1 w-fit">
                                 <StatusIcon className="h-3 w-3" />
@@ -372,6 +434,26 @@ const PhysicalCardRequests = () => {
                                 : '—'
                               }
                             </TableCell>
+                            <TableCell>
+  <div className="font-mono text-sm">
+    {request.membership_cards?.length > 0 ? (
+      <div className="space-y-1">
+        {request.membership_cards.map(card => (
+          <div key={card.id} className="bg-blue-50 p-2 rounded">
+            <div className="font-medium">{card.card_identifier}</div>
+            <div className="text-xs text-gray-500">
+              QR: {card.qr_code.substring(0, 8)}...
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs">
+        No card
+      </div>
+    )}
+  </div>
+</TableCell>
                             <TableCell>
                               <div className="text-sm">
                                 <div>{request.city}</div>

@@ -32,6 +32,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 
 const AccountSection = () => {
   const { user } = useAuth();
@@ -78,73 +79,63 @@ const AccountSection = () => {
     || (user?.email ? user.email.split('@')[0] : '')
     || 'User';
 
-  // State for card identifier
-  const [cardIdentifier, setCardIdentifier] = useState<string>('N/A');
+  // State for all user cards
+  const [userCards, setUserCards] = useState<any[]>([]);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  
+  // Get current card or fallback
+  const currentCard = userCards.length > 0 ? userCards[currentCardIndex] : null;
+  const cardIdentifier = currentCard?.card_identifier || 'N/A';
 
-  // Fetch card identifier from membership_cards table using owner_user_id
+  // Fetch all user cards from membership_cards table
   useEffect(() => {
-    const fetchCardIdentifier = async () => {
+    const fetchUserCards = async () => {
       if (!user?.id) {
-        console.log('No user ID available for card identifier fetch');
+        console.log('No user ID available for cards fetch');
         return;
       }
       
       try {
-        console.log('Fetching card identifier for user:', user.id);
+        console.log('Fetching all cards for user:', user.id);
         
-        // Try membership_cards table with owner_user_id
+        // Récupération des cartes depuis la table membership_cards
         const { data: membershipCards, error: cardsError } = await supabase
           .from('membership_cards')
-          .select('card_identifier, owner_user_id, created_at')
+          .select('card_identifier, owner_user_id, created_at, card_type')
           .eq('owner_user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
+          .order('created_at', { ascending: false });
 
-        console.log('Membership cards query result:', { membershipCards, cardsError });
+        console.log('Résultat de la requête des cartes:', { membershipCards, cardsError });
         
-        // Log the specific error for debugging
         if (cardsError) {
-          console.log('Error details:', {
+          console.error('❌ Erreur de récupération des cartes:', {
             code: cardsError.code,
             message: cardsError.message,
             details: cardsError.details,
             hint: cardsError.hint
           });
+          toast.error('Impossible de charger vos cartes. Veuillez contacter le support.');
+          return;
         }
 
-        if (!cardsError && membershipCards && membershipCards.length > 0) {
-          const cardId = membershipCards[0].card_identifier;
-          console.log('✅ Found card identifier from membership_cards:', cardId);
-          setCardIdentifier(cardId);
-          return; // Success, exit early
-        }
-        
-        console.log('❌ No membership cards found or RLS error, trying fallback approaches...');
-        
-        // Fallback 1: Generate from membership ID if available
-        if (membership?.id) {
-          const membershipBasedId = `PRM-${membership.id.slice(-8)}`;
-          console.log('🔄 Using membership-based card identifier:', membershipBasedId);
-          setCardIdentifier(membershipBasedId);
+        if (!membershipCards || membershipCards.length === 0) {
+          console.log('ℹ️ Aucune carte trouvée pour cet utilisateur');
+          toast.info('Aucune carte trouvée pour votre compte.');
           return;
         }
         
-        // Fallback 2: Generate from user ID with better format
-        const fallbackId = `ELV-${user.id.slice(-8).toUpperCase()}`;
-        console.log('🔄 Using user ID fallback for card identifier:', fallbackId);
-        setCardIdentifier(fallbackId);
+        console.log(`✅ ${membershipCards.length} carte(s) trouvée(s):`, 
+                     membershipCards.map(c => `${c.card_identifier} (${c.card_type})`));
+        setUserCards(membershipCards);
         
       } catch (error) {
-        console.error('❌ Error fetching card identifier:', error);
-        // Final fallback
-        const fallbackId = `ELV-${user.id.slice(-8).toUpperCase()}`;
-        console.log('🔄 Final fallback card identifier:', fallbackId);
-        setCardIdentifier(fallbackId);
+        console.error('❌ Erreur lors de la récupération des cartes:', error);
+        toast.error('Une erreur est survenue lors du chargement de vos cartes.');
       }
     };
 
-    fetchCardIdentifier();
-  }, [user?.id, membership?.id]);
+    fetchUserCards();
+  }, [user?.id, membership?.id, membership?.tier]);
 
   // Profile data state - Initialize with current data
   const [profileData, setProfileData] = useState({
@@ -172,6 +163,30 @@ const AccountSection = () => {
       country: currentProfile?.country || 'Mali'
     }));
   }, [memberName, user?.email, currentProfile?.phone, currentProfile?.address, currentProfile?.city, currentProfile?.country]);
+
+  // Navigation functions for cards
+  const nextCard = () => {
+    if (userCards.length > 1) {
+      setCurrentCardIndex((prev) => (prev + 1) % userCards.length);
+    }
+  };
+
+  const prevCard = () => {
+    if (userCards.length > 1) {
+      setCurrentCardIndex((prev) => (prev - 1 + userCards.length) % userCards.length);
+    }
+  };
+
+  // Get membership tier for current card
+  const getCurrentCardTier = () => {
+    if (!currentCard) return 'Essential';
+    
+    const cardType = currentCard.card_type || 'essential';
+    if (cardType === 'child') return 'Child';
+    if (cardType === 'premium') return 'Premium';
+    if (cardType === 'elite') return 'Elite';
+    return 'Essential';
+  };
 
   // Debug effect to log member data
   useEffect(() => {
@@ -338,33 +353,8 @@ const AccountSection = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Gender
-                  </label>
-                  <Select value={profileData.gender} onValueChange={(value) => setProfileData({ ...profileData, gender: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                      <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Occupation
-                  </label>
-                  <Input
-                    value={profileData.occupation}
-                    onChange={(e) => setProfileData({ ...profileData, occupation: e.target.value })}
-                    placeholder="Enter your occupation"
-                  />
-                </div>
+             
+            
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -408,18 +398,7 @@ const AccountSection = () => {
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Bio
-                </label>
-                <Textarea
-                  value={profileData.bio}
-                  onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
-                  placeholder="Tell us about yourself..."
-                  rows={4}
-                />
-              </div>
-
+          
               <Button onClick={handleProfileUpdate} className="w-full md:w-auto">
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
@@ -669,13 +648,62 @@ const AccountSection = () => {
             <CardContent className="space-y-6">
               {/* Digital Card Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Your Digital Client Card</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Your Digital Client Cards</h3>
+                  {userCards.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">
+                        {currentCardIndex + 1} of {userCards.length}
+                      </span>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={prevCard}
+                          className="h-8 w-8 p-0"
+                        >
+                          ←
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={nextCard}
+                          className="h-8 w-8 p-0"
+                        >
+                          →
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Card Type Indicator */}
+                {userCards.length > 1 && (
+                  <div className="flex gap-2 mb-4">
+                    {userCards.map((card, index) => (
+                      <button
+                        key={card.card_identifier}
+                        onClick={() => setCurrentCardIndex(index)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          index === currentCardIndex
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        {card.card_type === 'child' ? 'Child Card' : 
+                         card.card_type === 'premium' ? 'Premium Card' :
+                         card.card_type === 'elite' ? 'Elite Card' : 'Essential Card'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
                 <MemberDigitalCard
                   memberName={memberName}
                   memberID={cardIdentifier}
                   userID={user?.id || ''}
                   expiryDate={membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString() : 'N/A'}
-                  membershipTier={membership?.tier ? (membership.tier.charAt(0).toUpperCase() + membership.tier.slice(1)) as 'Essential' | 'Premium' | 'Elite' | 'Child' : 'Essential'}
+                  membershipTier={getCurrentCardTier() as 'Essential' | 'Premium' | 'Elite' | 'Child'}
                   profileImage={currentProfile?.profile_image_url}
                   address={currentProfile?.address}
                   city={currentProfile?.city}
