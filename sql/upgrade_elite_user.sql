@@ -1,7 +1,7 @@
 DO $$
 DECLARE
   -- REMPLACEZ ICI: l'UUID du profil existant (public.profiles.id)
-  v_profile_id uuid := '44994c69-1d18-4fab-ae62-a5a20012fe60';
+  v_profile_id uuid := '8d456e51-5286-42b7-94df-c80e920358c1';
 
   v_elite_names text[] := ARRAY['elite','adult elite','elite adulte','adult_elite'];
 

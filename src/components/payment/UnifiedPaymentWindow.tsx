@@ -619,21 +619,31 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
               {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700">{error}</div>}
             </>
           )} */}
-            <div className="text-center space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
-              <p className="text-lg font-semibold">Waiting for payment confirmation...</p>
-              <p className="text-sm text-gray-600">Please completed your payment with our marchang code #144#8*718285*price*secret code# ok</p>
-              <p className="text-sm text-gray-600">After payment comfirmation please call</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setPaymentInitiated(false);
-                  onClose?.();
-                }}
-              >
-                Cancel and Close
-              </Button>
-            </div>
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
+            <p className="text-lg font-semibold">Waiting for payment confirmation...</p>
+            <h3 className="text-lg font-semibold">
+              {cardType === 'child' ? 'Child Plan' : `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`}
+            </h3>
+            <p className="text-2xl font-bold text-purple-600">
+              CFA {amount.toLocaleString()}
+            </p>
+            <p className="text-sm text-gray-600">Please completed your payment with our marchang code #144#8*718285*price*secret code# ok</p>
+            <p className="text-sm text-gray-600">After payment comfirmation please call</p>
+            <h3 className="text-md font-semibold">
+            +223 44 94 38 44 / +223 78 81 01 91
+             </h3>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPaymentInitiated(false);
+                onClose?.();
+              }}
+            >
+              Cancel and Close
+            </Button>
+           
+          </div>
         </CardContent>
       </Card>
     </div>

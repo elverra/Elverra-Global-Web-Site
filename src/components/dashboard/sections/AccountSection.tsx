@@ -100,13 +100,33 @@ const AccountSection = () => {
         
         // Récupération des cartes depuis la table membership_cards
         const { data: membershipCards, error: cardsError } = await supabase
-          .from('membership_cards')
-          .select('card_identifier, owner_user_id, created_at, card_type')
-          .eq('owner_user_id', user.id)
-          .order('created_at', { ascending: false });
-
+        .from('membership_cards')
+        .select('card_identifier, owner_user_id, created_at, qr_data')
+        .eq('owner_user_id', user.id)  // Utilisez user.id au lieu de userId
+        .order('created_at', { ascending: false });
         console.log('Résultat de la requête des cartes:', { membershipCards, cardsError });
         
+        // Après avoir reçu les données de la requête
+const processedCards = membershipCards?.map(card => {
+  let cardType = 'essential'; // Valeur par défaut
+  try {
+    // Si qr_data est une chaîne, essayez de la parser
+    const qrData = typeof card.qr_data === 'string' 
+      ? JSON.parse(card.qr_data) 
+      : card.qr_data;
+    cardType = qrData?.type || 'essential';
+  } catch (e) {
+    console.error('Error parsing qr_data:', e);
+  }
+  
+  return {
+    ...card,
+    card_type: cardType
+  };
+});
+
+setUserCards(processedCards || []);
+
         if (cardsError) {
           console.error('❌ Erreur de récupération des cartes:', {
             code: cardsError.code,
@@ -125,7 +145,7 @@ const AccountSection = () => {
         }
         
         console.log(`✅ ${membershipCards.length} carte(s) trouvée(s):`, 
-                     membershipCards.map(c => `${c.card_identifier} (${c.card_type})`));
+                     membershipCards.map(c => `${c.card_identifier} (${c.card_identifier})`));
         setUserCards(membershipCards);
         
       } catch (error) {
@@ -181,13 +201,31 @@ const AccountSection = () => {
   const getCurrentCardTier = () => {
     if (!currentCard) return 'Essential';
     
-    const cardType = currentCard.card_type || 'essential';
-    if (cardType === 'child') return 'Child';
-    if (cardType === 'premium') return 'Premium';
-    if (cardType === 'elite') return 'Elite';
-    return 'Essential';
+    let cardType = currentCard.card_type;
+    
+    // Si card_type n'est pas défini, essayez de l'extraire de qr_data
+    if (!cardType && currentCard.qr_data) {
+      try {
+        const qrData = typeof currentCard.qr_data === 'string' 
+          ? JSON.parse(currentCard.qr_data) 
+          : currentCard.qr_data;
+        cardType = qrData?.type || 'essential';
+      } catch (e) {
+        console.error('Error parsing qr_data:', e);
+        cardType = 'essential';
+      }
+    }
+    
+    // Mappage des types de carte aux noms d'affichage
+    const typeMap = {
+      'child': 'Child',
+      'premium': 'Premium',
+      'elite': 'Elite',
+      'essential': 'Essential'
+    };
+    
+    return typeMap[cardType as keyof typeof typeMap] || 'Essential';
   };
-
   // Debug effect to log member data
   useEffect(() => {
     console.log('=== DEBUG - Member data ===');
@@ -678,25 +716,35 @@ const AccountSection = () => {
                 </div>
                 
                 {/* Card Type Indicator */}
-                {userCards.length > 1 && (
-                  <div className="flex gap-2 mb-4">
-                    {userCards.map((card, index) => (
-                      <button
-                        key={card.card_identifier}
-                        onClick={() => setCurrentCardIndex(index)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                          index === currentCardIndex
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                        }`}
-                      >
-                        {card.card_type === 'child' ? 'Child Card' : 
-                         card.card_type === 'premium' ? 'Premium Card' :
-                         card.card_type === 'elite' ? 'Elite Card' : 'Essential Card'}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {userCards.map((card, index) => {
+  let cardType = card.card_type;
+  if (!cardType && card.qr_data) {
+    try {
+      const qrData = typeof card.qr_data === 'string' 
+        ? JSON.parse(card.qr_data) 
+        : card.qr_data;
+      cardType = qrData?.type || 'essential';
+    } catch (e) {
+      cardType = 'essential';
+    }
+  }
+  
+  return (
+    <button
+      key={card.card_identifier}
+      onClick={() => setCurrentCardIndex(index)}
+      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+        index === currentCardIndex
+          ? 'bg-purple-600 text-white'
+          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+      }`}
+    >
+      {cardType === 'child' ? 'Child Card' : 
+       cardType === 'premium' ? 'Premium Card' :
+       cardType === 'elite' ? 'Elite Card' : 'Essential Card'}
+    </button>
+  );
+})}
                 
                 <MemberDigitalCard
                   memberName={memberName}

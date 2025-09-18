@@ -93,7 +93,7 @@ const MemberDigitalCard = ({
           imageName = 'Carte3.png';
           break;
         case 'Child':
-          imageName = 'Kiddies.png';
+          imageName = 'kiddies2.png';
           break;
         default:
           alert('No card available for this membership type.');

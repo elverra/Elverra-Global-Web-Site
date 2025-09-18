@@ -22,7 +22,7 @@ interface MembershipCard {
   product_id?: string;  // Optionnel car c'est une clé étrangère
   qr_code: string;
   created_at: string;
-  qr_data?: QrData; 
+  qr_data?: QrData;
   updated_at?: string;
   // Ajoutez d'autres champs si nécessaire
 }
@@ -44,7 +44,7 @@ interface PhysicalCardRequest {
   address: string;
   membership_tier: string;
   affiliate_code?: string;
- 
+
   physical_card_requested: boolean;
   has_physical_card: boolean;
   physical_card_status: 'not_requested' | 'requested' | 'approved' | 'printing' | 'shipped' | 'delivered';
@@ -67,38 +67,38 @@ const PhysicalCardRequests = () => {
     try {
       setLoading(true);
       console.log('🔄 Fetching card requests...');
-      
+
       // Récupération des profils
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .eq('physical_card_requested', true)
         .order('physical_card_request_date', { ascending: false });
-  
+
       if (profilesError) throw profilesError;
       if (!profiles?.length) {
         console.log('No profiles with card requests found');
         setRequests([]);
         return;
       }
-  
+
       // Récupération des cartes
       const { data: cards, error: cardsError } = await supabase
         .from('membership_cards')
         .select('*')
         .in('owner_user_id', profiles.map(p => p.id));
-  
+
       if (cardsError) throw cardsError;
-  
+
       // Fusion et parsing des données
       const profilesWithCards = profiles.map(profile => {
         const userCards = cards?.filter(card => card.owner_user_id === profile.id) || [];
-        
+
         // Parse qr_data pour chaque carte
         const parsedCards = userCards.map(card => {
           // Vérifier si qr_data est déjà un objet ou une chaîne JSON
           let qrData = card.qr_data;
-          
+
           if (typeof qrData === 'string') {
             try {
               qrData = JSON.parse(qrData);
@@ -107,19 +107,19 @@ const PhysicalCardRequests = () => {
               qrData = null;
             }
           }
-          
+
           return {
             ...card,
             qr_data: qrData
           };
         });
-  
+
         return {
           ...profile,
           membership_cards: parsedCards
         };
       });
-  
+
       console.log('✅ Fetched profiles with cards:', profilesWithCards);
       setRequests(profilesWithCards);
     } catch (error) {
@@ -136,29 +136,29 @@ const PhysicalCardRequests = () => {
 
   // Filter requests based on search and status
   const filteredRequests = requests.filter(request => {
-    const matchesSearch = 
+    const matchesSearch =
       request.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (request.affiliate_code?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       request.phone.includes(searchTerm) ||
       request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (request.physical_card_tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    
+
     const matchesStatus = statusFilter === 'all' || request.physical_card_status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
   // Update request status
   const updateRequestStatus = async (
-    requestId: string, 
-    newStatus: string, 
-    trackingNumber?: string, 
+    requestId: string,
+    newStatus: string,
+    trackingNumber?: string,
     notes?: string,
     hasPhysicalCard?: boolean
   ) => {
     try {
       setUpdating(true);
-      
+
       const updateData: any = {
         physical_card_status: newStatus,
         updated_at: new Date().toISOString()
@@ -181,7 +181,7 @@ const PhysicalCardRequests = () => {
       if (error) {
         throw error;
       }
-      
+
       toast.success('Statut de la demande mis à jour avec succès');
       fetchRequests();
       setSelectedRequest(null);
@@ -203,7 +203,7 @@ const PhysicalCardRequests = () => {
       'shipped': { variant: 'default' as const, label: 'Shipped', icon: Truck },
       'delivered': { variant: 'default' as const, label: 'Delivered', icon: CheckCircle }
     };
-    
+
     return statusConfig[status as keyof typeof statusConfig] || { variant: 'secondary' as const, label: status, icon: Clock };
   };
 
@@ -239,7 +239,7 @@ const PhysicalCardRequests = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -251,7 +251,7 @@ const PhysicalCardRequests = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -263,7 +263,7 @@ const PhysicalCardRequests = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -275,7 +275,7 @@ const PhysicalCardRequests = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -287,7 +287,7 @@ const PhysicalCardRequests = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -318,7 +318,7 @@ const PhysicalCardRequests = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="w-full md:w-48">
                   <Label htmlFor="status-filter">Filter by Status</Label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -381,10 +381,10 @@ const PhysicalCardRequests = () => {
                       {filteredRequests.map((request) => {
                         const statusConfig = getStatusBadge(request.physical_card_status);
                         const StatusIcon = statusConfig.icon;
-                        
+
                         return (
                           <TableRow key={request.id}>
-                          
+
                             <TableCell>
                               <div>
                                 <div className="font-medium">{request.full_name}</div>
@@ -399,29 +399,29 @@ const PhysicalCardRequests = () => {
                                 Full: {request.id}
                               </div>
                             </TableCell>
-                          
-                          
+
+
                             <TableCell>
-  <div className="font-mono text-sm">
-    {request.membership_cards?.length > 0 ? (
-      <div className="space-y-1">
-        {request.membership_cards.map((card) => (
-          <div key={card.id} className="flex items-center">
-            {card.qr_data?.tier ? (
-              <Badge variant="outline" className="capitalize">
-                {card.qr_data.tier}
-              </Badge>
-            ) : (
-              <span className="text-xs text-gray-500">-</span>
-            )}
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div className="text-xs text-gray-500">Aucune carte</div>
-    )}
-  </div>
-</TableCell>
+                              <div className="font-mono text-sm">
+                                {request.membership_cards?.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {request.membership_cards.map((card) => (
+                                      <div key={card.id} className="flex items-center">
+                                        {card.qr_data?.tier ? (
+                                          <Badge variant="outline" className="capitalize">
+                                            {card.qr_data.tier}
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-xs text-gray-500">-</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-gray-500">Aucune carte</div>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <Badge variant={statusConfig.variant} className="flex items-center gap-1 w-fit">
                                 <StatusIcon className="h-3 w-3" />
@@ -429,31 +429,31 @@ const PhysicalCardRequests = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {request.physical_card_request_date 
+                              {request.physical_card_request_date
                                 ? new Date(request.physical_card_request_date).toLocaleDateString()
                                 : '—'
                               }
                             </TableCell>
                             <TableCell>
-  <div className="font-mono text-sm">
-    {request.membership_cards?.length > 0 ? (
-      <div className="space-y-1">
-        {request.membership_cards.map(card => (
-          <div key={card.id} className="bg-blue-50 p-2 rounded">
-            <div className="font-medium">{card.card_identifier}</div>
-            <div className="text-xs text-gray-500">
-              QR: {card.qr_code.substring(0, 8)}...
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs">
-        No card
-      </div>
-    )}
-  </div>
-</TableCell>
+                              <div className="font-mono text-sm">
+                                {request.membership_cards?.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {request.membership_cards.map(card => (
+                                      <div key={card.id} className="bg-blue-50 p-2 rounded">
+                                        <div className="font-medium">{card.card_identifier}</div>
+                                        <div className="text-xs text-gray-500">
+                                          QR: {card.qr_code.substring(0, 8)}...
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs">
+                                    No card
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <div className="text-sm">
                                 <div>{request.city}</div>
@@ -478,7 +478,7 @@ const PhysicalCardRequests = () => {
                                       Manage card request for {selectedRequest?.full_name}
                                     </DialogDescription>
                                   </DialogHeader>
-                                  
+
                                   {selectedRequest && (
                                     <RequestDetailsModal
                                       request={selectedRequest}
@@ -505,11 +505,11 @@ const PhysicalCardRequests = () => {
 };
 
 // Request Details Modal Component
-const RequestDetailsModal = ({ 
-  request, 
-  onUpdateStatus, 
-  updating 
-}: { 
+const RequestDetailsModal = ({
+  request,
+  onUpdateStatus,
+  updating
+}: {
   request: PhysicalCardRequest;
   onUpdateStatus: (id: string, status: string, trackingNumber?: string, notes?: string, hasPhysicalCard?: boolean) => void;
   updating: boolean;
@@ -577,7 +577,7 @@ const RequestDetailsModal = ({
         <div>
           <Label className="text-sm font-medium text-gray-700">Request Date</Label>
           <p className="mt-1 text-sm text-gray-900">
-            {request.physical_card_request_date 
+            {request.physical_card_request_date
               ? new Date(request.physical_card_request_date).toLocaleString()
               : 'Not set'
             }
@@ -594,7 +594,7 @@ const RequestDetailsModal = ({
       {/* Status Update Section */}
       <div className="border-t pt-4">
         <h3 className="text-lg font-medium mb-4">Update Request Status</h3>
-        
+
         <div className="space-y-4">
           <div>
             <Label htmlFor="status">Status</Label>
@@ -635,8 +635,8 @@ const RequestDetailsModal = ({
             />
           </div>
 
-          <Button 
-            onClick={handleUpdate} 
+          <Button
+            onClick={handleUpdate}
             disabled={updating}
             className="w-full"
           >
