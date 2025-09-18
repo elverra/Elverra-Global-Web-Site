@@ -18,6 +18,30 @@ interface MemberDigitalCardProps {
   subscriptionStatus?: 'active' | 'expired' | 'pending';
 }
 
+type PositionStyles = {
+  top?: string | number;
+  left?: string | number;
+  right?: string | number;
+  bottom?: string | number;
+  transform?: string;
+  marginTop?: string | number;
+  marginLeft?: string | number;
+  marginRight?: string | number;
+  marginBottom?: string | number;
+  textAlign?: 'start' | 'center' | 'end' | 'left' | 'right' | 'justify';
+  width?: string | number;
+  position?: 'absolute' | 'relative' | 'fixed' | 'sticky' | 'static';
+};
+
+type CardStyles = {
+  container: PositionStyles;
+  content: PositionStyles;
+  name: PositionStyles;
+  details: PositionStyles;
+  qrCode: PositionStyles;
+};
+
+
 const MemberDigitalCard = ({ 
   memberName, 
   memberID, 
@@ -128,12 +152,110 @@ const MemberDigitalCard = ({
       case 'Elite':
         return '/lovable-uploads/Carte3.png';
       case 'Child':
-        return '/lovable-uploads/Kiddies.png';
+        return '/lovable-uploads/kiddies2.png';
       default:
         return '';
     }
   };
-
+  const getCardStyles = (tier: string) => {
+    const baseStyles = {
+      container: {
+        aspectRatio: '1.6/1',
+        width: '100%',
+        maxWidth: '480px',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        position: 'relative' as const,
+        color: 'white',
+        textShadow: '1px 1px 2px rgba(0,0,0,0.7)'
+      },
+      content: {
+        position: 'relative' as const,
+        padding: '1.25rem',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column' as const
+      }
+    };
+  
+    switch (tier) {
+      case 'Child':
+        return {
+          ...baseStyles,
+          name: { 
+            position: 'absolute' as const,
+            top: '45%',
+            left: '8rem',
+            transform: 'translateY(-50%)'
+          },
+          details: { 
+            position: 'absolute' as const,
+            bottom: '3rem',
+            left: '8rem',
+            width: 'calc(100% - 3rem)'
+          },
+          qrCode: { 
+            position: 'absolute' as const,
+            bottom: '1.5rem',
+            right: '1.5rem'
+          }
+        };
+      case 'Premium':
+        return {
+          ...baseStyles,
+          name: { 
+            marginTop: '4rem',
+            textAlign: 'center' as const
+          },
+          details: { 
+            marginTop: 'auto',
+            marginBottom: '2rem',
+            textAlign: 'end' as const
+          },
+          qrCode: { 
+            position: 'absolute' as const,
+            bottom: '1.5rem',
+            right: '1.5rem'
+          }
+        };
+      case 'Elite':
+        return {
+          ...baseStyles,
+          name: { 
+            marginTop: '3rem',
+            marginLeft: '2rem',
+            marginBottom: '1rem'
+          },
+          details: { 
+            marginLeft: '2rem',
+            marginBottom: '2rem'
+          },
+          qrCode: { 
+            position: 'absolute' as const,
+            bottom: '1.5rem',
+            right: '1.5rem'
+          }
+        };
+      default: // Essential
+        return {
+          ...baseStyles,
+          name: { 
+            marginTop: '6rem',
+            textAlign: 'start' as const
+          },
+          details: { 
+            marginTop: '1rem',
+            textAlign: 'center' as const,
+            marginBottom: '2rem'
+          },
+          qrCode: { 
+            position: 'absolute' as const,
+            bottom: '1.5rem',
+            right: '1.5rem'
+          }
+        };
+    }
+  };
   const cardImage = getCardImage();
 
   // Format date as DD/MM/YY
@@ -148,6 +270,8 @@ const MemberDigitalCard = ({
     
     return `${day}/${month}/${year}`;
   };
+  const cardStyles = getCardStyles(membershipTier);
+
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -156,37 +280,27 @@ const MemberDigitalCard = ({
         <p className="text-sm text-gray-500">Present this at participating merchants for discounts</p>
       </div>
       
-      {/* Card Design */}
       <div 
         id="member-card"
         className="relative overflow-hidden rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl"
         style={{
-          aspectRatio: '1.6/1',
-          width: '100%',
-          maxWidth: '480px',
-          backgroundImage: `url('${cardImage}')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          position: 'relative',
-          color: 'white',
-          textShadow: '1px 1px 2px rgba(0,0,0,0.7)'
+          ...cardStyles.container,
+          backgroundImage: `url('${cardImage}')`
         }}
       >
-        {/* Card Content */}
-        <div className="relative p-5 h-full flex flex-col">
+        <div className="relative p-5 h-full flex flex-col" style={cardStyles.content}>
           {/* Member Name and Status */}
-          <div className="mt-24">
+          <div style={cardStyles.name}>
             <h2 className="text-2xl font-bold mb-1">{memberName}</h2>
             <div className="flex items-center gap-2">
               <span className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs font-medium">
                 {membershipTier}
               </span>
-             
             </div>
           </div>
-
+  
           {/* Member Details */}
-          <div className="mt-auto space-y-2 text-sm">
+          <div style={cardStyles.details} className="space-y-2 text-sm">
             {city && (
               <div className="flex items-center">
                 <span>{city}</span>
@@ -198,14 +312,14 @@ const MemberDigitalCard = ({
               <span className="font-mono">{memberID || 'N/A'}</span>
             </div>
             
-            <div className="flex gap-28">
-              <span className="w-20 font-medium"></span>
+            <div className="flex gap-4">
+              <span className="font-medium">Exp:</span>
               <span>{formatDate(expiryDate)}</span>
             </div>
           </div>
           
           {/* QR Code */}
-          <div className="absolute bottom-7 right-5 bg-white p-1.5 rounded">
+          <div style={cardStyles.qrCode} className="bg-white p-1.5 rounded">
             <QRCodeGenerator
               data={qrData}
               size={60}
@@ -225,7 +339,7 @@ const MemberDigitalCard = ({
           onClick={handleDownload}
         >
           <Download className="h-4 w-4 mr-2" />
-          Download
+          Télécharger
         </Button>
         <Button 
           variant="outline" 
@@ -233,11 +347,12 @@ const MemberDigitalCard = ({
           onClick={handleShare}
         >
           <Share2 className="h-4 w-4 mr-2" />
-          Share
+          Partager
         </Button>
       </div>
     </div>
   );
+  
 };
 
 export default MemberDigitalCard;
