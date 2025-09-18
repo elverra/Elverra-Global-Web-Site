@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, X } from 'lucide-react';
+import { Clock, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { createPendingSubscription, activateSubscription } from '@/utils/subscriptionService';
@@ -620,8 +620,27 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
             </>
           )} */}
           <div className="text-center space-y-4">
+            <Card className="bg-orange-50 border-orange-200 mb-8">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-3">
+                  <Clock className="h-6 w-6 text-orange-600 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-orange-800 mb-2">
+                      Disclaimer:
+                    </h3>
+                    <p className="text-orange-700">
+                      That I have read all the terms and conditions
+                      attached to this advance payment option, by proceeding with
+                      this card maintenance fees payment advance, I declare that
+                      I am doing so without any undue influence and also aware of
+                      my full voluntary commitment to do so.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
-            <p className="text-lg font-semibold">Waiting for payment confirmation...</p>
             <h3 className="text-lg font-semibold">
               {cardType === 'child' ? 'Child Plan' : `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`}
             </h3>
@@ -631,8 +650,8 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
             <p className="text-sm text-gray-600">Please completed your payment with our marchang code #144#8*718285*price*secret code# ok</p>
             <p className="text-sm text-gray-600">After payment comfirmation please call</p>
             <h3 className="text-md font-semibold">
-            +223 44 94 38 44 / +223 78 81 01 91
-             </h3>
+              +223 44 94 38 44 / +223 78 81 01 91
+            </h3>
             <Button
               variant="outline"
               onClick={() => {
@@ -642,7 +661,7 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
             >
               Cancel and Close
             </Button>
-           
+
           </div>
         </CardContent>
       </Card>

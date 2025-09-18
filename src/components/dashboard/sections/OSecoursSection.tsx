@@ -140,6 +140,7 @@ const OSecoursSection = () => {
   const [requestFile, setRequestFile] = useState<File | null>(null);
   const [submittingRequest, setSubmittingRequest] = useState(false);
 
+  const [helpOpen, setHelpOpen] = useState(false);
   const { user } = useAuth();
   const { membership } = useMembership();
   const { t } = useLanguage();
@@ -157,7 +158,7 @@ const OSecoursSection = () => {
     }
     return 'http://localhost:3001';
   }, []);
-  
+
   const withBase = useCallback((path: string) => {
     const baseUrl = getBackendUrl();
     return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
@@ -244,7 +245,7 @@ const OSecoursSection = () => {
       console.log('[DEBUG] Fetch transactions URL:', txUrl);
       const txRes = await fetch(txUrl);
       const txJson = txRes.ok ? await txRes.json() : { data: [] };
-      const txs: Array<{ id: string; subscription_id: string; transaction_type: string; token_amount: number; created_at: string; secours_subscriptions?: { service_type?: string } }>= txJson?.data || [];
+      const txs: Array<{ id: string; subscription_id: string; transaction_type: string; token_amount: number; created_at: string; secours_subscriptions?: { service_type?: string } }> = txJson?.data || [];
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
       const usedByType: Record<string, number> = {};
       txs.forEach(tx => {
@@ -273,7 +274,7 @@ const OSecoursSection = () => {
       console.log('[DEBUG] Fetch requests URL:', reqUrl);
       const reqRes = await fetch(reqUrl);
       const reqJson = reqRes.ok ? await reqRes.json() : { data: [] };
-      const reqs: Array<{ id: string; service_type: string; request_description: string; rescue_value_fcfa: number; status: string; request_date: string; }>= reqJson?.data || [];
+      const reqs: Array<{ id: string; service_type: string; request_description: string; rescue_value_fcfa: number; status: string; request_date: string; }> = reqJson?.data || [];
       const svcRequests: ServiceRequest[] = reqs.map(r => ({
         id: r.id,
         service: r.service_type,
@@ -352,8 +353,8 @@ const OSecoursSection = () => {
         const updated = [...prev];
         const index = updated.findIndex(b => b.tokenId === selectedToken);
         if (index >= 0) {
-          updated[index] = { 
-            ...updated[index], 
+          updated[index] = {
+            ...updated[index],
             balance: updated[index].balance + amount,
             usedThisMonth: updated[index].usedThisMonth || 0,
             monthlyLimit: updated[index].monthlyLimit || MAX_MONTHLY_PURCHASE_PER_SERVICE,
@@ -421,14 +422,14 @@ const OSecoursSection = () => {
       setRequestDialogOpen(true);
     },
     [
-      isEligible, 
-      user?.id, 
-      t, 
-      tokenBalances, 
-      TOKEN_TYPES, 
-      setSelectedToken, 
-      setActiveTab, 
-      setServiceRequests, 
+      isEligible,
+      user?.id,
+      t,
+      tokenBalances,
+      TOKEN_TYPES,
+      setSelectedToken,
+      setActiveTab,
+      setServiceRequests,
       setTokenBalances
     ]
   );
@@ -541,12 +542,18 @@ const OSecoursSection = () => {
           <Badge className={isEligible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
             {isEligible ? t('active') : t('inactive')}
           </Badge>
-          <Button variant="outline" size="sm" aria-label="Help">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Help"
+            onClick={() => setHelpOpen(true)}
+          >
             <HelpCircle className="h-4 w-4 mr-1" />
             {t('help')}
           </Button>
         </div>
       </div>
+
 
       <Card>
         <CardHeader>
@@ -889,7 +896,7 @@ const OSecoursSection = () => {
                 </Alert>
               )}
               {/* Embedded TokenPurchase component handles payment method selection and flow */}
-              <TokenPurchase 
+              <TokenPurchase
                 onPurchaseSuccess={fetchData}
                 userBalances={tokenBalances.map(b => ({ serviceType: b.tokenId as any, usedThisMonth: b.usedThisMonth || 0 }))}
               />
@@ -943,6 +950,98 @@ const OSecoursSection = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+  <DialogContent className="max-w-4xl w-[90vw]">
+    <DialogHeader>
+      <DialogTitle>Disclaimer</DialogTitle>
+    </DialogHeader>
+    <Card className="bg-orange-50 border-orange-200">
+      <CardContent className="p-6 max-h-[80vh] overflow-y-auto">
+        <div className="space-y-6">
+          <div>
+            <h3 className="font-semibold text-orange-800 text-lg mb-3">
+              Disclaimer:
+            </h3>
+            <p className="text-orange-700">
+              The Ô Secours tokens purchased through our online
+              platform are not deposits and do not constitute a
+              deposit transaction. The token sale is a sale transaction,
+              and the tokens are acquired for their intended use as
+              specified in our terms and conditions. Our token model is
+              designed to facilitate immediate financial assistance in
+              the event of unforeseen eventualities or emergencies, and
+              it is not intended to be treated as a deposit or investment.
+              It is what Elverra describe as "Security Sustenance Guarantee" program.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-orange-800 text-lg mb-3">
+              Important Notice:
+            </h3>
+            <p className="text-orange-700">
+              By participating in the token sale by Elverra Global, you acknowledge 
+              that you understand the nature of the token transaction and agree to the 
+              terms and conditions. You further acknowledge that our company is not a 
+              bank and does not accept deposits. The tokens are not insured or guaranteed 
+              by any government agency or regulatory body. Therefore, please familiarize 
+              yourself with the Ô Secours plans before buying any tokens.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-orange-800 text-lg mb-3">
+              Regulatory Compliance:
+            </h3>
+            <p className="text-orange-700">
+              Our token sale is designed to comply with applicable laws 
+              and regulations. We do not intend to offer securities or 
+              engage in any activity that would require a banking license.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-orange-800 text-lg mb-3">
+              Purchase Risks:
+            </h3>
+            <p className="text-orange-700 mb-3">
+              Purchasers of tokens should be aware 
+              that the value of tokens can fluctuate, and there is 
+              a risk of losses if you fail to adhere to the contractual 
+              terms of your participation. Purchasers should carefully 
+              review our terms and conditions and understand the risks involved.
+            </p>
+            <p className="text-orange-700">
+              By purchasing tokens, you acknowledge that you have read, understood, 
+              and agree to the terms and conditions, including this disclaimer.
+            </p>
+          </div>
+
+          <div className="mt-6 p-4 bg-orange-100 rounded-lg">
+            <h4 className="font-semibold text-orange-800 mb-2">Contact our support team:</h4>
+            <div className="flex flex-wrap items-center gap-4">
+              <a 
+                href="tel:+22344943844" 
+                className="flex items-center gap-2 text-orange-700 hover:text-orange-900"
+              >
+                <Phone className="h-5 w-5" />
+                <span className="font-medium">+223 44 94 38 44</span>
+              </a>
+              <span className="text-orange-300">|</span>
+              <a 
+                href="tel:+22378810191" 
+                className="flex items-center gap-2 text-orange-700 hover:text-orange-900"
+              >
+                <Phone className="h-5 w-5" />
+                <span className="font-medium">+223 78 81 01 91</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  </DialogContent>
+</Dialog>
     </div>
   );
 };
