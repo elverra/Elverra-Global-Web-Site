@@ -256,20 +256,7 @@ const AffiliateSection = () => {
               Your affiliate application is under review. You'll receive a notification once approved.
             </p>
           </div>
-          <div className="space-y-2">
-            <p className="text-sm text-gray-600">Your Referral Code:</p>
-            <div className="flex items-center gap-2">
-              <Input
-                value={affiliateData.referral_code || 'Loading...'}
-                readOnly
-                className="font-mono"
-              />
-              <Button onClick={copyReferralCode} variant="outline">
-                <Copy className="h-4 w-4 mr-2" />
-                {copiedCode ? 'Copied!' : 'Copy'}
-              </Button>
-            </div>
-          </div>
+        
         </CardContent>
       </Card>
     );
