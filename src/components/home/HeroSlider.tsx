@@ -86,8 +86,8 @@ const HeroSlider = ({ cmsContent }: HeroSliderProps) => {
         "Find your dream job or recruit the best talent through our platform dedicated to our client network.",
       backgroundImage:
         "/lovable-uploads/2.jpeg",
-      primaryButton: { text: "Find a Job", link: "/jobs" },
-      secondaryButton: { text: "Recruit", link: "/post-job" },
+      primaryButton: { text: "Find a Job", link: "/job-center" },
+      secondaryButton: { text: "Recruit", link: "/dashboard" },
     },
     {
       id: 4,

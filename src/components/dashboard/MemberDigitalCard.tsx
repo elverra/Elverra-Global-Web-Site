@@ -34,20 +34,8 @@ const MemberDigitalCard = ({
   // Generate serial number if not provided
   const cardSerialNumber = serialNumber || `ELV-${membershipTier.toUpperCase()}-${Date.now().toString().slice(-6)}`;
   
-  // Create comprehensive QR data for the card
-  const qrData = JSON.stringify({
-    memberID,
-    name: memberName,
-    tier: membershipTier,
-    expiry: expiryDate,
-    serialNumber: cardSerialNumber,
-    city: city || 'N/A',
-    address: address || 'N/A',
-    subscriptionStatus,
-    isActive: subscriptionStatus === 'active',
-    issueDate: new Date().toISOString().split('T')[0],
-    cardType: membershipTier === 'Child' ? 'child' : 'adult'
-  });
+  // Create QR data containing only user ID as requested
+  const qrData = memberID;
 
   // Don't show card if payment is not complete
   if (!isPaymentComplete) {

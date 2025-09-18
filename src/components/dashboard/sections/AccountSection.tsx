@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMembership } from '@/hooks/useMembership';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/lib/supabaseClient';
 
 const AccountSection = () => {
   const { user } = useAuth();
@@ -44,7 +45,55 @@ const AccountSection = () => {
     || (user?.email ? user.email.split('@')[0] : '')
     || 'User';
 
-  // Profile data state
+  // State for card identifier
+  const [cardIdentifier, setCardIdentifier] = useState<string>('N/A');
+
+  // Fetch card identifier from membership_cards table
+  useEffect(() => {
+    const fetchCardIdentifier = async () => {
+      if (!user?.id) {
+        console.log('No user ID available for card identifier fetch');
+        return;
+      }
+      
+      try {
+        console.log('Fetching card identifier for user:', user.id);
+        const { data: membershipCards, error } = await supabase
+          .from('membership_cards')
+          .select('card_identifier, user_id, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        console.log('Membership cards query result:', { membershipCards, error });
+
+        if (!error && membershipCards && membershipCards.length > 0) {
+          console.log('Setting card identifier:', membershipCards[0].card_identifier);
+          setCardIdentifier(membershipCards[0].card_identifier);
+        } else {
+          console.log('No membership cards found or error occurred');
+          // Fallback: try to get from membership table
+          const { data: membership, error: membershipError } = await supabase
+            .from('memberships')
+            .select('member_id')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          
+          if (!membershipError && membership && membership.length > 0 && membership[0].member_id) {
+            console.log('Using member_id as fallback:', membership[0].member_id);
+            setCardIdentifier(membership[0].member_id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching card identifier:', error);
+      }
+    };
+
+    fetchCardIdentifier();
+  }, [user?.id]);
+
+  // Profile data state - Initialize with current data
   const [profileData, setProfileData] = useState({
     fullName: memberName,
     email: user?.email || '',
@@ -57,6 +106,31 @@ const AccountSection = () => {
     gender: '',
     occupation: ''
   });
+
+  // Update profileData when memberName changes
+  useEffect(() => {
+    setProfileData(prev => ({
+      ...prev,
+      fullName: memberName,
+      email: user?.email || '',
+      phone: profile?.phone || '',
+      address: profile?.address || '',
+      city: profile?.city || '',
+      country: profile?.country || 'Mali'
+    }));
+  }, [memberName, user?.email, profile?.phone, profile?.address, profile?.city, profile?.country]);
+
+  // Debug effect to log member data
+  useEffect(() => {
+    console.log('=== DEBUG - Member data ===');
+    console.log('memberName:', memberName);
+    console.log('cardIdentifier:', cardIdentifier);
+    console.log('profile object:', profile);
+    console.log('user object:', user);
+    console.log('membership object:', membership);
+    console.log('profileData state:', profileData);
+    console.log('========================');
+  }, [memberName, cardIdentifier, profile, user, membership, profileData]);
 
   // Security settings
   const [securitySettings, setSecuritySettings] = useState({
@@ -542,8 +616,8 @@ const AccountSection = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Your Digital Client Card</h3>
                 <MemberDigitalCard
-                  memberName={profile?.full_name || user?.email?.split('@')[0] || 'Member'}
-                  memberID={user?.id?.slice(-8) || 'N/A'}
+                  memberName={memberName}
+                  memberID={cardIdentifier}
                   expiryDate={membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString() : 'N/A'}
                   membershipTier={membership?.tier ? (membership.tier.charAt(0).toUpperCase() + membership.tier.slice(1)) as 'Essential' | 'Premium' | 'Elite' | 'Child' : 'Essential'}
                   profileImage={profile?.profile_image_url}
