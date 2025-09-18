@@ -34,10 +34,10 @@ const SocialBenefits = () => {
     {
       id: 'loans',
       name: 'Payday Loans',
-      description: 'Quick access to short-term loans with favorable interest rates for members.',
+      description: 'Quick access to short-term loans with favorable interest rates for clients.',
       features: [
         '8% flat interest for Essential/Premium',
-        '5% flat interest for Elite members',
+        '5% flat interest for Elite clients',
         'Fast approval process',
         'Flexible repayment options',
         'No hidden fees'
@@ -60,8 +60,8 @@ const SocialBenefits = () => {
     {
       id: 'pilgrimage',
       name: 'Pilgrimage Package',
-      description: 'Support for religious pilgrimage journeys for both Muslim and Christian members.',
-      features: [
+      description: 'Support for religious pilgrimage journeys for both Muslim and Christian clients.',
+      features: [ 
         'Hajj/Umrah packages',
         'Christian pilgrimage support',
         'Travel arrangements',

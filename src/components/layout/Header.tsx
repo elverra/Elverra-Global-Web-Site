@@ -255,7 +255,7 @@ const Header = () => {
                   <Link to="/services/payday-advance">Payday Advance</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/services/online-store">Online Store</Link>
+                  <Link to="/shop">Online Store</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/ebooks" className="flex items-center">
@@ -508,11 +508,11 @@ const Header = () => {
                 Shop
               </Link>
               <Link
-                to="/ebook-library"
+                to="/ebooks"
                 className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2 pl-6"
                 onClick={toggleMenu}
               >
-                E-Book Library
+                E-Books
               </Link>
               <Link
                 to="/career"
@@ -522,38 +522,17 @@ const Header = () => {
               >
                 Career at Elverra
               </Link>
+            
+           
               <Link
-                to="/affiliates/members"
+                to="/affiliate-program"
                 className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"
                 style={{ fontSize: "15px" }}
                 onClick={toggleMenu}
               >
-                Member Affiliates
+                Affiliate
               </Link>
-              <Link
-                to="/affiliates/merchants"
-                className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"
-                style={{ fontSize: "15px" }}
-                onClick={toggleMenu}
-              >
-                Merchant Partners
-              </Link>
-              <Link
-                to="/affiliates/distributors"
-                className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"
-                style={{ fontSize: "15px" }}
-                onClick={toggleMenu}
-              >
-                Distributors
-              </Link>
-              <Link
-                to="/affiliate-dashboard"
-                className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"
-                style={{ fontSize: "15px" }}
-                onClick={toggleMenu}
-              >
-                Affiliate Dashboard
-              </Link>
+          
               <Link
                 to="/discounts"
                 className="text-gray-600 hover:text-purple-600 transition-colors font-medium px-2"

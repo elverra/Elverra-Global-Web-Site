@@ -63,7 +63,7 @@ const PaymentForm = ({ selectedPlan, onPaymentComplete }: PaymentFormProps) => {
     }
 
     if (!user) {
-      toast.error('Please log in to complete membership creation');
+      toast.error('Please log in to complete subscription creation');
       return;
     }
 

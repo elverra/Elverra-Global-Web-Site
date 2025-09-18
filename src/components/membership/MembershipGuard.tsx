@@ -101,7 +101,7 @@ const MembershipGuard = ({
           </div>
           <p className="text-gray-600 mb-6">
             This feature requires {requiredTierName} client or higher. 
-            Please upgrade your membership to access this feature.
+            Please upgrade your subsciption to access this feature.
           </p>
           {showUpgradePrompt && (
             <Button 

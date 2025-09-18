@@ -117,7 +117,7 @@ const MemberDigitalCard = ({
     alert('Card sharing functionality would be implemented here.');
   };
 
-  // Get the appropriate card image based on membership tier
+  // Get the appropriate card image based on hip tier
   const getCardImage = () => {
     switch (membershipTier) {
       case 'Essential':

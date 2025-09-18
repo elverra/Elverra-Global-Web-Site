@@ -117,7 +117,7 @@ export const RegistrationPaymentStep: React.FC<RegistrationPaymentStepProps> = (
             <Result
               status="success"
               title="Welcome to Elverra Global!"
-              subTitle="Your payment was successful, and your membership is now active. Welcome to our community!"
+              subTitle="Your payment was successful, and your clients subscription is now active. Welcome t o our community!"
               extra={[
                 <Button type="primary" key="dashboard" onClick={onSuccess}>
                   Go to Dashboard

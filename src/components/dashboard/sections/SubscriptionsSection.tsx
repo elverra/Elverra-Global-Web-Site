@@ -813,7 +813,7 @@ const SubscriptionsSection = () => {
                 <div>
                   <h4 className="font-semibold mb-2">Special Offers</h4>
                   <ul className="text-sm space-y-1 text-gray-600">
-                    <li>• New members get 50% off their first month on Premium or Elite plans</li>
+                    <li>• New clients get 50% off their first month on Premium or Elite plans</li>
                     <li>• Annual billing saves you 17% compared to monthly billing</li>
                     <li>• Students get an additional 25% discount with valid student ID</li>
                     <li>• Refer friends and earn 1 month free for each successful referral</li>

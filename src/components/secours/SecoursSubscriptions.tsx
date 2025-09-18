@@ -79,7 +79,6 @@ const SecoursSubscriptions = () => {
     enabled: !!user
   });
 
-  // Check if user has membership (Club66 card holder requirement)
   const { data: membership } = useQuery({
     queryKey: ['user-membership'],
     queryFn: async () => {

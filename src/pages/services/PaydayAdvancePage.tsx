@@ -266,7 +266,7 @@ const PaydayAdvancePage = () => {
                           <ul className="space-y-2">
                             <li className="flex items-center">
                               <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                              <span>Active Club66 Global membership</span>
+                              <span>Elverra Global client subscription</span>
                             </li>
                             <li className="flex items-center">
                               <CheckCircle className="h-5 w-5 text-green-500 mr-2" />

@@ -19,7 +19,7 @@ const PaydayLoan = () => {
     {
       icon: Calculator,
       title: "Competitive Rates",
-      description: "Preferential interest rates based on your Club66 Global membership tier."
+      description: "Preferential interest rates based on your Elverra Global client subscription tier."
     },
     {
       icon: ShieldCheck,
@@ -56,7 +56,7 @@ const PaydayLoan = () => {
           <h1 className="text-4xl font-bold mb-4 text-center">Payday Loan</h1>
           <p className="text-center text-gray-600 mb-8 max-w-3xl mx-auto">
             Quick access to funds before your next paycheck with our competitive Payday Loan service,
-            offering preferential rates for Club66 Global members.
+            offering preferential rates for Elverra Global clients.
           </p>
           
           <div className="max-w-5xl mx-auto mb-16">
@@ -66,7 +66,7 @@ const PaydayLoan = () => {
                 <p className="text-gray-600 mb-6">
                   Our Payday Loan service provides a quick financial solution for unexpected expenses or 
                   emergencies that can't wait until your next salary. With competitive interest rates and 
-                  streamlined processing, Club66 Global members can access funds quickly and conveniently.
+                  streamlined processing, Elverra Global clients can access funds quickly and conveniently.
                 </p>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
@@ -336,7 +336,7 @@ const PaydayLoan = () => {
             <h2 className="text-2xl font-bold mb-4">Need a Short-Term Financial Solution?</h2>
             <p className="text-gray-600 mb-8">
               Our Payday Loan service offers quick access to funds with competitive rates for 
-              Club66 Global members. Apply today and receive a decision quickly.
+              Elverra Global clients. Apply today and receive a decision quickly.
             </p>
            
           </div>

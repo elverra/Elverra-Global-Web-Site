@@ -51,7 +51,7 @@ const FAQ = () => {
         },
         {
           question: "Are there any transaction fees?",
-          answer: "Basic transactions are free for all members. Some premium services may have minimal fees, which are clearly disclosed before any transaction."
+          answer: "Basic transactions are free for all clients. Some premium services may have minimal fees, which are clearly disclosed before any transaction."
         }
       ]
     },
@@ -60,7 +60,7 @@ const FAQ = () => {
       questions: [
         {
           question: "How does the credit account work?",
-          answer: "Our credit account allows you to make purchases and pay later. Credit limits are determined based on your membership tier and credit assessment. Interest rates start from 2.5% per month."
+          answer: "Our credit account allows you to make purchases and pay later. Credit limits are determined based on your clients subscription tier and credit assessment. Interest rates start from 2.5% per month."
         },
         {
           question: "What is hire purchase and how does it work?",
@@ -68,7 +68,7 @@ const FAQ = () => {
         },
         {
           question: "How quickly can I get a payday advance?",
-          answer: "Payday advances are processed within 30 minutes for eligible members. The amount depends on your membership tier and payment history with us."
+          answer: "Payday advances are processed within 30 minutes for eligible clients. The amount depends on your subscription tier and payment history with us."
         },
         {
           question: "What documents do I need for services?",
@@ -81,11 +81,11 @@ const FAQ = () => {
       questions: [
         {
           question: "How do I access discounts at partner merchants?",
-          answer: "Simply show your Club66 card or app at participating merchants. Discounts are automatically applied when you use your card for payment."
+          answer: "Simply show your ZENIKA card or app at participating merchants. Discounts are automatically applied when you use your card for payment."
         },
         {
           question: "Do discounts have expiration dates?",
-          answer: "Most discounts are ongoing benefits of membership. Special promotional discounts may have expiration dates, which are clearly communicated in the app."
+          answer: "Most discounts are ongoing benefits for clients. Special promotional discounts may have expiration dates, which are clearly communicated in the app."
         },
         {
           question: "Can I combine discounts with other offers?",

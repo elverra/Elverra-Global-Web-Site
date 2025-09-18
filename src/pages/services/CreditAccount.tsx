@@ -50,7 +50,7 @@ const CreditAccount = () => {
         <div className="container mx-auto px-4">
           <h1 className="text-4xl font-bold mb-4 text-center">Credit Account</h1>
           <p className="text-center text-gray-600 mb-8 max-w-3xl mx-auto">
-            Shop now, pay later with the Club66 Global Credit Account. Access flexible credit options 
+            Shop now, pay later with the Elverra Global Credit Account. Access flexible credit options 
             for purchases at our partner merchants with competitive rates based on your membership tier.
           </p>
           
@@ -179,7 +179,7 @@ const CreditAccount = () => {
                     <ul className="space-y-2">
                       <li className="flex items-center">
                         <Check className="h-5 w-5 text-green-500 mr-2" />
-                        <span>Active Club66 Global membership</span>
+                        <span>Active Elverra Global client Subsciption</span>
                       </li>
                       <li className="flex items-center">
                         <Check className="h-5 w-5 text-green-500 mr-2" />
