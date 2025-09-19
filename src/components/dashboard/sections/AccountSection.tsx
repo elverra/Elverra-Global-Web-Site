@@ -429,7 +429,7 @@ setUserCards(processedCards || []);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between ">
         <h2 className="text-2xl font-bold text-gray-900">Account Settings</h2>
         <Badge className="bg-blue-100 text-blue-800">
           <User className="h-3 w-3 mr-1" />
@@ -438,14 +438,50 @@ setUserCards(processedCards || []);
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
-          <TabsTrigger value="language">Language & Region</TabsTrigger>
-        </TabsList>
-
+      <div className="relative">
+  <TabsList className="w-full grid-cols-5 overflow-x-auto pb-2 md:pb-0 hide-scrollbar ">
+    <TabsTrigger 
+      value="profile" 
+      className=""
+    >
+      <User className="h-3.5 w-3.5 mr-1 sm:mr-1.5 flex-shrink-0" />
+      <span className="sm:hidden">Prof</span>
+      <span className="hidden sm:inline">Profile</span>
+    </TabsTrigger>
+    <TabsTrigger 
+      value="security" 
+      className=""
+    >
+      <Shield className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+      <span className="hidden sm:inline">Security</span>
+      <span className="sm:inline sm:md:hidden">Sec</span>
+    </TabsTrigger>
+    <TabsTrigger 
+      value="notifications" 
+      className=""
+    >
+      <Bell className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+      <span className="hidden sm:inline">Notifications</span>
+      <span className="sm:inline sm:md:hidden">Notif</span>
+    </TabsTrigger>
+    <TabsTrigger 
+      value="subscriptions" 
+      className=""
+    >
+      <CreditCard className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+      <span className="hidden md:inline">Subscriptions</span>
+      <span className="md:inline md:lg:hidden">Subs</span>
+    </TabsTrigger>
+    <TabsTrigger 
+      value="language" 
+      className=""
+    >
+      <Globe className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+      <span className="hidden md:inline">Language</span>
+      <span className="md:inline md:lg:hidden">Lang</span>
+    </TabsTrigger>
+  </TabsList>
+</div>
         <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
@@ -456,20 +492,20 @@ setUserCards(processedCards || []);
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Photo de profil */}
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
                 <div className="relative group">
                   <img
                     src={previewUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff&size=128`}
                     alt="Photo de profil"
-                    className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-gray-200"
                   />
                   {isEditing && (
                     <label
                       htmlFor="profile-upload"
-                      className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md cursor-pointer hover:bg-gray-100 transition-colors"
+                      className="absolute -bottom-1 -right-1 sm:bottom-0 sm:right-0 bg-white rounded-full p-1.5 shadow-md cursor-pointer hover:bg-gray-100 transition-colors"
                       title="Changer la photo"
                     >
-                      <Camera className="h-4 w-4 text-gray-700" />
+                      <Camera className="h-3 w-3 sm:h-4 sm:w-4 text-gray-700" />
                       <input
                         id="profile-upload"
                         type="file"
@@ -485,9 +521,9 @@ setUserCards(processedCards || []);
                     </div>
                   )}
                 </div>
-                <div>
-                  <h3 className="font-semibold mb-1">Photo de profil</h3>
-                  <p className="text-sm text-gray-600 mb-3">
+                <div className="text-center sm:text-left">
+                  <h3 className="font-semibold text-sm sm:text-base mb-1">Photo de profil</h3>
+                  <p className="text-xs sm:text-sm text-gray-600 mb-3">
                     Téléchargez une photo pour personnaliser votre compte
                   </p>
                   {isEditing ? (

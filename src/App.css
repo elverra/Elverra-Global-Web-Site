@@ -11,6 +11,14 @@
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Masque la scrollbar pour WebKit (Chrome, Safari, etc.) */
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* Masque la scrollbar pour IE et Edge */
+  scrollbar-width: none;  /* Masque la scrollbar pour Firefox */
+}
 
 @keyframes logo-spin {
   from {
