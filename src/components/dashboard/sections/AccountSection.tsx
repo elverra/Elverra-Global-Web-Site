@@ -24,7 +24,10 @@ import {
   CreditCard,
   CheckCircle,
   Star,
-  Gift
+  Gift,
+  Edit,
+  X,
+  Loader2
 } from 'lucide-react';
 import MemberDigitalCard from '@/components/dashboard/MemberDigitalCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -157,7 +160,14 @@ setUserCards(processedCards || []);
     fetchUserCards();
   }, [user?.id, membership?.id, membership?.tier]);
 
-  // Profile data state - Initialize with current data
+  // État du mode édition
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // État local du profil
   const [profileData, setProfileData] = useState({
     fullName: memberName,
     email: user?.email || '',
@@ -165,24 +175,152 @@ setUserCards(processedCards || []);
     address: currentProfile?.address || '',
     city: currentProfile?.city || '',
     country: currentProfile?.country || 'Mali',
-    bio: '',
-    dateOfBirth: '',
-    gender: '',
-    occupation: ''
+    profileImage: currentProfile?.profile_image_url || ''
   });
 
-  // Update profileData when memberName changes
+  // Mettre à jour les données du profil lorsque les données changent
   useEffect(() => {
-    setProfileData(prev => ({
-      ...prev,
+    setProfileData({
       fullName: memberName,
       email: user?.email || '',
       phone: currentProfile?.phone || '',
       address: currentProfile?.address || '',
       city: currentProfile?.city || '',
-      country: currentProfile?.country || 'Mali'
-    }));
-  }, [memberName, user?.email, currentProfile?.phone, currentProfile?.address, currentProfile?.city, currentProfile?.country]);
+      country: currentProfile?.country || 'Mali',
+      profileImage: currentProfile?.profile_image_url || ''
+    });
+    setPreviewUrl(currentProfile?.profile_image_url || null);
+  }, [memberName, user?.email, currentProfile]);
+
+  // Gérer la sélection de fichier
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      
+      // Créer un aperçu de l'image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Télécharger l'image de profil
+  const uploadProfileImage = async () => {
+    if (!selectedFile || !user?.id) return;
+    
+    setIsLoading(true);
+    setUploadProgress(0);
+    
+    try {
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `profile-images/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: selectedFile.type,
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      // Obtenir l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(filePath);
+      
+      // Mettre à jour le profil avec la nouvelle URL d'image
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ profile_image_url: publicUrl })
+        .eq('id', user.id);
+      
+      if (updateError) throw updateError;
+      
+      // Mettre à jour l'état local
+      setProfileData(prev => ({
+        ...prev,
+        profileImage: publicUrl
+      }));
+      
+      toast.success('Photo de profil mise à jour avec succès');
+    } catch (error) {
+      console.error('Erreur lors du téléchargement de l\'image:', error);
+      toast.error('Erreur lors de la mise à jour de la photo de profil');
+    } finally {
+      setIsLoading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // Enregistrer les modifications du profil
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Télécharger d'abord la nouvelle image si nécessaire
+      if (selectedFile) {
+        await uploadProfileImage();
+      }
+      
+      // Mettre à jour les autres informations du profil
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profileData.fullName,
+          phone: profileData.phone,
+          address: profileData.address,
+          city: profileData.city,
+          country: profileData.country,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      toast.success('Profil mis à jour avec succès');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du profil:', error);
+      toast.error('Erreur lors de la mise à jour du profil');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Gérer la mise à niveau de l'abonnement
+  const handleUpgradePlan = async (newTier: 'premium' | 'elite' | 'essential') => {
+    if (!user?.id) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Ici, vous devez intégrer votre logique de paiement
+      // Ceci est un exemple simplifié
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ tier: newTier })
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      toast.success(`Félicitations ! Vous avez été mis à niveau vers le plan ${newTier}`);
+      // Recharger les données du membre
+      window.location.reload();
+    } catch (error) {
+      console.error('Erreur lors de la mise à niveau du plan:', error);
+      toast.error('Erreur lors de la mise à niveau du plan');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Navigation functions for cards
   const nextCard = () => {
@@ -317,29 +455,59 @@ setUserCards(processedCards || []);
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Profile Picture */}
+              {/* Photo de profil */}
               <div className="flex items-center gap-6">
-                <div className="relative">
+                <div className="relative group">
                   <img
-                    src={currentProfile?.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff&size=128`}
-                    alt="Profile"
-                    className="w-24 h-24 rounded-full object-cover"
+                    src={previewUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff&size=128`}
+                    alt="Photo de profil"
+                    className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
                   />
-                  <Button
-                    size="sm"
-                    className="absolute bottom-0 right-0 rounded-full w-8 h-8 p-0"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
+                  {isEditing && (
+                    <label
+                      htmlFor="profile-upload"
+                      className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md cursor-pointer hover:bg-gray-100 transition-colors"
+                      title="Changer la photo"
+                    >
+                      <Camera className="h-4 w-4 text-gray-700" />
+                      <input
+                        id="profile-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                    </label>
+                  )}
+                  {uploadProgress > 0 && uploadProgress < 100 && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
+                      <div className="text-white text-xs">{uploadProgress}%</div>
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">Profile Photo</h3>
+                  <h3 className="font-semibold mb-1">Photo de profil</h3>
                   <p className="text-sm text-gray-600 mb-3">
-                    Upload a photo to personalize your account
+                    Téléchargez une photo pour personnaliser votre compte
                   </p>
-                  <Button size="sm" variant="outline">
-                    Change Photo
-                  </Button>
+                  {isEditing ? (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={uploadProfileImage}
+                      disabled={!selectedFile || isLoading}
+                    >
+                      {isLoading ? 'Téléchargement...' : 'Enregistrer la photo'}
+                    </Button>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      Modifier le profil
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -347,79 +515,81 @@ setUserCards(processedCards || []);
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Full Name
+                    Nom complet
                   </label>
                   <Input
                     value={profileData.fullName}
                     onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
-                    placeholder="Enter your full name"
+                    placeholder="Votre nom complet"
+                    disabled={!isEditing}
+                    className={!isEditing ? 'bg-gray-50' : ''}
                   />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Email Address
+                    Adresse email
                   </label>
                   <Input
                     type="email"
                     value={profileData.email}
                     onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                    placeholder="Enter your email"
+                    placeholder="Votre adresse email"
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Contactez le support pour modifier votre email</p>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Phone Number
+                    Numéro de téléphone
                   </label>
                   <Input
                     type="tel"
                     value={profileData.phone}
                     onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                    placeholder="Enter your phone number"
+                    placeholder="Votre numéro de téléphone"
+                    disabled={!isEditing}
+                    className={!isEditing ? 'bg-gray-50' : ''}
                   />
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Date of Birth
-                  </label>
-                  <Input
-                    type="date"
-                    value={profileData.dateOfBirth}
-                    onChange={(e) => setProfileData({ ...profileData, dateOfBirth: e.target.value })}
-                  />
-                </div>
-
-             
-            
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    City
+                    Ville
                   </label>
                   <Input
                     value={profileData.city}
                     onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
-                    placeholder="Enter your city"
+                    placeholder="Votre ville"
+                    disabled={!isEditing}
+                    className={!isEditing ? 'bg-gray-50' : ''}
                   />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Country
+                    Pays
                   </label>
-                  <Select value={profileData.country} onValueChange={(value) => setProfileData({ ...profileData, country: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select country" />
+                  <Select 
+                    value={profileData.country} 
+                    onValueChange={(value) => setProfileData({ ...profileData, country: value })}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger className={!isEditing ? 'bg-gray-50' : ''}>
+                      <SelectValue placeholder="Sélectionnez un pays" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Mali">Mali</SelectItem>
-                      <SelectItem value="Senegal">Senegal</SelectItem>
+                      <SelectItem value="Sénégal">Sénégal</SelectItem>
                       <SelectItem value="Burkina Faso">Burkina Faso</SelectItem>
                       <SelectItem value="Niger">Niger</SelectItem>
-                      <SelectItem value="Guinea">Guinea</SelectItem>
-                      <SelectItem value="Ivory Coast">Ivory Coast</SelectItem>
+                      <SelectItem value="Guinée">Guinée</SelectItem>
+                      <SelectItem value="Côte d'Ivoire">Côte d'Ivoire</SelectItem>
+                      <SelectItem value="Bénin">Bénin</SelectItem>
+                      <SelectItem value="Togo">Togo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -427,20 +597,62 @@ setUserCards(processedCards || []);
 
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Address
+                  Adresse
                 </label>
                 <Input
                   value={profileData.address}
                   onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-                  placeholder="Enter your full address"
+                  placeholder="Votre adresse complète"
+                  disabled={!isEditing}
+                  className={!isEditing ? 'bg-gray-50' : ''}
                 />
               </div>
 
           
-              <Button onClick={handleProfileUpdate} className="w-full md:w-auto">
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
+                {isEditing ? (
+                  <>
+                    <Button 
+                      onClick={handleSaveProfile} 
+                      className="w-full sm:w-auto"
+                      disabled={isLoading}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsEditing(false);
+                        // Réinitialiser les modifications
+                        setProfileData({
+                          ...profileData,
+                          fullName: memberName,
+                          phone: currentProfile?.phone || '',
+                          address: currentProfile?.address || '',
+                          city: currentProfile?.city || '',
+                          country: currentProfile?.country || 'Mali'
+                        });
+                        setPreviewUrl(currentProfile?.profile_image_url || null);
+                        setSelectedFile(null);
+                      }}
+                      disabled={isLoading}
+                      className="w-full sm:w-auto"
+                    >
+                      Annuler
+                    </Button>
+                  </>
+                ) : (
+                  <Button 
+                    onClick={() => setIsEditing(true)}
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Modifier le profil
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -800,8 +1012,16 @@ setUserCards(processedCards || []);
                             <li>• Affiliate program access</li>
                             <li>• Enhanced features</li>
                           </ul>
-                          <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                            Upgrade to Premium
+                          <Button 
+                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            onClick={() => handleUpgradePlan('premium')}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              'Passer à Premium'
+                            )}
                           </Button>
                         </CardContent>
                       </Card>
@@ -821,8 +1041,16 @@ setUserCards(processedCards || []);
                             <li>• Advanced analytics</li>
                             <li>• Exclusive benefits</li>
                           </ul>
-                          <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                            Upgrade to Elite
+                          <Button 
+                            className="w-full bg-purple-600 hover:bg-purple-700"
+                            onClick={() => handleUpgradePlan('elite')}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              'Passer à Elite'
+                            )}
                           </Button>
                         </CardContent>
                       </Card>
@@ -847,8 +1075,17 @@ setUserCards(processedCards || []);
                             <li>• Standard support</li>
                             <li>• Basic access</li>
                           </ul>
-                          <Button variant="outline" className="w-full">
-                            Downgrade to Essential
+                          <Button 
+                            variant="outline" 
+                            className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => handleUpgradePlan('essential')}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              'Rétrograder en Essential'
+                            )}
                           </Button>
                         </CardContent>
                       </Card>
@@ -868,8 +1105,16 @@ setUserCards(processedCards || []);
                             <li>• Advanced analytics</li>
                             <li>• Exclusive benefits</li>
                           </ul>
-                          <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                            Upgrade to Elite
+                          <Button 
+                            className="w-full bg-purple-600 hover:bg-purple-700"
+                            onClick={() => handleUpgradePlan('elite')}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              'Passer à Elite'
+                            )}
                           </Button>
                         </CardContent>
                       </Card>
@@ -894,8 +1139,17 @@ setUserCards(processedCards || []);
                             <li>• Standard support</li>
                             <li>• Basic access</li>
                           </ul>
-                          <Button variant="outline" className="w-full">
-                            Downgrade to Essential
+                          <Button 
+                            variant="outline" 
+                            className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => handleUpgradePlan('essential')}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              'Rétrograder en Essential'
+                            )}
                           </Button>
                         </CardContent>
                       </Card>
@@ -915,8 +1169,17 @@ setUserCards(processedCards || []);
                             <li>• Affiliate program access</li>
                             <li>• Enhanced features</li>
                           </ul>
-                          <Button variant="outline" className="w-full">
-                            Downgrade to Premium
+                          <Button 
+                            variant="outline" 
+                            className="w-full text-blue-600 border-blue-300 hover:bg-blue-50"
+                            onClick={() => handleUpgradePlan('premium')}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              'Rétrograder en Premium'
+                            )}
                           </Button>
                         </CardContent>
                       </Card>

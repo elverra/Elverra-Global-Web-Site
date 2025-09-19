@@ -568,7 +568,7 @@ const RequestDetailsModal = ({
         <Label className="text-sm font-medium text-gray-700">Delivery Address</Label>
         <p className="mt-1 text-sm text-gray-900">
           {request.address}<br />
-          {request.city}, {request.country}
+          {request.city}, {request.address}
         </p>
       </div>
 
