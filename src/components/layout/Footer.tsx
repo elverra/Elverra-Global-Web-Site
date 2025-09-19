@@ -225,18 +225,16 @@ const Footer = () => {
               </div>
             </form>
             <div className="flex space-x-4 mt-6">
-              <a href="#" className="text-gray-300 hover:text-club66-gold">
+              <a href="https://www.facebook.com/share/14NL12waTbr/" className="text-gray-300 hover:text-club66-gold">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-300 hover:text-club66-gold">
+              <a href="https://www.linkedin.com/in/elverra-global-ml-sas-b85894382?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" className="text-gray-300 hover:text-club66-gold">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-300 hover:text-club66-gold">
+              <a href="https://www.instagram.com/elverrag/?utm_source=qr&r=nametag" className="text-gray-300 hover:text-club66-gold">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-300 hover:text-club66-gold">
-                <Linkedin className="h-5 w-5" />
-              </a>
+            
             </div>
           </div>
         </div>

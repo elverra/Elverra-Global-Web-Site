@@ -176,7 +176,7 @@ export default function PublicShop() {
       <div className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Elverra Shop</h1>
-          <p className="text-gray-600">Discover products from our community members</p>
+          <p className="text-gray-600">Discover products from our merchant network</p>
         </div>
       </div>
 

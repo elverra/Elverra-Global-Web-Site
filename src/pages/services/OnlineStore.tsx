@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -198,7 +199,7 @@ const OnlineStore = () => {
             <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
               <div>
                 <h1 className="text-3xl font-bold mb-2">Browse Products</h1>
-                <p className="text-gray-600">Discover items posted by Elverra Global members</p>
+                <p className="text-gray-600">Discover items posted by Elverra Global clients</p>
               </div>
             </div>
 

@@ -54,6 +54,8 @@ const Register = () => {
     referral_code: referralCode || "",
     physical_card_requested: false,
   });
+  
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [identityCardImage, setIdentityCardImage] = useState<File | null>(null);
@@ -196,49 +198,58 @@ const Register = () => {
             updated_at: new Date().toISOString(),
           };
 
-          if (profileImageUrl) {
-            updateData.profile_image_url = profileImageUrl;
-          }
-          if (identityCardUrl) {
-            updateData.identity_card_image_url = identityCardUrl;
-          }
+          // S'assurer que les champs requis ont des valeurs par défaut si vides
+          const profileData = {
+            id: uid,
+            full_name: data.full_name || 'Nouvel utilisateur',
+            phone: data.phone || '',
+            country: data.country || '',
+            city: data.city || '',
+            address: data.address || '',
+            profile_image_url: profileImageUrl || 'https://dsnzsgszqdjmugjdyvzv.supabase.co/storage/v1/object/public/profile-images/default-avatar.png',
+            identity_card_image_url: identityCardUrl || '',
+            is_admin: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            ...(data.referral_code && { referrer_affiliate_code: data.referral_code }),
+            physical_card_requested: data.physical_card_requested || false,
+            has_physical_card: false
+          };
 
-          console.log('Updating profile with data:', updateData);
-          console.log('Profile image URL to save:', profileImageUrl);
-          console.log('Identity card URL to save:', identityCardUrl);
+          console.log('Saving profile with data:', profileData);
           
-          // First, check if profile exists
-          const { data: existingProfile, error: checkError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', uid)
-            .single();
-          
-          console.log('Existing profile check:', { existingProfile, checkError });
-          
-          if (existingProfile) {
-            // Profile exists, update it
+          try {
+            // Essayer d'abord une mise à jour
             const { error: updateError } = await supabase
               .from('profiles')
-              .update(updateData)
+              .update(profileData)
               .eq('id', uid);
             
+            // Si la mise à jour échoue (probablement parce que le profil n'existe pas)
             if (updateError) {
-              console.error('Profile update error:', updateError);
+              console.log('Update failed, trying insert...', updateError);
+              
+              // Générer un code d'affiliation si c'est un nouvel utilisateur
+              const affiliateCode = generateAffiliateCode();
+              
+              const { error: insertError } = await supabase
+                .from('profiles')
+                .insert([{ 
+                  ...profileData,
+                  affiliate_code: affiliateCode
+                }]);
+              
+              if (insertError) {
+                console.error('Profile insert error:', insertError);
+                throw new Error('Failed to create profile: ' + insertError.message);
+              }
+              console.log('Profile created successfully');
             } else {
-              console.log('Profile updated successfully with image URLs');
+              console.log('Profile updated successfully');
             }
-          } else {
-            // Profile doesn't exist, create it
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert({ id: uid, ...updateData });
-            
-            if (insertError) {
-              console.error('Profile insert error:', insertError);
-            } else {
-              console.log('Profile created successfully with image URLs');
-            }
+          } catch (error) {
+            console.error('Error saving profile:', error);
+            throw error;
           }
           
           // Verify the data was saved
@@ -301,152 +312,276 @@ const Register = () => {
     return null;
   }
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.full_name.trim()) {
+      errors.full_name = t('form.required');
+    }
+    
+    if (!formData.phone.trim()) {
+      errors.phone = t('form.required');
+    } else if (!/^[0-9+\s-]{8,20}$/.test(formData.phone)) {
+      errors.phone = t('form.phone.invalid');
+    }
+    
+    if (!formData.city.trim()) {
+      errors.city = t('form.required');
+    }
+    
+    if (!formData.password) {
+      errors.password = t('form.required');
+    } else if (formData.password.length < 6) {
+      errors.password = t('form.password.too_short');
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = t('form.password.mismatch');
+    }
+    
+    if (!profileImage) {
+      errors.profileImage = t('form.required');
+    }
+    
+    if (!identityCardImage) {
+      errors.identityCardImage = t('form.required');
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error(t('form.validation_error'));
+      return;
+    }
+    
     registerMutation.mutate(formData);
   };
 
   const handleInputChange = (field: keyof typeof formData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error when field is edited
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  // Handle image upload with validation
+  const handleImageUpload = (file: File | undefined, setter: (file: File) => void, previewSetter: (preview: string) => void, fileType: 'profile' | 'identity') => {
+    if (!file) return;
+    
+    // Check file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      const errorKey = fileType === 'profile' ? 'profileImage' : 'identityCardImage';
+      setFormErrors(prev => ({
+        ...prev,
+        [errorKey]: t('form.image.size_error')
+      }));
+      return;
+    }
+    
+    // Check file type
+    const validTypes = fileType === 'profile' 
+      ? ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+      : ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      
+    if (!validTypes.includes(file.type)) {
+      const errorKey = fileType === 'profile' ? 'profileImage' : 'identityCardImage';
+      setFormErrors(prev => ({
+        ...prev,
+        [errorKey]: t('form.image.type_error')
+      }));
+      return;
+    }
+    
+    // Clear any previous errors
+    const errorKey = fileType === 'profile' ? 'profileImage' : 'identityCardImage';
+    setFormErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[errorKey];
+      return newErrors;
+    });
+    
+    // Set the file and preview
+    setter(file);
+    if (fileType === 'profile') {
+      const reader = new FileReader();
+      reader.onload = (e) => previewSetter(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => previewSetter(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      previewSetter('/placeholder-pdf.png');
+    }
   };
 
   return (
     <Layout>
       <PremiumBanner
-        title="Join Elverra Global"
-        description="Become a client and unlock exclusive discounts, services, and opportunities across our network of partners"
+        title={t('register.banner.title')}
+        description={t('register.banner.description')}
         backgroundImage="https://images.unsplash.com/photo-1560472355-536de3962603?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
       />
 
-    <div className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
-      <div className="container mx-auto px-4">
-        <div className="max-w-2xl mx-auto">
-          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {t('register.title')}
-              </h1>
-              <p className="text-gray-600">
-                {t('register.subtitle')}
-              </p>
-            </div>
+      <div className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto">
+            <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl">
+              <CardContent className="p-8">
+                <div className="text-center mb-8">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    {t('register.title')}
+                  </h1>
+                  <p className="text-gray-600">
+                    {t('register.subtitle')}
+                  </p>
+                </div>
 
-            <CardContent className="p-8 pt-0">
-              <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Personal Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="full_name">
+                        {t('form.name')} <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="full_name"
+                        value={formData.full_name}
+                        onChange={(e) =>
+                          handleInputChange("full_name", e.target.value)
+                        }
+                        required
+                        placeholder={t('register.name.placeholder')}
+                        data-testid="input-full-name"
+                        autoComplete="name"
+                        className={formErrors.full_name ? 'border-red-500' : ''}
+                      />
+                      {formErrors.full_name && (
+                        <p className="text-red-500 text-xs mt-1">{formErrors.full_name}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="email">
+                        {t('register.email.optional')}
+                        {formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+                          <span className="text-red-500 ml-1">* {t('form.email.invalid')}</span>
+                        )}
+                      </Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) =>
+                          handleInputChange("email", e.target.value)
+                        }
+                        placeholder={t('register.email.placeholder')}
+                        data-testid="input-email"
+                        autoComplete="email"
+                      />
+                    </div>
+                  </div>
 
-                {/* Personal Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="full_name">
-                      {t('form.name')} <span className="text-red-500">*</span>
+                    <Label htmlFor="phone">
+                      {t('form.phone')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="full_name"
-                      value={formData.full_name}
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
                       onChange={(e) =>
-                        handleInputChange("full_name", e.target.value)
+                        handleInputChange("phone", e.target.value)
                       }
                       required
-                      placeholder={t('register.name.placeholder')}
-                      data-testid="input-full-name"
-                      autoComplete="name"
+                      placeholder={t('register.phone.placeholder')}
+                      data-testid="input-phone"
+                      autoComplete="tel"
+                      className={formErrors.phone ? 'border-red-500' : ''}
                     />
+                    {formErrors.phone && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>
+                    )}
                   </div>
-                  <div>
-                    <Label htmlFor="email">
-                      {t('register.email.optional')}
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        handleInputChange("email", e.target.value)
-                      }
-                      placeholder={t('register.email.placeholder')}
-                      data-testid="input-email"
-                      autoComplete="email"
-                    />
-                  </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="phone">
-                    {t('form.phone')} <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) =>
-                      handleInputChange("phone", e.target.value)
-                    }
-                    required
-                    placeholder={t('register.phone.placeholder')}
-                    data-testid="input-phone"
-                    autoComplete="tel"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="city">{t('register.city')}</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) =>
-                        handleInputChange("city", e.target.value)
-                      }
-                      placeholder={t('register.city.placeholder')}
-                      data-testid="input-city"
-                      autoComplete="address-level2"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="city">
+                        {t('register.city')} <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) =>
+                          handleInputChange("city", e.target.value)
+                        }
+                        required
+                        placeholder={t('register.city.placeholder')}
+                        data-testid="input-city"
+                        autoComplete="address-level2"
+                        className={formErrors.city ? 'border-red-500' : ''}
+                      />
+                      {formErrors.city && (
+                        <p className="text-red-500 text-xs mt-1">{formErrors.city}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="address">{t('register.address')}</Label>
+                      <Input
+                        id="address"
+                        value={formData.address}
+                        onChange={(e) =>
+                          handleInputChange("address", e.target.value)
+                        }
+                        placeholder={t('register.address.placeholder')}
+                        data-testid="input-address"
+                        autoComplete="street-address"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="address">{t('register.address')}</Label>
-                    <Input
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) =>
-                        handleInputChange("address", e.target.value)
-                      }
-                      placeholder={t('register.address.placeholder')}
-                      data-testid="input-address"
-                      autoComplete="street-address"
-                    />
-                  </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="country">{t('register.country')}</Label>
-                  <Select
-                    value={formData.country}
-                    onValueChange={(value) =>
-                      handleInputChange("country", value)
-                    }
-                  >
-                    <SelectTrigger data-testid="select-country">
-                      <SelectValue placeholder={t('register.country.placeholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Mali">Mali</SelectItem>
-                      <SelectItem value="Burkina Faso">
-                        Burkina Faso
-                      </SelectItem>
-                      <SelectItem value="Ivory Coast">
-                        Côte d'Ivoire
-                      </SelectItem>
-                      <SelectItem value="Ghana">Ghana</SelectItem>
-                      <SelectItem value="Senegal">Sénégal</SelectItem>
-                      <SelectItem value="Niger">Niger</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div>
+                    <Label htmlFor="country">{t('register.country')}</Label>
+                    <Select
+                      value={formData.country}
+                      onValueChange={(value) =>
+                        handleInputChange("country", value)
+                      }
+                    >
+                      <SelectTrigger data-testid="select-country">
+                        <SelectValue placeholder={t('register.country.placeholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Mali">Mali</SelectItem>
+                        <SelectItem value="Burkina Faso">
+                          Burkina Faso
+                        </SelectItem>
+                        <SelectItem value="Ivory Coast">
+                          Côte d'Ivoire
+                        </SelectItem>
+                        <SelectItem value="Ghana">Ghana</SelectItem>
+                        <SelectItem value="Senegal">Sénégal</SelectItem>
+                        <SelectItem value="Niger">Niger</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Password Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="password">{t('form.password')} <span className="text-red-500">*</span></Label>
+                      <Label htmlFor="password">
+                        {t('form.password')} <span className="text-red-500">*</span>
+                      </Label>
                       <Input
                         id="password"
                         type="password"
@@ -458,7 +593,11 @@ const Register = () => {
                         placeholder={t('register.password.placeholder')}
                         data-testid="input-password"
                         autoComplete="new-password"
+                        className={formErrors.password ? 'border-red-500' : ''}
                       />
+                      {formErrors.password && (
+                        <p className="text-red-500 text-xs mt-1">{formErrors.password}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="confirmPassword">
@@ -475,118 +614,120 @@ const Register = () => {
                         placeholder={t('register.password.confirm.placeholder')}
                         data-testid="input-confirm-password"
                         autoComplete="new-password"
+                        className={formErrors.confirmPassword ? 'border-red-500' : ''}
                       />
+                      {formErrors.confirmPassword && (
+                        <p className="text-red-500 text-xs mt-1">{formErrors.confirmPassword}</p>
+                      )}
                     </div>
                   </div>
 
-                {/* Image Uploads */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{t('register.images.title')}</h3>
+                  {/* Image Uploads */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900">{t('register.images.title')}</h3>
                     
                     {/* Profile Image */}
                     <div>
                       <Label className="flex items-center gap-2">
                         <Camera className="h-4 w-4" />
-                        {t('register.profile.photo')}
+                        {t('register.profile.photo')} <span className="text-red-500">*</span>
                       </Label>
                       <div className="mt-2">
-                        {profileImagePreview ? (
-                          <div className="relative inline-block">
-                            <img
-                              src={profileImagePreview}
-                              alt="Profile preview"
-                              className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setProfileImage(null);
-                                setProfileImagePreview(null);
-                              }}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-gray-300 border-dashed rounded-full cursor-pointer hover:bg-gray-50">
-                            <Upload className="h-6 w-6 text-gray-400" />
-                            <span className="text-xs text-gray-500 mt-1">Upload</span>
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/jpeg,image/jpg,image/png,image/webp"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  setProfileImage(file);
-                                  const reader = new FileReader();
-                                  reader.onload = (e) => setProfileImagePreview(e.target?.result as string);
-                                  reader.readAsDataURL(file);
-                                }
-                              }}
-                            />
-                          </label>
-                        )}
+                        <div className={`border-2 ${formErrors.profileImage ? 'border-red-500 rounded-full' : 'border-transparent'} inline-block`}>
+                          {profileImagePreview ? (
+                            <div className="relative inline-block">
+                              <img
+                                src={profileImagePreview}
+                                alt="Profile preview"
+                                className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setProfileImage(null);
+                                  setProfileImagePreview(null);
+                                }}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className={`flex flex-col items-center justify-center w-24 h-24 border-2 ${formErrors.profileImage ? 'border-red-500' : 'border-gray-300 border-dashed'} rounded-full cursor-pointer hover:bg-gray-50`}>
+                              <Upload className="h-6 w-6 text-gray-400" />
+                              <span className="text-xs text-gray-500 mt-1">Upload</span>
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleImageUpload(file, setProfileImage, setProfileImagePreview, 'profile');
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <p className={`text-xs ${formErrors.profileImage ? 'text-red-500' : 'text-gray-500'} mt-1`}>
+                            {formErrors.profileImage || t('register.profile.format')}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {t('register.profile.format')}
-                      </p>
                     </div>
 
                     {/* Identity Card */}
                     <div>
                       <Label className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
-                        {t('register.identity.card')}
+                        {t('register.identity.card')} <span className="text-red-500">*</span>
                       </Label>
                       <div className="mt-2">
-                        {identityCardPreview ? (
-                          <div className="relative inline-block">
-                            <img
-                              src={identityCardPreview}
-                              alt="Identity card preview"
-                              className="w-32 h-20 object-cover border-2 border-gray-200 rounded"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIdentityCardImage(null);
-                                setIdentityCardPreview(null);
-                              }}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center w-32 h-20 border-2 border-gray-300 border-dashed rounded cursor-pointer hover:bg-gray-50">
-                            <Upload className="h-6 w-6 text-gray-400" />
-                            <span className="text-xs text-gray-500 mt-1">Upload</span>
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/jpeg,image/jpg,image/png,application/pdf"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  setIdentityCardImage(file);
-                                  if (file.type.startsWith('image/')) {
-                                    const reader = new FileReader();
-                                    reader.onload = (e) => setIdentityCardPreview(e.target?.result as string);
-                                    reader.readAsDataURL(file);
-                                  } else {
-                                    setIdentityCardPreview('/placeholder-pdf.png');
+                        <div className={`border-2 ${formErrors.identityCardImage ? 'border-red-500 rounded' : 'border-transparent'} inline-block`}>
+                          {identityCardPreview ? (
+                            <div className="relative inline-block">
+                              <img
+                                src={identityCardPreview}
+                                alt="Identity card preview"
+                                className="w-32 h-20 object-cover border-2 border-gray-200 rounded"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIdentityCardImage(null);
+                                  setIdentityCardPreview(null);
+                                }}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className={`flex flex-col items-center justify-center w-32 h-20 border-2 ${formErrors.identityCardImage ? 'border-red-500' : 'border-gray-300 border-dashed'} rounded cursor-pointer hover:bg-gray-50`}>
+                              <Upload className="h-6 w-6 text-gray-400" />
+                              <span className="text-xs text-gray-500 mt-1">Upload</span>
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/jpeg,image/jpg,image/png,application/pdf"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleImageUpload(file, setIdentityCardImage, setIdentityCardPreview, 'identity');
                                   }
-                                }
-                              }}
-                            />
-                          </label>
-                        )}
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <p className={`text-xs ${formErrors.identityCardImage ? 'text-red-500' : 'text-gray-500'} mt-1`}>
+                            {formErrors.identityCardImage || t('register.identity.format')}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {t('register.identity.format')}
-                      </p>
                     </div>
                   </div>
 
@@ -618,7 +759,6 @@ const Register = () => {
 
                   {/* Additional Options */}
                   <div className="space-y-4">
-
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="physical_card_requested"
