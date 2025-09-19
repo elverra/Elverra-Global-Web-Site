@@ -68,7 +68,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   const sendMagicLink = async (email: string, redirectPath = '/dashboard') => {
     try {
-      const appUrl = (import.meta as any)?.env?.VITE_APP_URL || window.location.origin;
+      const appUrl = "https://elverraglobalml.com/";
       const emailRedirectTo = `${appUrl}${redirectPath}`;
 
       // Attempt 1: Should create user + explicit redirect

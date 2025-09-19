@@ -26,32 +26,7 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'info' | 'success' | 'error'; message: string } | null>(null);
 
-  const handleResendConfirmationEmail = async (email: string) => {
-    try {
-      // TODO: Replace with API call to server - resend confirmation email
-      const response: { error: { message: string } | null } = { error: null }; // Placeholder for migration
-      const { error } = response;
 
-      if (error) {
-        toast({
-          title: "Failed to resend email",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Confirmation email sent",
-          description: `A new confirmation email has been sent to ${email}`,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Failed to resend email",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
