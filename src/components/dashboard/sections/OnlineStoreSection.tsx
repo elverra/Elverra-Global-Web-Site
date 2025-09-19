@@ -21,6 +21,8 @@ const OnlineStoreSection = () => {
   const { user } = useAuth();
   
   const [products, setProducts] = useState<any[]>([]);
+  // Ajoutez cet état avec les autres états
+const [editIsActive, setEditIsActive] = useState(true);
   const [myProducts, setMyProducts] = useState<any[]>([]);
   const [myProductsLoading, setMyProductsLoading] = useState(false);
   const [wishlist, setWishlist] = useState<any[]>([]);
@@ -347,45 +349,6 @@ const OnlineStoreSection = () => {
 
   
 
-  const toggleWishlist = async (productId: string) => {
-    if (!user?.id) { toast({ title: 'Login required', description: 'Please sign in to use wishlist', variant: 'destructive' }); return; }
-    try {
-      // Check if exists
-      const { data: existing, error: ce } = await supabase
-        .from('wishlists')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('product_id', productId)
-        .maybeSingle();
-      if (ce && ce.code !== 'PGRST116') throw ce;
-      if (existing) {
-        const { error: delErr } = await supabase
-          .from('wishlists')
-          .delete()
-          .eq('id', existing.id);
-        if (delErr) throw delErr;
-        toast({ title: 'Removed', description: 'Removed from wishlist' });
-      } else {
-        const { error: insErr } = await supabase
-          .from('wishlists')
-          .insert([{ user_id: user.id, product_id: productId }]);
-        if (insErr) throw insErr;
-        toast({ title: 'Saved', description: 'Added to wishlist' });
-      }
-      await fetchWishlist();
-    } catch (e: any) {
-      console.error('Wishlist toggle error:', e);
-      toast({ title: 'Error', description: e?.message || 'Failed to update wishlist', variant: 'destructive' });
-    }
-  };
-
-  const contactSeller = (productId: number) => {
-    alert('Opening chat with seller...');
-  };
-
-  const reportListing = (productId: number) => {
-    alert('Report submitted. Thank you for helping keep our marketplace safe.');
-  };
 
   return (
     <div className="space-y-6">

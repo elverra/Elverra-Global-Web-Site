@@ -41,6 +41,7 @@ interface Agent {
 
 const AffiliateApprovalPanel = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [filteredAgents, setFilteredAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [notes, setNotes] = useState('');
@@ -48,19 +49,42 @@ const AffiliateApprovalPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'day' | 'month' | 'year'>('all');
   const [filterValue, setFilterValue] = useState<string>('');
-
- useEffect(() => {
-  if (filterType === 'all' || !filterValue) {
-    setFilteredAgents(agents);
-    return;
-  }
-
-  const date = new Date(filterValue);
-  if (isNaN(date.getTime())) return;
-
-  handleDateFilter(date);
-}, [filterValue, filterType]); // Retirez agents des dépendances
-
+  useEffect(() => {
+    if (filterType === 'all' || !filterValue) {
+      setFilteredAgents(agents);
+      return;
+    }
+  
+    const date = new Date(filterValue);
+    if (isNaN(date.getTime())) {
+      setFilteredAgents(agents);
+      return;
+    }
+  
+    const filtered = agents.filter(agent => {
+      const agentDate = new Date(agent.created_at);
+      
+      switch (filterType) {
+        case 'day':
+          return (
+            agentDate.getDate() === date.getDate() &&
+            agentDate.getMonth() === date.getMonth() &&
+            agentDate.getFullYear() === date.getFullYear()
+          );
+        case 'month':
+          return (
+            agentDate.getMonth() === date.getMonth() &&
+            agentDate.getFullYear() === date.getFullYear()
+          );
+        case 'year':
+          return agentDate.getFullYear() === date.getFullYear();
+        default:
+          return true;
+      }
+    });
+  
+    setFilteredAgents(filtered);
+  }, [filterValue, filterType, agents]);
   useEffect(() => {
     if (!searchTerm) {
       setFilteredAgents(agents);
@@ -87,6 +111,12 @@ const AffiliateApprovalPanel = () => {
 
     setFilteredAgents(filtered);
   }, [searchTerm, agents]);
+  useEffect(() => {
+    if (initialLoad) {
+      fetchPendingAgents();
+      setInitialLoad(false);
+    }
+  }, [initialLoad]);
 
   const handleDateFilter = (date: Date | undefined) => {
     if (!date) {
@@ -121,6 +151,7 @@ const AffiliateApprovalPanel = () => {
   const fetchPendingAgents = async () => {
     try {
       setLoading(true);
+      
       // 1. Récupérer les affiliés en attente
       const { data: affiliates, error: affiliatesError } = await supabase
         .from('affiliates')
@@ -129,6 +160,13 @@ const AffiliateApprovalPanel = () => {
         .order('created_at', { ascending: true });
   
       if (affiliatesError) throw affiliatesError;
+  
+      // Si pas d'affiliés, on arrête là
+      if (!affiliates || affiliates.length === 0) {
+        setAgents([]);
+        setFilteredAgents([]);
+        return;
+      }
   
       // 2. Récupérer les profils correspondants
       const userIds = affiliates.map(a => a.user_id);
@@ -157,22 +195,22 @@ const AffiliateApprovalPanel = () => {
     } catch (error) {
       console.error('Error fetching agents:', error);
       toast.error('Échec du chargement des demandes d\'affiliation');
+      setAgents([]);
+      setFilteredAgents([]);
     } finally {
       setLoading(false);
     }
   };
-
   const approveAgent = async (agentId: string) => {
     try {
       const { error } = await supabase
         .from('affiliates')
         .update({ 
           approved: true,
-          approved_at: new Date().toISOString(),
-          approval_status: 'approved'
+          approved_at: new Date().toISOString()
         })
         .eq('id', agentId);
-
+  
       if (error) throw error;
       
       toast.success('Affilié approuvé avec succès');
@@ -182,26 +220,24 @@ const AffiliateApprovalPanel = () => {
       toast.error('Échec de l\'approbation de l\'affilié');
     }
   };
-
   const rejectAgent = async (agentId: string, reason: string) => {
     if (!reason.trim()) {
       toast.error('Veuillez indiquer une raison de refus');
       return;
     }
-
+  
     try {
       const { error } = await supabase
         .from('affiliates')
         .update({ 
           approved: false,
-          approval_status: 'rejected',
           rejection_reason: reason
         })
         .eq('id', agentId);
-
+  
       if (error) throw error;
       
-      toast.success('Affilié refusé');
+      toast.success('Affilié refusé avec succès');
       setSelectedAgent(null);
       setNotes('');
       fetchPendingAgents();
@@ -210,7 +246,6 @@ const AffiliateApprovalPanel = () => {
       toast.error('Échec du refus de l\'affilié');
     }
   };
-
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pending':

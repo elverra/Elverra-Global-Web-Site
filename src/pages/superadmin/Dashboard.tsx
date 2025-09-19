@@ -13,8 +13,48 @@ import { toast } from 'sonner';
 
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  const handleLogoUpload = async () => {
+    if (!logoFile) return;
+
+    setUploading(true);
+    try {
+      const fileExt = logoFile.name.split('.').pop();
+      const fileName = `logo.${fileExt}`;
+      
+      // TODO: Replace with file storage API check
+      const buckets: Array<{name: string}> = []; // Placeholder during migration
+      const bucketExists = buckets?.some(bucket => bucket.name === 'club66');
+      
+      if (!bucketExists) {
+        // TODO: Replace with file storage API - create bucket
+        console.log('Creating file storage bucket...');
+      }
+      
+      // TODO: Replace with file upload API
+      const uploadData = null;
+      const uploadError = new Error('File upload temporarily disabled during migration');
+
+      if (uploadError) throw uploadError;
+
+      console.log('Logo uploaded successfully:', uploadData);
+      toast.success('Logo uploaded successfully!');
+      setLogoFile(null);
+      
+      // Force refresh the page to update logo everywhere
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast.error(`Failed to upload logo: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleDatabaseExport = async () => {
     setExporting(true);
@@ -130,6 +170,13 @@ const SuperAdminDashboard = () => {
       icon: CreditCard,
       route: "/superadmin/career-jobs",
       color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
+    },
+    {
+      title: "Physical Card Management",
+      description: "Manage physical membership card requests and deliveries",
+      icon: CreditCard,
+      route: "/superadmin/physical-cards",
+      color: "bg-green-50 hover:bg-green-100 border-green-200"
     },
    
     {
