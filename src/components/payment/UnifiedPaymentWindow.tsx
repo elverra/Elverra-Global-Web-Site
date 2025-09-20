@@ -647,11 +647,12 @@ export default function UnifiedPaymentWindow({ plan, cardType, onSuccess, isOpen
             <p className="text-2xl font-bold text-purple-600">
               CFA {amount.toLocaleString()}
             </p>
-            <p className="text-sm text-gray-600">Please completed your payment with our marchang code #144#8*718285*price*secret code# ok</p>
-            <p className="text-sm text-gray-600">After payment comfirmation please call</p>
+            <p className="text-sm text-gray-600">Please Make your payment via: #144#8*718285*amount*Secret code# OK</p>
+            <p className="text-sm text-gray-600">After payment confirmation please</p>
             <h3 className="text-md font-semibold">
-              +223 44 94 38 44 / +223 78 81 01 91
+            Confirm at +223 44 94 38 44 / 78 81 01 91
             </h3>
+            <p className="text-sm text-gray-600">Votre carte physique sera disponible sous 5 jours ouvrables à Faladiè Carrefour IJA.</p>
             <Button
               variant="outline"
               onClick={() => {

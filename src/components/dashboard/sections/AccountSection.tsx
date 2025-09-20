@@ -1061,27 +1061,32 @@ const AccountSection = () => {
                     {/* Affichage des cartes actives */}
                     {userCards.length > 0 ? (
                       userCards.map((card, index) => {
-                        // Déterminer le type de carte
+                        // Déterminer le type de carte à partir des champs fiables
                         const qrData = parseQRData(card.qr_data);
-                        let cardType = qrData?.tier || card.card_type;
+                        // On utilise d'abord le type de carte défini, puis les données QR si disponibles
+                        let cardType = card.card_type || qrData?.tier;
                         
-                        // Si on n'a toujours pas de type, essayons de l'inférer depuis l'identifiant
-                        if (!cardType && card.card_identifier) {
-                          if (card.card_identifier.startsWith('KID-')) cardType = 'child';
-                          else if (card.card_identifier.startsWith('PRM-')) cardType = 'premium';
-                          else if (card.card_identifier.startsWith('ELT-')) cardType = 'elite';
+                        // Si on n'a toujours pas de type, on utilise une valeur par défaut
+                        if (!cardType) {
+                          console.warn('Type de carte non défini pour la carte:', card);
+                          cardType = 'unknown';
                         }
 
                         // Mapper les types de cartes aux libellés en français
-                        const cardLabels = {
+                        const cardLabels: Record<string, { label: string; color: string }> = {
                           'child': { label: 'Carte Enfant', color: 'pink' },
+                          'kids': { label: 'Carte Enfant', color: 'pink' },
                           'premium': { label: 'Abonnement Premium', color: 'blue' },
                           'elite': { label: 'Abonnement Elite', color: 'purple' },
-                          'essential': { label: 'Abonnement Essentiel', color: 'gray' }
+                          'essential': { label: 'Abonnement Essentiel', color: 'gray' },
+                          'standard': { label: 'Abonnement Standard', color: 'gray' },
+                          'basic': { label: 'Abonnement Basique', color: 'gray' }
                         };
 
-                        const cardInfo = cardLabels[cardType as keyof typeof cardLabels] || 
-                                      { label: `Carte ${cardType}`, color: 'gray' };
+                        // Normaliser le type de carte en minuscules pour la correspondance
+                        const normalizedCardType = cardType.toLowerCase().trim();
+                        const cardInfo = cardLabels[normalizedCardType] || 
+                                      { label: `Carte (${cardType})`, color: 'gray' };
 
                         return (
                           <div 
@@ -1091,7 +1096,7 @@ const AccountSection = () => {
                             <h4 className="font-medium">{cardInfo.label}</h4>
                             <div className="flex items-center gap-2">
                               <Badge className={`bg-${cardInfo.color}-100 text-${cardInfo.color}-800 capitalize`}>
-                                {cardType}
+                                {cardInfo.label}
                               </Badge>
                               <Badge variant="outline" className="text-green-600 border-green-200">
                                 Active

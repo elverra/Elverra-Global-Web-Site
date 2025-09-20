@@ -519,84 +519,11 @@ const SubscriptionsSection = () => {
                 </div>
               )}
               
-              {/* Usage Progress (for non-unlimited plans) */}
-              {adultTier && adultTier !== 'elite' && (
-                <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-orange-800">Usage This Month</span>
-                    <span className="text-sm text-orange-600">4/{adultTier === 'premium' ? '15' : '5'} Applications</span>
-                  </div>
-                  <div className="w-full bg-orange-200 rounded-full h-2">
-                    <div className="bg-orange-500 h-2 rounded-full" style={{ width: adultTier === 'premium' ? '27%' : '80%' }}></div>
-                  </div>
-                  <p className="text-xs text-orange-700 mt-2">
-                    You've used most of your {adultTier} plan limits. Upgrade to Elite for unlimited access.
-                  </p>
-                  <Button size="sm" className="bg-orange-600 hover:bg-orange-700" onClick={() => handlePlanChange('elite')}>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Upgrade to Elite
-                  </Button>
-                </div>
-              )}
+            
             </CardContent>
           </Card>
 
-          {/* Usage Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>This Month's Usage</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Job Applications</span>
-                    <span>8 / {currentSubscription.plan === 'Essential' ? '5' : '∞'}</span>
-                  </div>
-                  <Progress 
-                    value={currentSubscription.plan === 'Essential' ? 100 : 25} 
-                    className="h-2" 
-                  />
-                  {currentSubscription.plan === 'Essential' && (
-                    <p className="text-xs text-red-600 mt-1">Limit exceeded - Upgrade to continue applying</p>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Support Tickets</span>
-                    <span>2 / {currentSubscription.plan === 'Elite' ? '∞' : '5'}</span>
-                  </div>
-                  <Progress value={40} className="h-2" />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>E-Library Downloads</span>
-                    <span>12 / {currentSubscription.plan === 'Essential' ? '0' : currentSubscription.plan === 'Premium' ? '50' : '∞'}</span>
-                  </div>
-                  <Progress 
-                    value={currentSubscription.plan === 'Essential' ? 0 : currentSubscription.plan === 'Premium' ? 24 : 15} 
-                    className="h-2" 
-                  />
-                </div>
-              </div>
-
-              {currentSubscription.plan === 'Essential' && (
-                <div className="mt-6 p-4 bg-orange-50 rounded-lg">
-                  <h4 className="font-semibold text-orange-800 mb-2">Upgrade for More Features</h4>
-                  <p className="text-sm text-orange-700 mb-3">
-                    You've reached the limits of your Essential plan. Upgrade to Premium or Elite for unlimited access.
-                  </p>
-                  <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
-                    <Zap className="h-4 w-4 mr-2" />
-                    Upgrade Now
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
+       
           {/* Kiddies Card Status */}
           <Card>
             <CardHeader>
