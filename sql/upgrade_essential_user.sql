@@ -34,7 +34,7 @@ BEGIN
   LIMIT 1;
 
   IF v_prod_essential IS NULL THEN
-    RAISE EXCEPTION 'Produit ADULTE PREMIUM introuvable dans membership_products.name (essayé: %)', array_to_string(v_premium_names, ', ');
+    RAISE EXCEPTION 'Produit ADULTE PREMIUM introuvable dans membership_products.name (essayé: %)', array_to_string(v_essential_names, ', ');
   END IF;
 
 
@@ -96,7 +96,7 @@ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM public.payments WHERE user_id = v_profile_id AND payment_reference = ('ESSENTIAL-'||v_adult_sub_id::text)) THEN
     INSERT INTO public.payments (user_id, subscription_id, amount, currency, status, payment_method, payment_reference, metadata, created_at, updated_at)
-    VALUES (v_profile_id, v_adult_sub_id, 15000, 'XOF', 'completed', 'orange_money', 'ESSENTIAL-'||v_adult_sub_id::text, jsonb_build_object('tier','essential'), v_now, v_now);
+    VALUES (v_profile_id, v_adult_sub_id, 11000, 'XOF', 'completed', 'orange_money', 'ESSENTIAL-'||v_adult_sub_id::text, jsonb_build_object('tier','essential'), v_now, v_now);
   END IF;
 
   RAISE NOTICE ' Adult Essential créés/mis à jour pour user_id=%', v_profile_id;

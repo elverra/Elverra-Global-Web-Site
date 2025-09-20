@@ -1,0 +1,10 @@
+/* src/styles/pdf-viewer.css */
+.react-pdf__Page__textContent,
+.react-pdf__Page__annotations {
+  display: none;
+}
+
+.react-pdf__Page {
+  margin: 1rem auto;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}

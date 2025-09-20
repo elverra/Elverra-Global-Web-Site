@@ -84,7 +84,7 @@ const About = () => {
                     </p>
                     <p className="text-lg mb-6">
                       Through our TikTok campaign,{" "}
-                      <em>"empowerment and progress really means to me,"</em>{" "}
+                      <em>"what empowerment and progress really means to me,"</em>{" "}
                       we're gathering feedback and stories to improve our
                       services and better serve our community. With exciting
                       initiatives and benefits, Elverra Global aims to make a

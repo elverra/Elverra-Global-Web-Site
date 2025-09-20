@@ -8,6 +8,7 @@ interface MemberDigitalCardProps {
   memberName: string;
   memberID: string; // This is the card_identifier for display
   userID: string; // This is the user ID for QR code
+  qrData?: string; // Optional QR code data
   expiryDate: string;
   membershipTier: 'Essential' | 'Premium' | 'Elite' | 'Child';
   profileImage?: string;
@@ -331,25 +332,7 @@ const MemberDigitalCard = ({
         </div>
       </div>
       
-      {/* Action Buttons */}
-      <div className="flex space-x-2 mt-4">
-        <Button 
-          variant="outline" 
-          className="flex-1 text-sm"
-          onClick={handleDownload}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Télécharger
-        </Button>
-        <Button 
-          variant="outline" 
-          className="flex-1 text-sm"
-          onClick={handleShare}
-        >
-          <Share2 className="h-4 w-4 mr-2" />
-          Partager
-        </Button>
-      </div>
+     
     </div>
   );
   

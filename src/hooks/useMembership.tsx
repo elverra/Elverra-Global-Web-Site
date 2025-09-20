@@ -13,6 +13,15 @@ let fetchPromises: { [userId: string]: Promise<Membership | null> } = {};
   console.log('Membership cache cleared');
 };
 
+export interface CardData {
+  id: string;
+  card_identifier: string;
+  card_type: 'essential' | 'premium' | 'elite' | 'child';
+  status: 'active' | 'inactive' | 'expired';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Membership {
   id: string;
   user_id: string;
@@ -22,6 +31,7 @@ export interface Membership {
   expiry_date: string | null;
   physical_card_requested: boolean;
   member_id?: string;
+  cards?: CardData[]; // Array of cards associated with this membership
 }
 
 export interface MembershipAccess {

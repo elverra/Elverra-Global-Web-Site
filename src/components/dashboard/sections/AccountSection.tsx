@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+import {
   User,
   Shield,
   Bell,
@@ -42,24 +42,24 @@ const AccountSection = () => {
   const { profile } = useUserProfile();
   const { membership } = useMembership();
   const { t, language, setLanguage } = useLanguage();
-  
+
   // Local profile state as fallback
   const [localProfile, setLocalProfile] = useState<any>(null);
-  
+
   // Fetch profile directly if useUserProfile fails
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user?.id) return;
-      
+
       try {
         const { data: profileData, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
-        
+
         console.log('Direct profile fetch result:', { profileData, error });
-        
+
         if (!error && profileData) {
           setLocalProfile(profileData);
         }
@@ -67,15 +67,15 @@ const AccountSection = () => {
         console.error('Error fetching profile directly:', error);
       }
     };
-    
+
     if (!profile) {
       fetchProfile();
     }
   }, [user?.id, profile]);
-  
+
   // Use profile from hook or local fallback
   const currentProfile = profile || localProfile;
-  
+
   // Get member name using the same logic as in ModernDashboard
   const memberName = (currentProfile?.full_name && currentProfile.full_name.trim())
     || (user?.fullName && user.fullName.trim())
@@ -85,7 +85,7 @@ const AccountSection = () => {
   // State for all user cards
   const [userCards, setUserCards] = useState<any[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  
+
   // Get current card or fallback
   const currentCard = userCards.length > 0 ? userCards[currentCardIndex] : null;
   const cardIdentifier = currentCard?.card_identifier || 'N/A';
@@ -97,38 +97,38 @@ const AccountSection = () => {
         console.log('No user ID available for cards fetch');
         return;
       }
-      
+
       try {
         console.log('Fetching all cards for user:', user.id);
-        
+
         // Récupération des cartes depuis la table membership_cards
         const { data: membershipCards, error: cardsError } = await supabase
-        .from('membership_cards')
-        .select('card_identifier, owner_user_id, created_at, qr_data')
-        .eq('owner_user_id', user.id)  // Utilisez user.id au lieu de userId
-        .order('created_at', { ascending: false });
+          .from('membership_cards')
+          .select('card_identifier, owner_user_id, created_at, qr_data')
+          .eq('owner_user_id', user.id)  // Utilisez user.id au lieu de userId
+          .order('created_at', { ascending: false });
         console.log('Résultat de la requête des cartes:', { membershipCards, cardsError });
-        
-        // Après avoir reçu les données de la requête
-const processedCards = membershipCards?.map(card => {
-  let cardType = 'essential'; // Valeur par défaut
-  try {
-    // Si qr_data est une chaîne, essayez de la parser
-    const qrData = typeof card.qr_data === 'string' 
-      ? JSON.parse(card.qr_data) 
-      : card.qr_data;
-    cardType = qrData?.type || 'essential';
-  } catch (e) {
-    console.error('Error parsing qr_data:', e);
-  }
-  
-  return {
-    ...card,
-    card_type: cardType
-  };
-});
 
-setUserCards(processedCards || []);
+        // Après avoir reçu les données de la requête
+        const processedCards = membershipCards?.map(card => {
+          let cardType = 'essential'; // Valeur par défaut
+          try {
+            // Si qr_data est une chaîne, essayez de la parser
+            const qrData = typeof card.qr_data === 'string'
+              ? JSON.parse(card.qr_data)
+              : card.qr_data;
+            cardType = qrData?.type || 'essential';
+          } catch (e) {
+            console.error('Error parsing qr_data:', e);
+          }
+
+          return {
+            ...card,
+            card_type: cardType
+          };
+        });
+
+        setUserCards(processedCards || []);
 
         if (cardsError) {
           console.error('❌ Erreur de récupération des cartes:', {
@@ -146,11 +146,11 @@ setUserCards(processedCards || []);
           toast.info('Aucune carte trouvée pour votre compte.');
           return;
         }
-        
-        console.log(`✅ ${membershipCards.length} carte(s) trouvée(s):`, 
-                     membershipCards.map(c => `${c.card_identifier} (${c.card_identifier})`));
+
+        console.log(`✅ ${membershipCards.length} carte(s) trouvée(s):`,
+          membershipCards.map(c => `${c.card_identifier} (${c.card_identifier})`));
         setUserCards(membershipCards);
-        
+
       } catch (error) {
         console.error('❌ Erreur lors de la récupération des cartes:', error);
         toast.error('Une erreur est survenue lors du chargement de vos cartes.');
@@ -177,6 +177,19 @@ setUserCards(processedCards || []);
     country: currentProfile?.country || 'Mali',
     profileImage: currentProfile?.profile_image_url || ''
   });
+  const parseQRData = (qrData: any) => {
+    if (!qrData) return { tier: 'essential', type: 'adult' };
+
+    try {
+      if (typeof qrData === 'string') {
+        return JSON.parse(qrData);
+      }
+      return qrData;
+    } catch (e) {
+      console.error('Error parsing qr_data:', e);
+      return { tier: 'essential', type: 'adult' };
+    }
+  };
 
   // Mettre à jour les données du profil lorsque les données changent
   useEffect(() => {
@@ -197,7 +210,7 @@ setUserCards(processedCards || []);
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
-      
+
       // Créer un aperçu de l'image
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -210,15 +223,15 @@ setUserCards(processedCards || []);
   // Télécharger l'image de profil
   const uploadProfileImage = async () => {
     if (!selectedFile || !user?.id) return;
-    
+
     setIsLoading(true);
     setUploadProgress(0);
-    
+
     try {
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `profile-images/${fileName}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
         .upload(filePath, selectedFile, {
@@ -226,28 +239,28 @@ setUserCards(processedCards || []);
           upsert: true,
           contentType: selectedFile.type,
         });
-      
+
       if (uploadError) throw uploadError;
-      
+
       // Obtenir l'URL publique
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
         .getPublicUrl(filePath);
-      
+
       // Mettre à jour le profil avec la nouvelle URL d'image
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ profile_image_url: publicUrl })
         .eq('id', user.id);
-      
+
       if (updateError) throw updateError;
-      
+
       // Mettre à jour l'état local
       setProfileData(prev => ({
         ...prev,
         profileImage: publicUrl
       }));
-      
+
       toast.success('Photo de profil mise à jour avec succès');
     } catch (error) {
       console.error('Erreur lors du téléchargement de l\'image:', error);
@@ -261,15 +274,15 @@ setUserCards(processedCards || []);
   // Enregistrer les modifications du profil
   const handleSaveProfile = async () => {
     if (!user?.id) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       // Télécharger d'abord la nouvelle image si nécessaire
       if (selectedFile) {
         await uploadProfileImage();
       }
-      
+
       // Mettre à jour les autres informations du profil
       const { error } = await supabase
         .from('profiles')
@@ -282,9 +295,9 @@ setUserCards(processedCards || []);
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
-      
+
       if (error) throw error;
-      
+
       toast.success('Profil mis à jour avec succès');
       setIsEditing(false);
     } catch (error) {
@@ -298,9 +311,9 @@ setUserCards(processedCards || []);
   // Gérer la mise à niveau de l'abonnement
   const handleUpgradePlan = async (newTier: 'premium' | 'elite' | 'essential') => {
     if (!user?.id) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       // Ici, vous devez intégrer votre logique de paiement
       // Ceci est un exemple simplifié
@@ -308,9 +321,9 @@ setUserCards(processedCards || []);
         .from('subscriptions')
         .update({ tier: newTier })
         .eq('user_id', user.id);
-      
+
       if (error) throw error;
-      
+
       toast.success(`Félicitations ! Vous avez été mis à niveau vers le plan ${newTier}`);
       // Recharger les données du membre
       window.location.reload();
@@ -338,31 +351,36 @@ setUserCards(processedCards || []);
   // Get membership tier for current card
   const getCurrentCardTier = () => {
     if (!currentCard) return 'Essential';
-    
-    let cardType = currentCard.card_type;
-    
-    // Si card_type n'est pas défini, essayez de l'extraire de qr_data
-    if (!cardType && currentCard.qr_data) {
-      try {
-        const qrData = typeof currentCard.qr_data === 'string' 
-          ? JSON.parse(currentCard.qr_data) 
-          : currentCard.qr_data;
-        cardType = qrData?.type || 'essential';
-      } catch (e) {
-        console.error('Error parsing qr_data:', e);
-        cardType = 'essential';
+
+    // Parse qr_data safely
+    const qrData = parseQRData(currentCard.qr_data);
+
+    // Try to get tier from qr_data first, then from card_type, then from card_identifier
+    let cardTier = qrData?.tier || currentCard.card_type;
+
+    // If we still don't have a tier, try to infer it from the card_identifier
+    if (!cardTier && currentCard.card_identifier) {
+      if (currentCard.card_identifier.startsWith('KID-')) {
+        cardTier = 'child';
+      } else if (currentCard.card_identifier.startsWith('PRM-')) {
+        cardTier = 'premium';
+      } else if (currentCard.card_identifier.startsWith('ELT-')) {
+        cardTier = 'elite';
       }
     }
-    
-    // Mappage des types de carte aux noms d'affichage
-    const typeMap = {
+
+    // Normalize the tier
+    const normalizedTier = cardTier?.toLowerCase().trim() || 'essential';
+
+    // Map to proper case for display
+    const tierMap: Record<string, string> = {
       'child': 'Child',
       'premium': 'Premium',
       'elite': 'Elite',
       'essential': 'Essential'
     };
-    
-    return typeMap[cardType as keyof typeof typeMap] || 'Essential';
+
+    return tierMap[normalizedTier] || 'Essential';
   };
   // Debug effect to log member data
   useEffect(() => {
@@ -438,50 +456,50 @@ setUserCards(processedCards || []);
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-      <div className="relative">
-  <TabsList className="w-full grid-cols-5 overflow-x-auto pb-2 md:pb-0 hide-scrollbar ">
-    <TabsTrigger 
-      value="profile" 
-      className=""
-    >
-      <User className="h-3.5 w-3.5 mr-1 sm:mr-1.5 flex-shrink-0" />
-      <span className="sm:hidden">Prof</span>
-      <span className="hidden sm:inline">Profile</span>
-    </TabsTrigger>
-    <TabsTrigger 
-      value="security" 
-      className=""
-    >
-      <Shield className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-      <span className="hidden sm:inline">Security</span>
-      <span className="sm:inline sm:md:hidden">Sec</span>
-    </TabsTrigger>
-    <TabsTrigger 
-      value="notifications" 
-      className=""
-    >
-      <Bell className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-      <span className="hidden sm:inline">Notifications</span>
-      <span className="sm:inline sm:md:hidden">Notif</span>
-    </TabsTrigger>
-    <TabsTrigger 
-      value="subscriptions" 
-      className=""
-    >
-      <CreditCard className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-      <span className="hidden md:inline">Subscriptions</span>
-      <span className="md:inline md:lg:hidden">Subs</span>
-    </TabsTrigger>
-    <TabsTrigger 
-      value="language" 
-      className=""
-    >
-      <Globe className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-      <span className="hidden md:inline">Language</span>
-      <span className="md:inline md:lg:hidden">Lang</span>
-    </TabsTrigger>
-  </TabsList>
-</div>
+        <div className="relative">
+          <TabsList className="w-full grid-cols-5 overflow-x-auto pb-2 md:pb-0 hide-scrollbar ">
+            <TabsTrigger
+              value="profile"
+              className=""
+            >
+              <User className="h-3.5 w-3.5 mr-1 sm:mr-1.5 flex-shrink-0" />
+              <span className="sm:hidden">Prof</span>
+              <span className="hidden sm:inline">Profile</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="security"
+              className=""
+            >
+              <Shield className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+              <span className="hidden sm:inline">Security</span>
+              <span className="sm:inline sm:md:hidden">Sec</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="notifications"
+              className=""
+            >
+              <Bell className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+              <span className="hidden sm:inline">Notifications</span>
+              <span className="sm:inline sm:md:hidden">Notif</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="subscriptions"
+              className=""
+            >
+              <CreditCard className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+              <span className="hidden md:inline">Subscriptions</span>
+              <span className="md:inline md:lg:hidden">Subs</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="language"
+              className=""
+            >
+              <Globe className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+              <span className="hidden md:inline">Language</span>
+              <span className="md:inline md:lg:hidden">Lang</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
@@ -527,8 +545,8 @@ setUserCards(processedCards || []);
                     Téléchargez une photo pour personnaliser votre compte
                   </p>
                   {isEditing ? (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={uploadProfileImage}
                       disabled={!selectedFile || isLoading}
@@ -536,8 +554,8 @@ setUserCards(processedCards || []);
                       {isLoading ? 'Téléchargement...' : 'Enregistrer la photo'}
                     </Button>
                   ) : (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => setIsEditing(true)}
                     >
@@ -609,8 +627,8 @@ setUserCards(processedCards || []);
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Pays
                   </label>
-                  <Select 
-                    value={profileData.country} 
+                  <Select
+                    value={profileData.country}
                     onValueChange={(value) => setProfileData({ ...profileData, country: value })}
                     disabled={!isEditing}
                   >
@@ -644,20 +662,20 @@ setUserCards(processedCards || []);
                 />
               </div>
 
-          
+
               <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
                 {isEditing ? (
                   <>
-                    <Button 
-                      onClick={handleSaveProfile} 
+                    <Button
+                      onClick={handleSaveProfile}
                       className="w-full sm:w-auto"
                       disabled={isLoading}
                     >
                       <Save className="h-4 w-4 mr-2" />
                       {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         setIsEditing(false);
                         // Réinitialiser les modifications
@@ -679,7 +697,7 @@ setUserCards(processedCards || []);
                     </Button>
                   </>
                 ) : (
-                  <Button 
+                  <Button
                     onClick={() => setIsEditing(true)}
                     variant="outline"
                     className="w-full sm:w-auto"
@@ -725,7 +743,7 @@ setUserCards(processedCards || []);
                   </div>
                   <Switch
                     checked={securitySettings.twoFactorEnabled}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       setSecuritySettings({ ...securitySettings, twoFactorEnabled: checked })
                     }
                   />
@@ -751,7 +769,7 @@ setUserCards(processedCards || []);
                     </div>
                     <Switch
                       checked={securitySettings.emailNotifications}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setSecuritySettings({ ...securitySettings, emailNotifications: checked })
                       }
                     />
@@ -764,7 +782,7 @@ setUserCards(processedCards || []);
                     </div>
                     <Switch
                       checked={securitySettings.smsNotifications}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setSecuritySettings({ ...securitySettings, smsNotifications: checked })
                       }
                     />
@@ -777,7 +795,7 @@ setUserCards(processedCards || []);
                     </div>
                     <Switch
                       checked={securitySettings.loginAlerts}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setSecuritySettings({ ...securitySettings, loginAlerts: checked })
                       }
                     />
@@ -813,7 +831,7 @@ setUserCards(processedCards || []);
                       </div>
                       <Switch
                         checked={notificationSettings.jobAlerts}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           setNotificationSettings({ ...notificationSettings, jobAlerts: checked })
                         }
                       />
@@ -831,7 +849,7 @@ setUserCards(processedCards || []);
                       </div>
                       <Switch
                         checked={notificationSettings.paymentNotifications}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           setNotificationSettings({ ...notificationSettings, paymentNotifications: checked })
                         }
                       />
@@ -844,7 +862,7 @@ setUserCards(processedCards || []);
                       </div>
                       <Switch
                         checked={notificationSettings.discountAlerts}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           setNotificationSettings({ ...notificationSettings, discountAlerts: checked })
                         }
                       />
@@ -862,7 +880,7 @@ setUserCards(processedCards || []);
                       </div>
                       <Switch
                         checked={notificationSettings.affiliateUpdates}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           setNotificationSettings({ ...notificationSettings, affiliateUpdates: checked })
                         }
                       />
@@ -880,7 +898,7 @@ setUserCards(processedCards || []);
                       </div>
                       <Switch
                         checked={notificationSettings.marketingEmails}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           setNotificationSettings({ ...notificationSettings, marketingEmails: checked })
                         }
                       />
@@ -893,7 +911,7 @@ setUserCards(processedCards || []);
                       </div>
                       <Switch
                         checked={notificationSettings.weeklyNewsletter}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           setNotificationSettings({ ...notificationSettings, weeklyNewsletter: checked })
                         }
                       />
@@ -906,7 +924,7 @@ setUserCards(processedCards || []);
                       </div>
                       <Switch
                         checked={notificationSettings.systemUpdates}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           setNotificationSettings({ ...notificationSettings, systemUpdates: checked })
                         }
                       />
@@ -962,266 +980,143 @@ setUserCards(processedCards || []);
                     </div>
                   )}
                 </div>
-                
-                {/* Card Type Indicator */}
+
                 {userCards.map((card, index) => {
-  let cardType = card.card_type;
-  if (!cardType && card.qr_data) {
-    try {
-      const qrData = typeof card.qr_data === 'string' 
-        ? JSON.parse(card.qr_data) 
-        : card.qr_data;
-      cardType = qrData?.type || 'essential';
-    } catch (e) {
-      cardType = 'essential';
-    }
-  }
-  
-  return (
-    <button
-      key={card.card_identifier}
-      onClick={() => setCurrentCardIndex(index)}
-      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-        index === currentCardIndex
-          ? 'bg-purple-600 text-white'
-          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-      }`}
-    >
-      {cardType === 'child' ? 'Child Card' : 
-       cardType === 'premium' ? 'Premium Card' :
-       cardType === 'elite' ? 'Elite Card' : 'Essential Card'}
-    </button>
-  );
-})}
-                
+                  // Parse qr_data safely
+                  const qrData = parseQRData(card.qr_data);
+
+                  // Debug log pour voir les données brutes
+                  console.log('Card data:', {
+                    cardIdentifier: card.card_identifier,
+                    qrData,
+                    card_type: card.card_type
+                  });
+
+                  // Essayer de déterminer le tier en priorisant qr_data.tier, puis card_type, puis l'identifiant de la carte
+                  let cardTier = qrData?.tier || card.card_type;
+
+                  // Si on n'a toujours pas de tier, essayons de l'inférer depuis l'identifiant de la carte
+                  if (!cardTier && card.card_identifier) {
+                    if (card.card_identifier.startsWith('KID-')) {
+                      cardTier = 'child';
+                    } else if (card.card_identifier.startsWith('PRM-')) {
+                      cardTier = 'premium';
+                    } else if (card.card_identifier.startsWith('ELT-')) {
+                      cardTier = 'elite';
+                    }
+                  }
+
+                  // Si on n'a toujours pas de tier, on saute cette carte
+                  if (!cardTier) {
+                    console.warn('Card missing tier information, skipping:', card);
+                    return null;
+                  }
+
+                  // Normalisation du tier pour la comparaison
+                  const normalizedTier = cardTier.toLowerCase().trim();
+                  console.log(`Card ${index} (${card.card_identifier}):`, { normalizedTier, isSelected: index === currentCardIndex });
+
+                  return (
+                    <button
+                      key={card.card_identifier}
+                      onClick={() => {
+                        console.log('Card selected:', { index, card_identifier: card.card_identifier, normalizedTier });
+                        setCurrentCardIndex(index);
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors mr-2 ${index === currentCardIndex
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                    >
+                      {normalizedTier === 'child' ? 'Child Card' :
+                        normalizedTier === 'premium' ? 'Premium Card' :
+                          normalizedTier === 'elite' ? 'Elite Card' : cardTier + ' Card'}
+                    </button>
+                  );
+                })}
+
                 <MemberDigitalCard
                   memberName={memberName}
-                  memberID={cardIdentifier}
+                  memberID={currentCard?.card_identifier || cardIdentifier}
                   userID={user?.id || ''}
                   expiryDate={membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString() : 'N/A'}
                   membershipTier={getCurrentCardTier() as 'Essential' | 'Premium' | 'Elite' | 'Child'}
                   profileImage={currentProfile?.profile_image_url}
                   address={currentProfile?.address}
                   city={currentProfile?.city}
-                  serialNumber={membership?.member_id}
+                  serialNumber={currentCard?.card_identifier || membership?.member_id}
                   isPaymentComplete={membership?.is_active || false}
                   subscriptionStatus={membership?.is_active ? 'active' : 'expired'}
+                  qrData={currentCard?.qr_data} // Passer les données brutes du QR code
                 />
               </div>
 
               {/* Subscription Plans Section */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Subscription Plans</h3>
-                
+
                 {/* Current Plan Display */}
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Current Plan</h4>
-                    <Badge className="bg-blue-100 text-blue-800 capitalize">
-                      {membership?.tier || 'Essential'}
-                    </Badge>
+                  <div className="space-y-3">
+                    {/* Affichage des cartes actives */}
+                    {userCards.length > 0 ? (
+                      userCards.map((card, index) => {
+                        // Déterminer le type de carte
+                        const qrData = parseQRData(card.qr_data);
+                        let cardType = qrData?.tier || card.card_type;
+                        
+                        // Si on n'a toujours pas de type, essayons de l'inférer depuis l'identifiant
+                        if (!cardType && card.card_identifier) {
+                          if (card.card_identifier.startsWith('KID-')) cardType = 'child';
+                          else if (card.card_identifier.startsWith('PRM-')) cardType = 'premium';
+                          else if (card.card_identifier.startsWith('ELT-')) cardType = 'elite';
+                        }
+
+                        // Mapper les types de cartes aux libellés en français
+                        const cardLabels = {
+                          'child': { label: 'Carte Enfant', color: 'pink' },
+                          'premium': { label: 'Abonnement Premium', color: 'blue' },
+                          'elite': { label: 'Abonnement Elite', color: 'purple' },
+                          'essential': { label: 'Abonnement Essentiel', color: 'gray' }
+                        };
+
+                        const cardInfo = cardLabels[cardType as keyof typeof cardLabels] || 
+                                      { label: `Carte ${cardType}`, color: 'gray' };
+
+                        return (
+                          <div 
+                            key={card.card_identifier} 
+                            className={`flex items-center justify-between ${index > 0 ? 'pt-2 border-t border-blue-100' : ''}`}
+                          >
+                            <h4 className="font-medium">{cardInfo.label}</h4>
+                            <div className="flex items-center gap-2">
+                              <Badge className={`bg-${cardInfo.color}-100 text-${cardInfo.color}-800 capitalize`}>
+                                {cardType}
+                              </Badge>
+                              <Badge variant="outline" className="text-green-600 border-green-200">
+                                Active
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      // Aucune carte trouvée
+                      <div className="text-center py-2 text-gray-500">
+                        Aucune carte active trouvée
+                      </div>
+                    )}
+                    
+                    <p className="text-sm text-gray-600 pt-2">
+                      {membership?.is_active 
+                        ? 'Votre abonnement est actif' 
+                        : 'Complétez le paiement pour activer votre abonnement'}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-600">
-                    {membership?.is_active ? 'Your membership is active' : 'Complete payment to activate your membership'}
-                  </p>
                 </div>
 
                 {/* Available Plan Changes */}
-                <div className="space-y-4">
-                  <h4 className="font-medium">Available Plan Changes</h4>
-                  
-                  {/* Essential Plan Logic */}
-                  {(!membership?.tier || membership?.tier === 'essential') && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Card className="border-blue-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <Shield className="h-8 w-8 text-blue-600" />
-                            <div>
-                              <h5 className="font-semibold">Premium</h5>
-                              <p className="text-sm text-gray-600">CFA 2,000/month</p>
-                            </div>
-                          </div>
-                          <ul className="text-sm space-y-1 mb-4">
-                            <li>• Unlimited job applications</li>
-                            <li>• Priority support</li>
-                            <li>• Affiliate program access</li>
-                            <li>• Enhanced features</li>
-                          </ul>
-                          <Button 
-                            className="w-full bg-blue-600 hover:bg-blue-700"
-                            onClick={() => handleUpgradePlan('premium')}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              'Passer à Premium'
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="border-purple-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <Crown className="h-8 w-8 text-purple-600" />
-                            <div>
-                              <h5 className="font-semibold">Elite</h5>
-                              <p className="text-sm text-gray-600">CFA 5,000/month</p>
-                            </div>
-                          </div>
-                          <ul className="text-sm space-y-1 mb-4">
-                            <li>• All Premium features</li>
-                            <li>• VIP support</li>
-                            <li>• Advanced analytics</li>
-                            <li>• Exclusive benefits</li>
-                          </ul>
-                          <Button 
-                            className="w-full bg-purple-600 hover:bg-purple-700"
-                            onClick={() => handleUpgradePlan('elite')}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              'Passer à Elite'
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
 
-                  {/* Premium Plan Logic */}
-                  {membership?.tier === 'premium' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Card className="border-gray-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <CreditCard className="h-8 w-8 text-gray-600" />
-                            <div>
-                              <h5 className="font-semibold">Essential</h5>
-                              <p className="text-sm text-gray-600">Free</p>
-                            </div>
-                          </div>
-                          <ul className="text-sm space-y-1 mb-4">
-                            <li>• Basic features</li>
-                            <li>• Limited job applications</li>
-                            <li>• Standard support</li>
-                            <li>• Basic access</li>
-                          </ul>
-                          <Button 
-                            variant="outline" 
-                            className="w-full text-red-600 border-red-300 hover:bg-red-50"
-                            onClick={() => handleUpgradePlan('essential')}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              'Rétrograder en Essential'
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="border-purple-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <Crown className="h-8 w-8 text-purple-600" />
-                            <div>
-                              <h5 className="font-semibold">Elite</h5>
-                              <p className="text-sm text-gray-600">CFA 5,000/month</p>
-                            </div>
-                          </div>
-                          <ul className="text-sm space-y-1 mb-4">
-                            <li>• All Premium features</li>
-                            <li>• VIP support</li>
-                            <li>• Advanced analytics</li>
-                            <li>• Exclusive benefits</li>
-                          </ul>
-                          <Button 
-                            className="w-full bg-purple-600 hover:bg-purple-700"
-                            onClick={() => handleUpgradePlan('elite')}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              'Passer à Elite'
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-
-                  {/* Elite Plan Logic */}
-                  {membership?.tier === 'elite' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Card className="border-gray-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <CreditCard className="h-8 w-8 text-gray-600" />
-                            <div>
-                              <h5 className="font-semibold">Essential</h5>
-                              <p className="text-sm text-gray-600">Free</p>
-                            </div>
-                          </div>
-                          <ul className="text-sm space-y-1 mb-4">
-                            <li>• Basic features</li>
-                            <li>• Limited job applications</li>
-                            <li>• Standard support</li>
-                            <li>• Basic access</li>
-                          </ul>
-                          <Button 
-                            variant="outline" 
-                            className="w-full text-red-600 border-red-300 hover:bg-red-50"
-                            onClick={() => handleUpgradePlan('essential')}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              'Rétrograder en Essential'
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="border-blue-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <Shield className="h-8 w-8 text-blue-600" />
-                            <div>
-                              <h5 className="font-semibold">Premium</h5>
-                              <p className="text-sm text-gray-600">CFA 2,000/month</p>
-                            </div>
-                          </div>
-                          <ul className="text-sm space-y-1 mb-4">
-                            <li>• Unlimited job applications</li>
-                            <li>• Priority support</li>
-                            <li>• Affiliate program access</li>
-                            <li>• Enhanced features</li>
-                          </ul>
-                          <Button 
-                            variant="outline" 
-                            className="w-full text-blue-600 border-blue-300 hover:bg-blue-50"
-                            onClick={() => handleUpgradePlan('premium')}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              'Rétrograder en Premium'
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                </div>
 
                 {/* Payment Status Notice */}
                 {!membership?.is_active && (
@@ -1239,58 +1134,7 @@ setUserCards(processedCards || []);
                   </div>
                 )}
 
-                {/* Plan Benefits Comparison */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Plan Benefits Comparison</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2">Feature</th>
-                            <th className="text-center py-2">Essential</th>
-                            <th className="text-center py-2">Premium</th>
-                            <th className="text-center py-2">Elite</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="border-b">
-                            <td className="py-2">Job Applications</td>
-                            <td className="text-center py-2">5/month</td>
-                            <td className="text-center py-2">Unlimited</td>
-                            <td className="text-center py-2">Unlimited</td>
-                          </tr>
-                          <tr className="border-b">
-                            <td className="py-2">Support Level</td>
-                            <td className="text-center py-2">Standard</td>
-                            <td className="text-center py-2">Priority</td>
-                            <td className="text-center py-2">24/7 VIP</td>
-                          </tr>
-                          <tr className="border-b">
-                            <td className="py-2">Affiliate Program</td>
-                            <td className="text-center py-2">❌</td>
-                            <td className="text-center py-2">✅</td>
-                            <td className="text-center py-2">✅ Advanced</td>
-                          </tr>
-                          <tr className="border-b">
-                            <td className="py-2">Digital Card</td>
-                            <td className="text-center py-2">Basic</td>
-                            <td className="text-center py-2">Enhanced</td>
-                            <td className="text-center py-2">Premium</td>
-                          </tr>
-                          <tr>
-                            <td className="py-2">Monthly Price</td>
-                            <td className="text-center py-2 font-semibold">Free</td>
-                            <td className="text-center py-2 font-semibold">CFA 2,000</td>
-                            <td className="text-center py-2 font-semibold">CFA 5,000</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
+
               </div>
             </CardContent>
           </Card>
@@ -1378,10 +1222,10 @@ setUserCards(processedCards || []);
                   <p><strong>Timezone:</strong> {regionSettings.timezone}</p>
                   <p><strong>Currency:</strong> {regionSettings.currency}</p>
                   <p><strong>Date Format:</strong> {regionSettings.dateFormat}</p>
-                  <p><strong>Sample Date:</strong> {new Date().toLocaleDateString('en-GB', { 
-                    day: '2-digit', 
-                    month: '2-digit', 
-                    year: 'numeric' 
+                  <p><strong>Sample Date:</strong> {new Date().toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
                   })}</p>
                 </div>
               </div>

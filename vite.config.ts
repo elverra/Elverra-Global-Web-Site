@@ -47,11 +47,10 @@ export default defineConfig(({ mode }) => {
             ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
             form: ['react-hook-form', '@hookform/resolvers', 'zod'],
             utils: ['date-fns', 'lodash-es', 'axios'],
-            vendor: ['@supabase/supabase-js', '@tanstack/react-query'],
-          },
-        },
+            vendor: ['@supabase/supabase-js', '@tanstack/react-query']
+          }
+        }
       },
-      // Ensure assets are copied correctly
       assetsDir: 'assets',
       copyPublicDir: true,
     },
