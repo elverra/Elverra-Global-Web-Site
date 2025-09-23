@@ -32,8 +32,6 @@ const Discounts = () => {
 
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { getMembershipAccess } = useMembership();
-  const { recordDiscountUsage } = useDiscountUsage();
 
   // Fetch data from Supabase (public)
   useEffect(() => {
@@ -110,49 +108,40 @@ const Discounts = () => {
     fetchDiscountData();
   }, []);
 
-  const handleSectorClick = (sectorName: string) => {
-    setSectorFilter(sectorName);
-  };
+  
 
   const handleSearch = async () => {
-    // Client-side filter for simplicity
-    const base = [...allDiscounts];
-    const filtered = base.filter((d) => {
-      const matchesSearch = !searchTerm ||
-        d.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.merchant?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.location?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSector = sectorFilter === "all" || String(d.sector_id) === sectorFilter || d.sector === sectorFilter;
-      const locTail = d.location?.split(",").pop()?.trim();
-      const matchesLocation = locationFilter === "all" || locTail === locationFilter;
-      return matchesSearch && matchesSector && matchesLocation;
-    });
     try {
+      const base = [...allDiscounts];
+      const filtered = base.filter((d) => {
+        // Filtre par recherche
+        const matchesSearch = !searchTerm ||
+          d.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          d.merchant?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          d.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          d.location?.toLowerCase().includes(searchTerm.toLowerCase());
+  
+        // Filtre par secteur
+        const matchesSector = sectorFilter === "all" || 
+                            String(d.sector_id) === sectorFilter || 
+                            d.sector?.toLowerCase() === sectorFilter.toLowerCase();
+  
+        // Filtre par localisation
+        const locationParts = d.location?.split(',').map((part: string) => part.trim()) || [];
+        const city = locationParts.length > 0 ? locationParts[locationParts.length - 1] : '';
+        const matchesLocation = locationFilter === "all" || 
+                              city.toLowerCase() === locationFilter.toLowerCase();
+  
+        return matchesSearch && matchesSector && matchesLocation;
+      });
+      
       setAllDiscounts(filtered);
     } catch (error: any) {
-      const raw = (error?.message || "").toString().toLowerCase();
-      const friendly = raw.includes("permission denied") || raw.includes("rls") || raw.includes("policy") || raw.includes("403")
-        ? "Recherche indisponible pour le moment"
-        : (error.message || "Search failed");
-      toast.error(friendly);
+      console.error("Search error:", error);
+      toast.error(error.message || "Erreur lors de la recherche");
     }
   };
-
-  const handleClaimDiscount = async (discount: any) => {
-    const access = getMembershipAccess();
-    if (!access.hasActiveMembership) {
-      toast.error("You need an active membership to claim discounts");
-      navigate("/client-payment");
-      return;
-    }
-
-    await recordDiscountUsage(discount.id, discount.discount_percentage);
-    toast.success(
-      `Successfully claimed ${discount.discount_percentage}% discount at ${discount.merchant}`,
-    );
-  };
-
+ 
   useEffect(() => {
     handleSearch();
   }, [sectorFilter, locationFilter]);
@@ -285,118 +274,8 @@ const Discounts = () => {
               </Card>
             </div>
 
-            {/* Sectors Grid */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold mb-6 text-center">
-                Discounts by Sector
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {discountSectors.map((sector) => (
-                  <Card
-                    key={sector.id}
-                    className="p-4 text-center hover:shadow-lg transition-shadow cursor-pointer hover:bg-purple-50"
-                    onClick={() => handleSectorClick(sector.name)}
-                  >
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Store className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 leading-tight">
-                      {sector.name}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {sector.description}
-                    </p>
-                  </Card>
-                ))}
-              </div>
-            </div>
 
-            {/* Featured Discounts */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold mb-6 text-center">
-                Featured Discounts
-              </h2>
-              {featuredDiscounts.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {featuredDiscounts.map((discount) => (
-                    <Card
-                      key={discount.id}
-                      className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
-                      onClick={() => navigate(`/discounts/${discount.id}`)}
-                    >
-                      <div className="relative">
-                        <img
-                          src={
-                            discount.image_url ||
-                            "https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
-                          }
-                          alt={discount.title}
-                          className="w-full h-48 object-cover"
-                        />
-                        <div className="absolute top-4 right-4">
-                          <Badge className="bg-green-500 text-white text-lg px-3 py-1">
-                            {discount.discount_percentage}% OFF
-                          </Badge>
-                        </div>
-                        <div className="absolute top-4 left-4">
-                          <Badge className="bg-orange-500 text-white px-2 py-1">
-                            Featured
-                          </Badge>
-                        </div>
-                      </div>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-bold text-lg">
-                            {discount.title}
-                          </h3>
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                            <span className="text-sm text-gray-600">
-                              {discount.rating || 4.5}
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-700 font-medium mb-2">
-                          {discount.merchant}
-                        </p>
-                        <Badge variant="outline" className="mb-3">
-                          {discount.sector}
-                        </Badge>
-                        <p className="text-gray-600 mb-4">
-                          {discount.description}
-                        </p>
-                        <div className="flex items-center text-sm text-gray-500 mb-4">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {discount.location}
-                        </div>
-                        {discount.terms && (
-                          <p className="text-xs text-gray-500 mb-4 italic">
-                            {discount.terms}
-                          </p>
-                        )}
-                        <Button
-                          className="w-full"
-                          variant="outline"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/discounts/${discount.id}`); }}
-                        >
-                          View details
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Store className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                    No featured discounts available
-                  </h3>
-                  <p className="text-gray-500">
-                    Check back later for new featured offers
-                  </p>
-                </div>
-              )}
-            </div>
+          
 
             {/* All Discounts */}
             <div className="mb-12">
