@@ -432,9 +432,15 @@ const EBookLibrary = () => {
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent 
+          className="max-w-4xl max-h-[90vh]"
+          aria-describedby="preview-dialog-description"
+        >
           <DialogHeader>
             <DialogTitle>{previewTitle}</DialogTitle>
+            <DialogDescription id="preview-dialog-description" className="sr-only">
+              Aperçu du contenu de l'eBook
+            </DialogDescription>
           </DialogHeader>
           <div className="h-[70vh]">
             {previewUrl && (
@@ -545,9 +551,15 @@ const EBookUploadForm = ({ open, onClose, onSuccess, categories }: EBookUploadFo
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent 
+        className="max-w-2xl"
+        aria-describedby="upload-ebook-dialog-description"
+      >
         <DialogHeader>
           <DialogTitle>Upload New E-Book</DialogTitle>
+          <DialogDescription id="upload-ebook-dialog-description" className="sr-only">
+            Formulaire de téléchargement d'un nouvel eBook
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">

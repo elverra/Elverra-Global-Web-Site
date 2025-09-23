@@ -51,7 +51,7 @@ export const setAuthHeader = async (session: any = null) => {
 setAuthHeader();
 
 // Listen for auth state changes
-supabase.auth.onAuthStateChange(async (event, session) => {
+supabase.auth.onAuthStateChange(async (_event, session) => {
   if (session?.access_token) {
     await setAuthHeader(session);
   } else {

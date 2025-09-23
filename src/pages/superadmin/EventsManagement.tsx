@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -287,18 +287,140 @@ const EventsManagement = () => {
   };
 
   const fetchParticipants = async (eventId: string) => {
+    if (!eventId) {
+      console.error('Aucun ID d\'événement fourni');
+      toast.error('Aucun ID d\'événement spécifié');
+      return;
+    }
+    
     try {
-      const { data, error } = await supabase
-        .from('event_participants')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setParticipants(data || []);
-    } catch (error) {
-      console.error('Error fetching participants:', error);
-      toast.error('Erreur lors du chargement des participants');
+      console.log('Récupération des participants pour l\'événement:', eventId);
+      
+      // Vérifier d'abord si l'utilisateur est authentifié
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('Erreur d\'authentification:', sessionError?.message || 'Pas de session');
+        toast.error('Veuillez vous connecter pour voir les participants');
+        return;
+      }
+      
+      console.log('Utilisateur authentifié avec succès, ID:', session.user.id);
+      
+      // 1. Essayer d'abord avec une requête RPC sécurisée
+      console.log('Tentative de récupération via RPC...');
+      try {
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_event_participants', { event_id_param: eventId });
+        
+        if (!rpcError) {
+          console.log('Données récupérées avec succès via RPC:', rpcData);
+          // Format the data to ensure all expected fields are present
+          const formattedData = Array.isArray(rpcData) 
+            ? rpcData.map(participant => ({
+                ...participant,
+                organization: participant.organization || '',
+                payment_status: participant.payment_status || 'pending',
+                registered_at: participant.registered_at || participant.created_at,
+                confirmed_at: participant.confirmed_at || participant.updated_at
+              }))
+            : [];
+          setParticipants(formattedData);
+          return;
+        }
+        console.warn('Échec de la récupération via RPC:', rpcError);
+      } catch (rpcError) {
+        console.warn('Erreur lors de l\'appel RPC:', rpcError);
+      }
+      
+      // 2. Si la méthode RPC échoue, essayer une requête directe avec les colonnes existantes
+      console.log('Tentative de récupération directe...');
+      try {
+        // Get the table structure to see what columns exist
+        const { error: tableError } = await supabase
+          .rpc('get_columns_info', { 
+            table_name: 'event_participants' 
+          });
+        
+        if (tableError) {
+          console.warn('Impossible de récupérer les informations de la table event_participants:', tableError);
+        }
+        
+        // Build the select query
+        let selectQuery = supabase
+          .from('event_participants')
+          .select('*')
+          .eq('event_id', eventId);
+        
+        // Try to order by created_at if it exists, otherwise use id
+        try {
+          selectQuery = selectQuery.order('created_at', { ascending: false });
+        } catch (e) {
+          console.warn('Impossible de trier par created_at, utilisation de id à la place');
+          selectQuery = selectQuery.order('id', { ascending: false });
+        }
+        
+        const { data, error } = await selectQuery;
+        
+        if (error) {
+          console.error('Erreur lors de la récupération des participants:', error);
+          throw error;
+        }
+        
+        console.log('Participants récupérés avec succès:', data);
+        
+        // Format the data to ensure all expected fields are present
+        const formattedData = Array.isArray(data) 
+          ? data.map(participant => ({
+              id: participant.id,
+              event_id: participant.event_id,
+              user_id: participant.user_id,
+              full_name: participant.full_name || '',
+              email: participant.email || '',
+              phone: participant.phone || '',
+              organization: participant.organization || '',
+              motivation: participant.motivation || '',
+              status: participant.status || 'pending',
+              payment_status: participant.payment_status || 'pending',
+              registered_at: participant.registered_at || participant.created_at || new Date().toISOString(),
+              confirmed_at: participant.confirmed_at || participant.updated_at || null,
+              additional_info: participant.additional_info || {}
+            }))
+          : [];
+          
+        setParticipants(formattedData);
+      } catch (error) {
+        console.error('Erreur lors de la récupération directe des participants:', error);
+        throw error;
+      }
+    } catch (error: unknown) {
+      console.error('Erreur détaillée lors du chargement des participants:', error);
+      
+      // Message d'erreur plus détaillé pour l'utilisateur
+      let errorMessage = 'Erreur lors du chargement des participants';
+      
+      // Vérifier si l'erreur est de type PostgrestError
+      if (error && typeof error === 'object' && 'code' in error && 'message' in error) {
+        const pgError = error as { code?: string; message: string };
+        
+        if (pgError.code === '42501') {
+          errorMessage = 'Permission refusée. Vérifiez que vous avez les droits nécessaires.';
+        } else if (pgError.code === '42P01') {
+          errorMessage = 'Table non trouvée. Contactez l\'administrateur.';
+        } else if ('message' in pgError && typeof pgError.message === 'string' && 
+                  pgError.message.includes('does not exist')) {
+          errorMessage = 'Erreur de configuration. Contactez l\'administrateur.';
+        } else if (pgError.message) {
+          errorMessage = `Erreur: ${pgError.message}`;
+        }
+      }
+      
+      toast.error(errorMessage);
+      
+      // Envoyer l'erreur à un service de suivi si disponible
+      if (process.env.NODE_ENV === 'production') {
+        // Exemple: Sentry.captureException(error);
+      }
     }
   };
 
@@ -590,11 +712,17 @@ const EventsManagement = () => {
 
       {/* Event Form Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-4xl max-h-[80vh] overflow-y-auto"
+          aria-describedby="event-form-dialog-description"
+        >
           <DialogHeader>
             <DialogTitle>
               {editingEvent ? 'Modifier l\'Événement' : 'Créer un Nouvel Événement'}
             </DialogTitle>
+            <DialogDescription id="event-form-dialog-description" className="sr-only">
+              {editingEvent ? 'Modifier les détails de l\'événement' : 'Formulaire de création d\'un nouvel événement'}
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
@@ -823,11 +951,17 @@ const EventsManagement = () => {
 
       {/* Participants Dialog */}
       <Dialog open={!!viewingParticipants} onOpenChange={() => setViewingParticipants(null)}>
-        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-6xl max-h-[80vh] overflow-y-auto"
+          aria-describedby="participants-dialog-description"
+        >
           <DialogHeader>
             <DialogTitle>
               Participants pour: {viewingParticipants?.title}
             </DialogTitle>
+            <DialogDescription id="participants-dialog-description" className="sr-only">
+              Liste des participants à l'événement
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {participants.length === 0 ? (

@@ -113,9 +113,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   const fetchUserRoleFromAPI = async (): Promise<{ role: string; isAdmin: boolean }> => {
     try {
+      // Si pas d'utilisateur connecté, retourner le rôle USER
       if (!user?.id) return { role: 'USER', isAdmin: false };
-
-      // Attempt 1: Use RPC with SECURITY DEFINER (recommended to avoid RLS 403)
+  
+      // Essayer d'abord avec la fonction RPC get_user_role
       try {
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_role');
         if (!rpcError && rpcData) {
@@ -129,28 +130,28 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       } catch (e) {
         console.warn('RPC get_user_role threw, falling back to table select', e);
       }
-
-      // Attempt 2: Direct table select (requires RLS policy allowing user_id = auth.uid())
-      const { data, error, status } = await supabase
+  
+      // Si la RPC échoue, essayer avec une sélection directe
+      const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .single();
-
+  
       if (error) {
-        console.error('Error checking user role (table select):', { error, status });
+        console.error('Error fetching user role:', error);
         return { role: 'USER', isAdmin: false };
       }
-
+  
       const role = ((data?.role as string) || 'USER').toUpperCase();
       const isAdmin = role === 'SUPERADMIN' || role === 'SUPPORT';
       return { role, isAdmin };
+      
     } catch (error) {
-      console.error('Error checking user role:', error);
+      console.error('Error in fetchUserRoleFromAPI:', error);
       return { role: 'USER', isAdmin: false };
     }
   };
-
   const sendOtpEmail = async (email: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });

@@ -294,38 +294,67 @@ const EventDetail = () => {
       if (!id) return;
       
       setIsLoading(true);
+      let eventData: any = null;
+      
       try {
-        // Récupérer les données de l'événement
-        const { data: eventData, error: eventError } = await supabase
-          .from('events')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (eventError) throw eventError;
+        // Essayer d'abord avec authentification
+        try {
+          const { data, error } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
+          if (error) throw error;
+          eventData = data;
+        } catch (authError) {
+          console.log('Tentative de chargement sans authentification...', authError);
+          // Si échec, essayer sans authentification (uniquement les événements actifs)
+          const { data, error } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', id)
+            .eq('is_active', true)
+            .single();
+            
+          if (error) throw error;
+          eventData = data;
+        }
 
         if (eventData) {
           setEvent(eventData as Event);
 
-          // Vérifier si l'utilisateur a déjà participé
+          // Vérifier si l'utilisateur a déjà participé (uniquement si connecté)
           if (user?.id) {
-            const hasParticipated = await checkUserParticipation(id, user.id);
-            setHasParticipated(hasParticipated);
+            try {
+              const hasParticipated = await checkUserParticipation(id, user.id);
+              setHasParticipated(hasParticipated);
+            } catch (participationError) {
+              console.error('Erreur lors de la vérification de la participation:', participationError);
+              // Ne pas bloquer l'affichage de l'événement pour cette erreur
+            }
           }
           
           // Incrémenter le compteur de vues
-          await incrementEventViews(id);
+          try {
+            await incrementEventViews(id);
+          } catch (viewError) {
+            console.error('Erreur lors de l\'incrémentation des vues:', viewError);
+            // Ne pas bloquer l'affichage pour cette erreur
+          }
+        } else {
+          throw new Error('Événement non trouvé');
         }
       } catch (error) {
         console.error('Erreur lors du chargement de l\'événement:', error);
-        toast.error('Erreur lors du chargement de l\'événement');
+        toast.error(error instanceof Error ? error.message : 'Erreur lors du chargement de l\'événement');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadEvent();
-  }, [id, user]);
+  }, [id, user?.id]); // Ajout de user?.id comme dépendance
 
   // Function to check if user has already participated in the event
   const checkUserParticipation = useCallback(async (eventId: string, userId: string) => {
@@ -743,12 +772,18 @@ const EventDetail = () => {
 
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                      <Button 
+                        className="w-full bg-purple-600 hover:bg-purple-700"
+                        aria-label={event.event_type === 'competition' ? 'Participer à cet événement' : 'S\'inscrire à cet événement'}
+                      >
                         <Send className="h-4 w-4 mr-2" />
                         {event.event_type === 'competition' ? 'Participer' : 'S\'inscrire'}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="event-dialog-description">
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="participation-dialog-description">
+                      <DialogDescription id="participation-dialog-description" className="sr-only">
+                        Formulaire de participation à l'événement
+                      </DialogDescription>
                       <DialogHeader>
                         <DialogTitle>
                           {event.event_type === 'competition' ? 'Participer à' : "S'inscrire à"} {event.title}
