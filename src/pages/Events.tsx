@@ -156,8 +156,17 @@ const Events = () => {
     return colors[type] || 'bg-gray-100 text-gray-800';
   };
 
-  const isEventUpcoming = (startDate: string) => {
-    return new Date(startDate) > new Date();
+  const isEventUpcoming = (startDate: string, endDate?: string) => {
+    const now = new Date();
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : null;
+    
+    // Si l'événement a une date de fin, on vérifie par rapport à elle
+    if (end) {
+      return end > now;
+    }
+    // Sinon, on vérifie par rapport à la date de début
+    return start > now;
   };
 
   const isRegistrationOpen = (registrationDeadline?: string) => {
@@ -281,7 +290,7 @@ const Events = () => {
           <div className="grid gap-6">
             {events.map((event) => {
               const EventIcon = getEventTypeIcon(event.event_type);
-              const isUpcoming = isEventUpcoming(event.start_date);
+              const isUpcoming = isEventUpcoming(event.start_date, event.end_date);
               const canRegister = isRegistrationOpen(event.registration_deadline);
               
               return (
@@ -377,7 +386,7 @@ const Events = () => {
                             {event.registration_deadline && (
                               <div className="flex items-center">
                                 <Clock className="h-4 w-4 mr-1" />
-                                Inscription jusqu'au {new Date(event.registration_deadline).toLocaleDateString('fr-FR')}
+                                Participer jusqu'au {new Date(event.registration_deadline).toLocaleDateString('fr-FR')}
                               </div>
                             )}
                             {event.max_participants && (

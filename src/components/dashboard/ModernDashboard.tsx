@@ -124,7 +124,7 @@ const ModernDashboard = () => {
 
  
   const sidebarItems = [
-    { id: 'affiliate', label: t('affiliate.program'), icon: Users },
+    { id: 'affiliate', label: t('affiliate.dashboard'), icon: Users },
     { id: 'o-secours', label: t('nav.services.osecours'), icon: HeartHandshake },
     { id: 'online-store', label: t('nav.services.shop'), icon: Store },
     { id: 'job-center', label: t('nav.services.jobs'), icon: Briefcase },

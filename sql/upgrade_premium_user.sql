@@ -1,7 +1,7 @@
 DO $$
 DECLARE
   -- REMPLACEZ ICI: l'UUID du profil existant (public.profiles.id)
-  v_profile_id uuid := '24ec6031-5551-4e29-a959-7150c1c4de94';
+  v_profile_id uuid := '6582cf0b-c2a1-4451-8020-10ff93c2931b';
 
   v_premium_names text[] := ARRAY['premium','adult premium','premium adulte','adult_premium'];
 
@@ -96,7 +96,7 @@ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM public.payments WHERE user_id = v_profile_id AND payment_reference = ('PREMIUM-'||v_adult_sub_id::text)) THEN
     INSERT INTO public.payments (user_id, subscription_id, amount, currency, status, payment_method, payment_reference, metadata, created_at, updated_at)
-    VALUES (v_profile_id, v_adult_sub_id, 15000, 'XOF', 'completed', 'orange_money', 'PREMIUM-'||v_adult_sub_id::text, jsonb_build_object('tier','premium'), v_now, v_now);
+    VALUES (v_profile_id, v_adult_sub_id, 12000, 'XOF', 'completed', 'orange_money', 'PREMIUM-'||v_adult_sub_id::text, jsonb_build_object('tier','premium'), v_now, v_now);
   END IF;
 
   RAISE NOTICE ' Adult Premium créés/mis à jour pour user_id=%', v_profile_id;

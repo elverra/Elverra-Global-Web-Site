@@ -1,0 +1,36 @@
+ try {
+        // Get event data
+        const { data: eventData, error: eventError } = await supabase
+          .from('events')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (eventError) throw eventError;
+
+        if (eventData) {
+          setEvent(eventData as Event);
+
+          // Check if user has already participated
+          if (user?.id) {
+            const { data: participationData, error: participationError } = await supabase
+              .from('event_participants')
+              .select('id')
+              .eq('event_id', id)
+              .eq('user_id', user.id)
+              .single();
+
+            if (participationError && participationError.code !== 'PGRST116') {
+              console.error('Erreur lors de la vérification de la participation:', participationError);
+            }
+            
+            setHasParticipated(!!participationData);
+          }
+          
+          // Increment view counter
+          await incrementEventViews(id);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement de l\'événement:', error);
+        toast.error('Erreur lors du chargement de l\'événement');
+      } 

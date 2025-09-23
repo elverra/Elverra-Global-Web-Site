@@ -1,38 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  Users, 
-  Trophy,
-  Star,
-  Eye,
-  ArrowLeft,
-  Send,
-  DollarSign,
-  Award,
-  Megaphone,
-  BookOpen,
-  Monitor,
-  Building,
-  User,
-  Mail,
-  Phone,
-  Building2,
-  FileText
-} from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '@/hooks/useAuth';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Trophy, BookOpen, Monitor, Building, Megaphone, Send, ArrowLeft, MapPin, Users, Eye, Calendar, Star, Award, DollarSign } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface Event {
   id: string;
@@ -43,8 +23,12 @@ interface Event {
   location: string;
   start_date: string;
   end_date?: string;
-  registration_deadline?: string;
+  created_at: string;
+  updated_at: string;
+  views: number;
   max_participants?: number;
+  is_active: boolean;
+  registration_deadline?: string;
   entry_fee: number;
   currency: string;
   prize_description?: string;
@@ -54,170 +38,318 @@ interface Event {
   image_url?: string;
   is_featured: boolean;
   requires_application: boolean;
-  views: number;
   participant_count: number;
-  created_at: string;
 }
 
 interface ParticipationForm {
   full_name: string;
-  email: string;
+  email?: string;
   phone: string;
-  organization: string;
   motivation: string;
-  experience_level: string;
-  portfolio_url: string;
-  team_members: string;
   additional_info: string;
+  files: File[];
 }
 
 const EventDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth() || {};
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [participating, setParticipating] = useState(false);
   const [hasParticipated, setHasParticipated] = useState(false);
   const [participationForm, setParticipationForm] = useState<ParticipationForm>({
-    full_name: '',
-    email: '',
-    phone: '',
-    organization: '',
+    full_name: user?.fullName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
     motivation: '',
-    experience_level: '',
-    portfolio_url: '',
-    team_members: '',
-    additional_info: ''
+    additional_info: '',
+    files: []
   });
 
-  const fetchEvent = async () => {
-    if (!id) return;
-    
-    try {
-      setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', id)
-        .eq('is_active', true)
-        .single();
-
-      if (error) throw error;
-      setEvent(data);
-
-      // Increment view count
-      await incrementEventViews(id);
-
-      // Check if user has already participated
-      if (user) {
-        const { data: participationData } = await supabase
-          .from('event_participants')
-          .select('id')
-          .eq('event_id', id)
-          .eq('user_id', user.id)
-          .single();
-        
-        setHasParticipated(!!participationData);
-      }
-    } catch (error) {
-      console.error('Error fetching event:', error);
-      toast.error('Erreur lors du chargement de l\'événement');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const incrementEventViews = async (eventId: string) => {
-    try {
-      const { data: currentEvent, error: fetchError } = await supabase
-        .from('events')
-        .select('views')
-        .eq('id', eventId)
-        .single();
-
-      if (fetchError) return;
-
-      const newViews = (currentEvent?.views || 0) + 1;
-      
-      await supabase
-        .from('events')
-        .update({ views: newViews })
-        .eq('id', eventId);
-    } catch (error) {
-      console.error('Error incrementing views:', error);
-    }
-  };
-
-  const handleInputChange = (field: keyof ParticipationForm, value: string) => {
+  // Handle form input changes
+  const handleInputChange = (name: keyof ParticipationForm, value: string) => {
     setParticipationForm(prev => ({
       ...prev,
-      [field]: value
+      [name]: value
     }));
   };
 
-  const handleSubmitParticipation = async () => {
-    if (!user || !event) {
-      toast.error('Vous devez être connecté pour participer');
+  // Handle form submission
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSubmitParticipation(e);
+  };
+
+  const handleSubmitParticipation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user?.id) {
+      toast.error('Veuillez vous connecter pour participer à cet événement');
       return;
     }
 
-    if (!participationForm.full_name || !participationForm.email || !participationForm.phone) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+    // Vérifier si l'utilisateur a déjà participé
+    if (hasParticipated) {
+      toast.info('Vous avez déjà participé à cet événement');
+      return;
+    }
+
+    // Vérifier si la date limite d'inscription est dépassée
+    if (event?.registration_deadline && new Date(event.registration_deadline) < new Date()) {
+      toast.error('La date limite d\'inscription est dépassée');
+      return;
+    }
+
+    // Vérifier si le nombre maximum de participants est atteint
+    if (event?.max_participants && event.participant_count >= event.max_participants) {
+      toast.error('Le nombre maximum de participants a été atteint');
       return;
     }
 
     try {
       setParticipating(true);
-
-      const participationData = {
-        event_id: event.id,
+      
+      // Afficher une notification de chargement
+      const toastId = toast.loading('Traitement de votre participation...');
+      
+      // Préparer les données de base de la participation
+      const participationData: any = {
+        event_id: id,
         user_id: user.id,
-        full_name: participationForm.full_name,
-        email: participationForm.email,
-        phone: participationForm.phone,
-        organization: participationForm.organization || null,
-        motivation: participationForm.motivation || null,
-        experience_level: participationForm.experience_level || null,
-        portfolio_url: participationForm.portfolio_url || null,
-        team_members: participationForm.team_members || null,
-        additional_info: participationForm.additional_info || null,
+        full_name: participationForm.full_name.trim(),
+        phone: participationForm.phone.trim(),
+        motivation: participationForm.motivation.trim(),
+        additional_info: participationForm.additional_info?.trim() || null,
+        status: 'pending',
+        metadata: {}
       };
 
-      const { error } = await supabase
+      // Ajouter l'email s'il est fourni
+      if (participationForm.email?.trim()) {
+        participationData.email = participationForm.email.trim();
+      }
+
+      // Téléverser les fichiers s'il y en a
+      if (participationForm.files.length > 0) {
+        const fileUrls = [];
+        let uploadCount = 0;
+        const totalFiles = participationForm.files.length;
+        
+        // Mettre à jour la notification pour afficher la progression
+        toast.loading(`Téléversement des fichiers (0/${totalFiles})...`, { id: toastId });
+        
+        for (const file of participationForm.files) {
+          try {
+            const fileExt = file.name.split('.').pop()?.toLowerCase();
+            const fileName = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+            const filePath = `event_participations/${id}/${fileName}`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from('event-files')
+              .upload(filePath, file);
+            
+            if (uploadError) throw uploadError;
+            
+            // Obtenir l'URL publique du fichier
+            const { data: { publicUrl } } = supabase.storage
+              .from('event-files')
+              .getPublicUrl(filePath);
+            
+            fileUrls.push({
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              path: filePath,
+              url: publicUrl,
+              uploaded_at: new Date().toISOString()
+            });
+            
+            uploadCount++;
+            toast.loading(`Téléversement des fichiers (${uploadCount}/${totalFiles})...`, { id: toastId });
+            
+          } catch (uploadError) {
+            console.error('Erreur lors du téléversement du fichier:', uploadError);
+            // Continuer avec les autres fichiers même en cas d'échec d'un seul
+            toast.warning(`Impossible de téléverser le fichier: ${file.name}`, { id: `file-upload-error-${file.name}` });
+          }
+        }
+        
+        if (fileUrls.length > 0) {
+          participationData.metadata.files = fileUrls;
+        }
+      }
+
+      // Enregistrer la participation dans la base de données
+      const { data, error } = await supabase
         .from('event_participants')
-        .insert([participationData]);
+        .insert([participationData])
+        .select()
+        .single();
 
       if (error) throw error;
-
-      toast.success('Participation enregistrée avec succès!');
+      
+      // Mettre à jour le compteur de participants
+      if (event) {
+        await supabase.rpc('increment_event_participants', { event_id: id });
+      }
+      
+      // Afficher un message de succès
+      toast.success('Votre participation a été enregistrée avec succès !', { id: toastId });
+      
+      // Mettre à jour l'état local
       setHasParticipated(true);
       
-      // Reset form
+      // Réinitialiser le formulaire
       setParticipationForm({
-        full_name: '',
-        email: '',
-        phone: '',
-        organization: '',
+        full_name: user.fullName || '',
+        email: user.email || '',
+        phone: user.phone || '',
         motivation: '',
-        experience_level: '',
-        portfolio_url: '',
-        team_members: '',
-        additional_info: ''
+        additional_info: '',
+        files: []
       });
-
-    } catch (error) {
-      console.error('Error submitting participation:', error);
-      toast.error('Erreur lors de l\'enregistrement de la participation');
+      
+    } catch (error: any) {
+      console.error('Erreur lors de l\'enregistrement de la participation:', error);
+      
+      // Afficher un message d'erreur plus détaillé si possible
+      const errorMessage = error.message || 'Une erreur est survenue lors de l\'enregistrement de votre participation';
+      toast.error(errorMessage, { id: 'participation-error' });
     } finally {
       setParticipating(false);
     }
   };
 
+  // Gérer la sélection de fichiers
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      
+      // Filtrer les fichiers pour ne garder que les images et vidéos (max 10MB par fichier)
+      const validFiles = newFiles.filter(file => {
+        const isValidType = file.type.startsWith('image/') || file.type.startsWith('video/');
+        const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB max
+        return isValidType && isValidSize;
+      });
+      
+      if (validFiles.length < newFiles.length) {
+        toast.warning('Certains fichiers ne sont pas des images/vidéos ou dépassent 10MB et ont été ignorés');
+      }
+      
+      if (validFiles.length > 0) {
+        setParticipationForm(prev => ({
+          ...prev,
+          files: [...prev.files, ...validFiles]
+        }));
+      }
+      
+      // Réinitialiser l'input pour permettre la sélection des mêmes fichiers
+      e.target.value = '';
+    }
+  };
+  
+  // Supprimer un fichier de la sélection
+  const removeFile = (index: number) => {
+    setParticipationForm(prev => ({
+      ...prev,
+      files: prev.files.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Charger les données de l'événement
   useEffect(() => {
-    fetchEvent();
+    const loadEvent = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      try {
+        // Récupérer les données de l'événement
+        const { data: eventData, error: eventError } = await supabase
+          .from('events')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (eventError) throw eventError;
+
+        if (eventData) {
+          setEvent(eventData as Event);
+
+          // Vérifier si l'utilisateur a déjà participé
+          if (user?.id) {
+            const { data: participationData, error: participationError } = await supabase
+              .from('event_participants')
+              .select('id')
+              .eq('event_id', id)
+              .eq('user_id', user.id)
+              .single();
+
+            if (participationError && participationError.code !== 'PGRST116') {
+              console.error('Erreur lors de la vérification de la participation:', participationError);
+            }
+            
+            setHasParticipated(!!participationData);
+          }
+          
+          // Incrémenter le compteur de vues
+          await incrementEventViews(id);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement de l\'événement:', error);
+        toast.error('Erreur lors du chargement de l\'événement');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEvent();
   }, [id, user]);
+
+  // Function to increment event views
+  const incrementEventViews = useCallback(async (eventId: string) => {
+    if (!eventId) return;
+    
+    try {
+      const { error } = await supabase.rpc('increment_views', {
+        event_id: eventId
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erreur lors de l\'incrémentation des vues:', error);
+    }
+  }, []);
+
+
+
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-600">Événement non trouvé</p>
+      </div>
+    );
+  }
+
+  // Format date with proper null check
+  const formatEventDate = (dateString?: string) => {
+    if (!dateString) return 'Non spécifiée';
+    try {
+      return format(new Date(dateString), 'PPP', { locale: fr });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date invalide';
+    }
+  };
 
   const getEventTypeIcon = (type: string) => {
     const icons: { [key: string]: any } = {
@@ -252,21 +384,41 @@ const EventDetail = () => {
     return colors[type] || 'bg-gray-100 text-gray-800';
   };
 
-  const isEventUpcoming = (startDate: string) => {
-    return new Date(startDate) > new Date();
+  // Helper functions
+  const isEventUpcoming = (startDate: string, endDate?: string) => {
+    try {
+      const now = new Date();
+      // Si l'événement a une date de fin, on vérifie par rapport à elle
+      if (endDate) {
+        return new Date(endDate) > now;
+      }
+      // Sinon, on vérifie par rapport à la date de début
+      return new Date(startDate) > now;
+    } catch (error) {
+      console.error('Format de date invalide:', startDate, endDate);
+      return false;
+    }
   };
 
   const isRegistrationOpen = (registrationDeadline?: string) => {
     if (!registrationDeadline) return true;
-    return new Date(registrationDeadline) > new Date();
+    try {
+      return new Date(registrationDeadline) > new Date();
+    } catch (error) {
+      console.error('Invalid registration deadline format:', registrationDeadline);
+      return false;
+    }
   };
 
-  if (loading) {
+
+
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement de l'événement...</p>
+          <p className="mt-4 text-gray-600">Chargement de l&apos;événement...</p>
         </div>
       </div>
     );
@@ -284,7 +436,7 @@ const EventDetail = () => {
             Cet événement n'existe pas ou n'est plus disponible.
           </p>
           <Button onClick={() => navigate('/events')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Retour aux événements
           </Button>
         </div>
@@ -293,8 +445,8 @@ const EventDetail = () => {
   }
 
   const EventIcon = getEventTypeIcon(event.event_type);
-  const isUpcoming = isEventUpcoming(event.start_date);
-  const canRegister = isRegistrationOpen(event.registration_deadline);
+  const isUpcoming = isEventUpcoming(event.start_date, event.end_date);
+  const canRegister = isRegistrationOpen(event.registration_deadline) && isUpcoming;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -531,152 +683,172 @@ const EventDetail = () => {
                   </div>
                 ) : (
 
-                  <div className="text-center">
-                  <p className="text-gray-600 mb-4">
-                    Cet événement n'a pas encore été lancé.
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Veuillez revenir plus tard.
-                  </p>
-                </div>
-                  // <Dialog>
-                  //   <DialogTrigger asChild>
-                  //     <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                  //       <Send className="h-4 w-4 mr-2" />
-                  //       {event.event_type === 'competition' ? 'Participer' : 'S\'inscrire'}
-                  //     </Button>
-                  //   </DialogTrigger>
-                  //   <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                  //     <DialogHeader>
-                  //       <DialogTitle>
-                  //         {event.event_type === 'competition' ? 'Participer à' : 'S\'inscrire à'} {event.title}
-                  //       </DialogTitle>
-                  //     </DialogHeader>
+                //   <div className="text-center">
+                //   <p className="text-gray-600 mb-4">
+                //     Cet événement n'a pas encore été lancé.
+                //   </p>
+                //   <p className="text-sm text-gray-500">
+                //     Veuillez revenir plus tard.
+                //   </p>
+                // </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                        <Send className="h-4 w-4 mr-2" />
+                        {event.event_type === 'competition' ? 'Participer' : 'S\'inscrire'}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {event.event_type === 'competition' ? 'Participer à' : 'S\'inscrire à'} {event.title}
+                        </DialogTitle>
+                      </DialogHeader>
                       
-                  //     <div className="space-y-4">
-                  //       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  //         <div>
-                  //           <Label htmlFor="full_name">Nom complet *</Label>
-                  //           <Input
-                  //             id="full_name"
-                  //             value={participationForm.full_name}
-                  //             onChange={(e) => handleInputChange('full_name', e.target.value)}
-                  //             placeholder="Votre nom complet"
-                  //           />
-                  //         </div>
-                  //         <div>
-                  //           <Label htmlFor="email">Email *</Label>
-                  //           <Input
-                  //             id="email"
-                  //             type="email"
-                  //             value={participationForm.email}
-                  //             onChange={(e) => handleInputChange('email', e.target.value)}
-                  //             placeholder="votre@email.com"
-                  //           />
-                  //         </div>
-                  //       </div>
+                      <form onSubmit={handleFormSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="full_name">Nom complet *</Label>
+                            <Input
+                              id="full_name"
+                              value={participationForm.full_name}
+                              onChange={(e) => handleInputChange('full_name', e.target.value)}
+                              placeholder="Votre nom complet"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="phone">Téléphone *</Label>
+                            <Input
+                              id="phone"
+                              type="tel"
+                              value={participationForm.phone}
+                              onChange={(e) => handleInputChange('phone', e.target.value)}
+                              placeholder="+223 XX XX XX XX"
+                              required
+                            />
+                          </div>
+                        </div>
 
-                  //       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  //         <div>
-                  //           <Label htmlFor="phone">Téléphone *</Label>
-                  //           <Input
-                  //             id="phone"
-                  //             value={participationForm.phone}
-                  //             onChange={(e) => handleInputChange('phone', e.target.value)}
-                  //             placeholder="+223 XX XX XX XX"
-                  //           />
-                  //         </div>
-                  //         <div>
-                  //           <Label htmlFor="organization">Organisation/Entreprise</Label>
-                  //           <Input
-                  //             id="organization"
-                  //             value={participationForm.organization}
-                  //             onChange={(e) => handleInputChange('organization', e.target.value)}
-                  //             placeholder="Votre entreprise ou école"
-                  //           />
-                  //         </div>
-                  //       </div>
+                        <div>
+                          <Label htmlFor="email">Email (optionnel)</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={participationForm.email || ''}
+                            onChange={(e) => handleInputChange('email', e.target.value)}
+                            placeholder="votre@email.com"
+                          />
+                        </div>
 
-                  //       <div>
-                  //         <Label htmlFor="motivation">Motivation</Label>
-                  //         <Textarea
-                  //           id="motivation"
-                  //           value={participationForm.motivation}
-                  //           onChange={(e) => handleInputChange('motivation', e.target.value)}
-                  //           placeholder="Pourquoi souhaitez-vous participer à cet événement ?"
-                  //           rows={3}
-                  //         />
-                  //       </div>
+                        <div>
+                          <Label htmlFor="motivation">Message *</Label>
+                          <Textarea
+                            id="motivation"
+                            value={participationForm.motivation}
+                            onChange={(e) => handleInputChange('motivation', e.target.value)}
+                            placeholder="Dites-nous pourquoi vous souhaitez participer..."
+                            rows={3}
+                            required
+                          />
+                        </div>
 
-                  //       <div>
-                  //         <Label htmlFor="experience_level">Niveau d'expérience</Label>
-                  //         <Select value={participationForm.experience_level} onValueChange={(value) => handleInputChange('experience_level', value)}>
-                  //           <SelectTrigger>
-                  //             <SelectValue placeholder="Sélectionnez votre niveau" />
-                  //           </SelectTrigger>
-                  //           <SelectContent>
-                  //             <SelectItem value="beginner">Débutant</SelectItem>
-                  //             <SelectItem value="intermediate">Intermédiaire</SelectItem>
-                  //             <SelectItem value="advanced">Avancé</SelectItem>
-                  //           </SelectContent>
-                  //         </Select>
-                  //       </div>
+                        <div>
+                          <Label htmlFor="file">Joindre des fichiers (images ou vidéos)</Label>
+                          <div className="mt-1">
+                            <div className="flex items-center">
+                              <label
+                                htmlFor="file-upload"
+                                className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                              >
+                                <span>Ajouter des fichiers</span>
+                                <input
+                                  id="file-upload"
+                                  name="file-upload"
+                                  type="file"
+                                  className="sr-only"
+                                  onChange={handleFileChange}
+                                  accept="image/*,video/*"
+                                  multiple
+                                />
+                              </label>
+                              <span className="ml-3 text-sm text-gray-500">
+                                {participationForm.files.length > 0 
+                                  ? `${participationForm.files.length} fichier(s) sélectionné(s)` 
+                                  : 'Aucun fichier sélectionné'}
+                              </span>
+                            </div>
+                            
+                            {/* Liste des fichiers sélectionnés */}
+                            {participationForm.files.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {participationForm.files.map((file, index) => (
+                                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                    <div className="flex items-center space-x-2 truncate">
+                                      {file.type.startsWith('image/') ? (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                        </svg>
+                                      ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                          <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v8a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
+                                        </svg>
+                                      )}
+                                      <span className="truncate text-sm">{file.name}</span>
+                                      <span className="text-xs text-gray-500">
+                                        {(file.size / (1024 * 1024)).toFixed(2)} MB
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeFile(index)}
+                                      className="text-gray-400 hover:text-red-500"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Formats acceptés : JPG, PNG, GIF, MP4, MOV (max 10MB par fichier)
+                          </p>
+                        </div>
 
-                  //       <div>
-                  //         <Label htmlFor="portfolio_url">Portfolio (URL)</Label>
-                  //         <Input
-                  //           id="portfolio_url"
-                  //           type="url"
-                  //           value={participationForm.portfolio_url}
-                  //           onChange={(e) => handleInputChange('portfolio_url', e.target.value)}
-                  //           placeholder="https://monportfolio.com"
-                  //         />
-                  //       </div>
+                        <div>
+                          <Label htmlFor="additional_info">Informations complémentaires (optionnel)</Label>
+                          <Textarea
+                            id="additional_info"
+                            value={participationForm.additional_info}
+                            onChange={(e) => handleInputChange('additional_info', e.target.value)}
+                            placeholder="Toute information supplémentaire que vous souhaitez partager..."
+                            rows={2}
+                          />
+                        </div>
 
-                  //       {event.event_type === 'competition' && (
-                  //         <div>
-                  //           <Label htmlFor="team_members">Membres de l'équipe (si applicable)</Label>
-                  //           <Textarea
-                  //             id="team_members"
-                  //             value={participationForm.team_members}
-                  //             onChange={(e) => handleInputChange('team_members', e.target.value)}
-                  //             placeholder="Noms et rôles des membres de votre équipe..."
-                  //             rows={2}
-                  //           />
-                  //         </div>
-                  //       )}
-
-                  //       <div>
-                  //         <Label htmlFor="additional_info">Informations supplémentaires</Label>
-                  //         <Textarea
-                  //           id="additional_info"
-                  //           value={participationForm.additional_info}
-                  //           onChange={(e) => handleInputChange('additional_info', e.target.value)}
-                  //           placeholder="Toute information supplémentaire que vous souhaitez partager..."
-                  //           rows={2}
-                  //         />
-                  //       </div>
-
-                  //       <Button 
-                  //         onClick={handleSubmitParticipation}
-                  //         disabled={participating}
-                  //         className="w-full bg-purple-600 hover:bg-purple-700"
-                  //       >
-                  //         {participating ? (
-                  //           <>
-                  //             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  //             Envoi en cours...
-                  //           </>
-                  //         ) : (
-                  //           <>
-                  //             <Send className="h-4 w-4 mr-2" />
-                  //             {event.event_type === 'competition' ? 'Confirmer ma participation' : 'Confirmer mon inscription'}
-                  //           </>
-                  //         )}
-                  //       </Button>
-                  //     </div>
-                  //   </DialogContent>
-                  // </Dialog>
+                        <Button 
+                          type="submit"
+                          disabled={participating}
+                          className="w-full bg-purple-600 hover:bg-purple-700"
+                        >
+                          {participating ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Envoi en cours...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-2" />
+                              {event.event_type === 'competition' ? 'Confirmer ma participation' : 'Confirmer mon inscription'}
+                            </>
+                          )}
+                        </Button>
+                        </form>
+                    </DialogContent>
+                  </Dialog>
                 )}
               </CardContent>
             </Card>

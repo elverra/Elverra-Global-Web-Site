@@ -514,7 +514,7 @@ const AccountSection = () => {
                 <div className="relative group">
                   <img
                     src={previewUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff&size=128`}
-                    alt="Photo de profil"
+                    alt= {t('dashboard.profileTitle')}
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-gray-200"
                   />
                   {isEditing && (
@@ -540,9 +540,9 @@ const AccountSection = () => {
                   )}
                 </div>
                 <div className="text-center sm:text-left">
-                  <h3 className="font-semibold text-sm sm:text-base mb-1">Photo de profil</h3>
+                  <h3 className="font-semibold text-sm sm:text-base mb-1">{t('dashboard.profileTitle')}</h3>
                   <p className="text-xs sm:text-sm text-gray-600 mb-3">
-                    Téléchargez une photo pour personnaliser votre compte
+                  {t('dashboard.profilesubtitle')}
                   </p>
                   {isEditing ? (
                     <Button

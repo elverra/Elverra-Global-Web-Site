@@ -22,7 +22,7 @@ const FAQ = () => {
         },
         {
           question: "What are the different client tiers?",
-          answer: "We offer three client tiers: Essential (basic benefits), Premium (enhanced features), and VIP (premium benefits). Each tier offers different benefits including discounts, access to services, and networking opportunities."
+          answer: "We offer fourth client tiers: Essential (basic benefits), Premium (enhanced features), and VIP (premium benefits) And the kiddies. Each tier offers different benefits including discounts, access to services, and networking opportunities."
         },
         {
           question: "Can I upgrade or downgrade my client tier?",

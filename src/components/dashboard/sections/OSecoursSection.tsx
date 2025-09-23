@@ -113,7 +113,7 @@ const TOKEN_TYPES: TokenType[] = [
     id: 'first_aid',
     name: 'Premiers secours',
     description: 'Assistance premiers secours',
-    price: 250,
+    price: 500,
     icon: '🩺',
     color: '#f3e8ff',
   },
@@ -316,91 +316,7 @@ const OSecoursSection = () => {
     }
   }, [isEligible, user?.id, fetchData]);
 
-  const handlePurchase = useCallback(async () => {
-    if (!selectedToken || !purchaseAmount || !phoneNumber) {
-      toast.error(t('error_select_token_amount_phone'));
-      return;
-    }
-
-    const amount = parseInt(purchaseAmount, 10);
-    if (isNaN(amount) || amount < MIN_PURCHASE_PER_SERVICE || amount > MAX_MONTHLY_PURCHASE_PER_SERVICE) {
-      toast.error(t('error_invalid_amount', { min: MIN_PURCHASE_PER_SERVICE, max: MAX_MONTHLY_PURCHASE_PER_SERVICE }));
-      return;
-    }
-
-    try {
-      setIsPurchasing(true);
-
-      const subscription = tokenBalances.find(b => b.tokenId === selectedToken);
-      if (!subscription) {
-        throw new Error('No subscription found for this token type');
-      }
-
-      // Mock purchase response
-      const response = {
-        success: true,
-        data: {
-          id: 'purchase-' + Date.now(),
-          paymentUrl: null
-        }
-      };
-
-      if (!response?.data) {
-        throw new Error('Invalid response from server');
-      }
-
-      setTokenBalances(prev => {
-        const updated = [...prev];
-        const index = updated.findIndex(b => b.tokenId === selectedToken);
-        if (index >= 0) {
-          updated[index] = {
-            ...updated[index],
-            balance: updated[index].balance + amount,
-            usedThisMonth: updated[index].usedThisMonth || 0,
-            monthlyLimit: updated[index].monthlyLimit || MAX_MONTHLY_PURCHASE_PER_SERVICE,
-            remainingBalance: (updated[index].balance || 0) + amount - (updated[index].usedThisMonth || 0)
-          };
-        } else {
-          updated.push({
-            tokenId: selectedToken,
-            balance: amount,
-            usedThisMonth: 0,
-            monthlyLimit: MAX_MONTHLY_PURCHASE_PER_SERVICE,
-            remainingBalance: amount
-          });
-        }
-        return updated;
-      });
-
-      setTransactions(prev => [
-        {
-          id: response.data!.id,
-          date: new Date().toISOString(),
-          type: 'purchase' as const,
-          tokenId: selectedToken,
-          amount,
-          totalPrice: amount * (selectedTokenData?.price || 0),
-          status: 'completed' as const,
-        },
-        ...prev,
-      ]);
-
-      toast.success(t('purchase_success_message', { amount }));
-
-      setPurchaseAmount(MIN_PURCHASE_PER_SERVICE.toString());
-      setPhoneNumber('');
-
-      if (response.data.paymentUrl) {
-        window.location.href = response.data.paymentUrl;
-      }
-    } catch (err) {
-      console.error('Purchase error:', err);
-      toast.error(t('error_purchase'));
-    } finally {
-      setIsPurchasing(false);
-    }
-  }, [selectedToken, purchaseAmount, phoneNumber, selectedTokenData, t]);
-
+ 
   const requestService = useCallback(
     async (serviceId: string) => {
       if (!isEligible || !user?.id) {
@@ -519,6 +435,8 @@ const OSecoursSection = () => {
       minute: '2-digit',
     });
   };
+
+  // Month calculating rate for client buy
 
   const calculateMonthlyUsage = (tokenId: string) => {
     const balance = tokenBalances.find(b => b.tokenId === tokenId);

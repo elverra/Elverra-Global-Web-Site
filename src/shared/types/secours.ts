@@ -93,24 +93,33 @@ export const TOKEN_TYPES = {
     value: 250,
     description: 'Communication emergency',
     rescueMultiplier: 1.5
+  },
+  first_aid: {
+    name: 'Premiers secours',
+    value: 500,
+    description: 'Assistance premiers secours',
+    icon: '🩺',
+    rescueMultiplier: 1.5
   }
 } as const;
 
 // Purchase limits
 export const MIN_PURCHASE_PER_SERVICE = {
   auto: 10, // minimum 10 tokens
-  cata_catanis: 5,
-  school_fees: 5,
-  motors: 20,
-  telephone: 20
+  cata_catanis: 10,
+  school_fees: 10,
+  motors: 10,
+  telephone: 10,
+  first_aid: 10,
 } as const;
 
 export const MAX_MONTHLY_PURCHASE_PER_SERVICE = {
-  auto: 100, // maximum 100 tokens per month
-  cata_catanis: 200,
-  school_fees: 200,
-  motors: 400,
-  telephone: 400
+  auto: 60, // maximum 100 tokens per month
+  cata_catanis: 60,
+  school_fees: 60,
+  motors: 60,
+  telephone: 60,
+  first_aid: 60
 } as const;
 
 // Service type union type

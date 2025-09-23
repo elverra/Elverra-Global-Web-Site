@@ -62,6 +62,8 @@ const translations = {
     'dashboard.title': 'Dashboard',
     'dashboard.welcome': 'Welcome',
     'dashboard.overview': 'Overview',
+    'dashboard.profileTitle' : 'Profil Image',
+    'dashboard.profilesubtitle' : 'Téléchargez une photo pour personnaliser votre compte',
     
     // Affiliate
     'affiliate.dashboard': 'Affiliate Dashboard',
@@ -262,6 +264,8 @@ const translations = {
     'dashboard.title': 'Tableau de bord',
     'dashboard.welcome': 'Bienvenue',
     'dashboard.overview': 'Aperçu',
+    'dashboard.profileTitle' : 'Photo de profil',
+    'dashboard.profilesubtitle' : 'Téléchargez une photo pour personnaliser votre compte',
     
     // Affiliate
     'affiliate.dashboard': 'Tableau de bord d\'affiliation',
