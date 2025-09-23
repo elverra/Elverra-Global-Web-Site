@@ -180,46 +180,49 @@ const EventDetail = () => {
         }
       }
 
-      // Enregistrer la participation dans la base de données
-      const { data, error } = await supabase
-        .from('event_participants')
-        .insert([{
-          ...participationData,
-          // Ensure user_id is set to the current user's ID for RLS
-          user_id: user?.id || null
-        }])
-        .select()
-        .single();
+      // Enregistrer la participation via la fonction RPC
+      if (!user?.id) {
+        throw new Error('Vous devez être connecté pour vous inscrire à un événement');
+      }
 
-      if (error) {
-        console.error('Database error:', error);
-        // If it's an RLS violation, try with a different approach
-        if (error.code === '42501' || error.message?.includes('permission denied')) {
-          // Try using a stored procedure that runs with SECURITY DEFINER
-          const { data: rpcData, error: rpcError } = await supabase
-            .rpc('create_event_participation', {
-              p_event_id: id,
-              p_user_id: user?.id,
-              p_full_name: participationData.full_name,
-              p_email: participationData.email || null,
-              p_phone: participationData.phone,
-              p_motivation: participationData.motivation || null,
-              p_additional_info: participationData.additional_info || null,
-              p_metadata: participationData.metadata || {}
-            });
-            
-          if (rpcError) {
-            console.error('RPC error:', rpcError);
-            throw new Error('Impossible de vous inscrire à cet événement. Veuillez contacter le support.');
-          }
-          return rpcData;
-        }
-        throw error;
+      console.log('Tentative d\'inscription avec les données:', {
+        p_event_id: id,
+        p_user_id: user.id,
+        p_full_name: participationData.full_name,
+        p_email: participationData.email || null,
+        p_phone: participationData.phone,
+        p_motivation: participationData.motivation || null,
+        p_additional_info: participationData.additional_info || null,
+        p_metadata: participationData.metadata || {}
+      });
+
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('create_event_participation', {
+          p_event_id: id,
+          p_user_id: user.id,
+          p_full_name: participationData.full_name,
+          p_email: participationData.email || null,
+          p_phone: participationData.phone,
+          p_motivation: participationData.motivation || null,
+          p_additional_info: participationData.additional_info || null,
+          p_metadata: participationData.metadata || {}
+        });
+        
+      if (rpcError) {
+        console.error('Erreur lors de l\'inscription:', rpcError);
+        throw new Error(rpcError.message || 'Une erreur est survenue lors de l\'inscription');
       }
       
-      // Mettre à jour le compteur de participants
+      if (!rpcData?.success) {
+        throw new Error(rpcData?.error || 'Échec de l\'inscription');
+      }
+      
+      // Mettre à jour le compteur de participants côté client
       if (event) {
-        await supabase.rpc('increment_event_participants', { event_id: id });
+        setEvent(prev => ({
+          ...prev!,
+          participant_count: (prev?.participant_count || 0) + 1
+        }));
       }
       
       // Afficher un message de succès
@@ -748,7 +751,7 @@ const EventDetail = () => {
                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="event-dialog-description">
                       <DialogHeader>
                         <DialogTitle>
-                          {event.event_type === 'competition' ? 'Participer à' : 'S\'inscrire à'} {event.title}
+                          {event.event_type === 'competition' ? 'Participer à' : "S'inscrire à"} {event.title}
                         </DialogTitle>
                         <DialogDescription id="event-dialog-description">
                           {event.event_type === 'competition' 

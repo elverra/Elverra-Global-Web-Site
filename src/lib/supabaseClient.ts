@@ -30,24 +30,35 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Function to get the current session and update headers
 export const getSession = async () => {
   const { data: { session } } = await supabase.auth.getSession();
+  await setAuthHeader(session);
   return session;
 };
 
 // Function to set auth header with current session
-export const setAuthHeader = async () => {
-  const session = await getSession();
-  if (session?.access_token) {
-    supabase.realtime.setAuth(session.access_token);
+export const setAuthHeader = async (session: any = null) => {
+  const currentSession = session || (await supabase.auth.getSession()).data.session;
+  if (currentSession?.access_token) {
+    // Mettre à jour les en-têtes d'authentification pour les requêtes en temps réel
+    supabase.realtime.setAuth(currentSession.access_token);
+    
+    // Mettre à jour les en-têtes pour les requêtes REST
+    supabase.functions.setAuth(currentSession.access_token);
   }
-  return session;
+  return currentSession;
 };
 
 // Initialize auth header
 setAuthHeader();
 
 // Listen for auth state changes
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange(async (event, session) => {
   if (session?.access_token) {
-    supabase.realtime.setAuth(session.access_token);
+    await setAuthHeader(session);
+  } else {
+    // Réinitialiser les en-têtes si l'utilisateur se déconnecte
+    supabase.realtime.setAuth('');
+    if (supabase.functions) {
+      supabase.functions.setAuth('');
+    }
   }
 });
