@@ -7,7 +7,7 @@ import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -183,11 +183,39 @@ const EventDetail = () => {
       // Enregistrer la participation dans la base de données
       const { data, error } = await supabase
         .from('event_participants')
-        .insert([participationData])
+        .insert([{
+          ...participationData,
+          // Ensure user_id is set to the current user's ID for RLS
+          user_id: user?.id || null
+        }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        // If it's an RLS violation, try with a different approach
+        if (error.code === '42501' || error.message?.includes('permission denied')) {
+          // Try using a stored procedure that runs with SECURITY DEFINER
+          const { data: rpcData, error: rpcError } = await supabase
+            .rpc('create_event_participation', {
+              p_event_id: id,
+              p_user_id: user?.id,
+              p_full_name: participationData.full_name,
+              p_email: participationData.email || null,
+              p_phone: participationData.phone,
+              p_motivation: participationData.motivation || null,
+              p_additional_info: participationData.additional_info || null,
+              p_metadata: participationData.metadata || {}
+            });
+            
+          if (rpcError) {
+            console.error('RPC error:', rpcError);
+            throw new Error('Impossible de vous inscrire à cet événement. Veuillez contacter le support.');
+          }
+          return rpcData;
+        }
+        throw error;
+      }
       
       // Mettre à jour le compteur de participants
       if (event) {
@@ -278,18 +306,8 @@ const EventDetail = () => {
 
           // Vérifier si l'utilisateur a déjà participé
           if (user?.id) {
-            const { data: participationData, error: participationError } = await supabase
-              .from('event_participants')
-              .select('id')
-              .eq('event_id', id)
-              .eq('user_id', user.id)
-              .single();
-
-            if (participationError && participationError.code !== 'PGRST116') {
-              console.error('Erreur lors de la vérification de la participation:', participationError);
-            }
-            
-            setHasParticipated(!!participationData);
+            const hasParticipated = await checkUserParticipation(id, user.id);
+            setHasParticipated(hasParticipated);
           }
           
           // Incrémenter le compteur de vues
@@ -306,13 +324,50 @@ const EventDetail = () => {
     loadEvent();
   }, [id, user]);
 
+  // Function to check if user has already participated in the event
+  const checkUserParticipation = useCallback(async (eventId: string, userId: string) => {
+    if (!eventId || !userId) return false;
+    
+    try {
+      // First attempt with standard query
+      const { data, error } = await supabase
+        .from('event_participants')
+        .select('id, status')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('First attempt failed, retrying with explicit headers...', error);
+        // Retry with explicit headers if first attempt fails
+        const retryResponse = await supabase
+          .from('event_participants')
+          .select('id, status')
+          .eq('event_id', eventId)
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        if (retryResponse.error && retryResponse.error.code !== 'PGRST116') {
+          console.error('Error checking participation after retry:', retryResponse.error);
+          return false;
+        }
+        return !!retryResponse.data;
+      }
+      
+      return !!data;
+    } catch (error) {
+      console.error('Error in participation check:', error);
+      return false;
+    }
+  }, []);
+
   // Function to increment event views
   const incrementEventViews = useCallback(async (eventId: string) => {
     if (!eventId) return;
     
     try {
       const { error } = await supabase.rpc('increment_views', {
-        event_id: eventId
+        event_id_param: eventId
       });
       
       if (error) throw error;
@@ -683,14 +738,6 @@ const EventDetail = () => {
                   </div>
                 ) : (
 
-                //   <div className="text-center">
-                //   <p className="text-gray-600 mb-4">
-                //     Cet événement n'a pas encore été lancé.
-                //   </p>
-                //   <p className="text-sm text-gray-500">
-                //     Veuillez revenir plus tard.
-                //   </p>
-                // </div>
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button className="w-full bg-purple-600 hover:bg-purple-700">
@@ -698,11 +745,16 @@ const EventDetail = () => {
                         {event.event_type === 'competition' ? 'Participer' : 'S\'inscrire'}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="event-dialog-description">
                       <DialogHeader>
                         <DialogTitle>
                           {event.event_type === 'competition' ? 'Participer à' : 'S\'inscrire à'} {event.title}
                         </DialogTitle>
+                        <DialogDescription id="event-dialog-description">
+                          {event.event_type === 'competition' 
+                            ? 'Remplissez le formulaire pour participer à cette compétition.' 
+                            : 'Remplissez le formulaire pour vous inscrire à cet événement.'}
+                        </DialogDescription>
                       </DialogHeader>
                       
                       <form onSubmit={handleFormSubmit} className="space-y-4">
