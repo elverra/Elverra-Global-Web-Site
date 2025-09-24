@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, ExternalLink } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+
+import { supabase } from '@/lib/supabaseClient';
 
 interface Partner {
   id: string;
@@ -48,17 +51,20 @@ const PartnersManagement = () => {
     fetchPartners();
   }, []);
 
+  // Mettez à jour la fonction fetchPartners
   const fetchPartners = async () => {
     try {
-      const mockResult = { data: [], error: null }; // TODO: Replace with API call
-      const { data, error } = mockResult;
+      const { data, error } = await supabase
+        .from('business_partners')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setPartners(data || []);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to fetch partners",
+        title: "Erreur",
+        description: "Impossible de charger les partenaires",
         variant: "destructive"
       });
     } finally {
@@ -70,50 +76,101 @@ const PartnersManagement = () => {
     e.preventDefault();
     try {
       if (editingPartner) {
-        const mockResult = { data: null, error: null }; // TODO: Replace with API call
-        const { data, error } = mockResult;
-        
+        const { data, error } = await supabase
+          .from('business_partners')
+          .update(formData)
+          .eq('id', editingPartner.id)
+          .select()
+          .single();
+
         if (error) throw error;
-        toast({ title: "Success", description: "Partner updated successfully" });
+        toast({ title: "Succès", description: "Partenaire mis à jour avec succès" });
       } else {
-        const mockResult = { data: null, error: null }; // TODO: Replace with API call
-        const { data, error } = mockResult;
-        
+        const { data, error } = await supabase
+          .from('business_partners')
+          .insert([formData])
+          .select()
+          .single();
+
         if (error) throw error;
-        toast({ title: "Success", description: "Partner created successfully" });
+        toast({ title: "Succès", description: "Partenaire ajouté avec succès" });
       }
-      
+
       resetForm();
       fetchPartners();
       setIsDialogOpen(false);
     } catch (error) {
+      console.error('Error saving partner:', error);
       toast({
-        title: "Error",
-        description: "Failed to save partner",
+        title: "Erreur",
+        description: "Échec de l'enregistrement du partenaire",
+        variant: "destructive"
+      });
+    }
+  };
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Générer un nom de fichier unique
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      // Télécharger le fichier
+      const { error: uploadError } = await supabase.storage
+        .from('partner-logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Obtenir l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from('partner-logos')
+        .getPublicUrl(filePath);
+
+      // Mettre à jour le formulaire avec la nouvelle URL
+      setFormData({ ...formData, logo_url: publicUrl });
+
+      toast({
+        title: "Succès",
+        description: "Logo téléchargé avec succès"
+      });
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast({
+        title: "Erreur",
+        description: "Échec du téléchargement du logo",
         variant: "destructive"
       });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this partner?')) return;
-    
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce partenaire ?')) return;
+
     try {
-      const mockResult = { data: null, error: null }; // TODO: Replace with API call
-      const { data, error } = mockResult;
-      
+      const { error } = await supabase
+        .from('business_partners')
+        .delete()
+        .eq('id', id);
+
       if (error) throw error;
-      toast({ title: "Success", description: "Partner deleted successfully" });
+      toast({
+        title: "Succès",
+        description: "Partenaire supprimé avec succès"
+      });
       fetchPartners();
     } catch (error) {
+      console.error('Error deleting partner:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete partner",
+        title: "Erreur",
+        description: "Échec de la suppression du partenaire",
         variant: "destructive"
       });
     }
   };
-
   const resetForm = () => {
     setFormData({
       name: '',
@@ -186,13 +243,13 @@ const PartnersManagement = () => {
                     <Input
                       id="name"
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
                     />
                   </div>
                   <div>
                     <Label htmlFor="partnership_type">Partnership Type</Label>
-                    <Select value={formData.partnership_type} onValueChange={(value) => setFormData({...formData, partnership_type: value})}>
+                    <Select value={formData.partnership_type} onValueChange={(value) => setFormData({ ...formData, partnership_type: value })}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -211,19 +268,29 @@ const PartnersManagement = () => {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="logo_url">Logo URL</Label>
+                    <Label htmlFor="logo">Logo</Label>
+                    {formData.logo_url && (
+                      <div className="mt-2">
+                        <img
+                          src={formData.logo_url}
+                          alt="Logo actuel"
+                          className="h-20 w-20 object-cover rounded-md"
+                        />
+                      </div>
+                    )}
                     <Input
-                      id="logo_url"
-                      type="url"
-                      value={formData.logo_url}
-                      onChange={(e) => setFormData({...formData, logo_url: e.target.value})}
+                      id="logo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="mt-2"
                     />
                   </div>
                   <div>
@@ -232,7 +299,7 @@ const PartnersManagement = () => {
                       id="website"
                       type="url"
                       value={formData.website}
-                      onChange={(e) => setFormData({...formData, website: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                     />
                   </div>
                 </div>
@@ -244,7 +311,7 @@ const PartnersManagement = () => {
                       id="contact_email"
                       type="email"
                       value={formData.contact_email}
-                      onChange={(e) => setFormData({...formData, contact_email: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                     />
                   </div>
                   <div>
@@ -252,7 +319,7 @@ const PartnersManagement = () => {
                     <Input
                       id="contact_phone"
                       value={formData.contact_phone}
-                      onChange={(e) => setFormData({...formData, contact_phone: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                     />
                   </div>
                 </div>
@@ -262,7 +329,7 @@ const PartnersManagement = () => {
                     <Switch
                       id="is_active"
                       checked={formData.is_active}
-                      onCheckedChange={(checked) => setFormData({...formData, is_active: checked})}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                     />
                     <Label htmlFor="is_active">Active</Label>
                   </div>
@@ -270,7 +337,7 @@ const PartnersManagement = () => {
                     <Switch
                       id="featured"
                       checked={formData.featured}
-                      onCheckedChange={(checked) => setFormData({...formData, featured: checked})}
+                      onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })}
                     />
                     <Label htmlFor="featured">Featured</Label>
                   </div>
@@ -304,8 +371,8 @@ const PartnersManagement = () => {
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-4">
                       {partner.logo_url && (
-                        <img 
-                          src={partner.logo_url} 
+                        <img
+                          src={partner.logo_url}
                           alt={partner.name}
                           className="w-16 h-16 object-contain rounded"
                         />
