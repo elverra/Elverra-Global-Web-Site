@@ -35,7 +35,7 @@ interface Ebook {
   rating: number;
   downloads: number;
   publish_date: string;
-  cover_url: string;
+  cover_image_url: string;
   file_url: string;
   file_type: string;
   file_size_mb: number;
@@ -254,7 +254,7 @@ const EBooks = () => {
                       <div className="md:flex">
                         <div className="md:w-1/3">
                           <img
-                            src={book.cover_url || '/placeholder.svg'}
+                            src={book.cover_image_url }
                             alt={book.title}
                             className="w-full h-64 md:h-full object-cover"
                           />
@@ -326,7 +326,7 @@ const EBooks = () => {
                       <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                         <div className="relative">
                           <img
-                            src={book.cover_url || '/placeholder.svg'}
+                            src={book.cover_image_url || '/placeholder.svg'}
                             alt={book.title}
                             className="w-full h-48 object-cover"
                           />
@@ -473,7 +473,7 @@ const EbookCard = ({ book, onReadNow, onDownload }: { book: Ebook; onReadNow: (b
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <div className="relative pb-[150%] bg-gray-100">
         <img
-          src={book.cover_url || '/placeholder-cover.jpg'}
+          src={book.cover_image_url || '/placeholder-cover.jpg'}
           alt={`Couverture de ${book.title}`}
           className="absolute inset-0 w-full h-full object-cover"
         />

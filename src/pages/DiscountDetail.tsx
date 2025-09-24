@@ -161,7 +161,7 @@ export default function DiscountDetail() {
 
   const submitReview = async () => {
     if (!user) {
-      toast.error('Connectez-vous pour publier un avis.');
+      toast.error('Please log in to post a review.');
       return;
     }
     if (!id || !myReview) return;
@@ -175,9 +175,9 @@ export default function DiscountDetail() {
           .eq('user_id', user.id);
         if (error) throw error;
         setReviews((prev) => prev.map((r) => r.id === myReview.id ? { ...r, rating: myReview.rating, comment: myReview.comment } : r));
-        toast.success('Avis mis à jour');
+        toast.success('Review updated');
       } else {
-        const displayName = (user as any)?.user_metadata?.full_name || (user as any)?.user_metadata?.name || user.email || 'Utilisateur';
+        const displayName = (user as any)?.user_metadata?.full_name || (user as any)?.user_metadata?.name || user.email || 'User';
         const payload = {
           merchant_id: id,
           user_id: user.id,
@@ -194,10 +194,10 @@ export default function DiscountDetail() {
         const newItem = { id: data.id, created_at: new Date().toISOString(), ...payload } as any;
         setReviews((prev) => [newItem, ...prev]);
         setMyReview({ id: data.id, rating: payload.rating, comment: payload.comment });
-        toast.success('Avis publié');
+        toast.success('Review published');
       }
     } catch (e: any) {
-      toast.error(e.message || 'Échec de l\'envoi de l\'avis');
+      toast.error(e.message || 'Failed to submit review');
     } finally {
       setSavingReview(false);
     }
@@ -214,9 +214,9 @@ export default function DiscountDetail() {
       if (error) throw error;
       setReviews((prev) => prev.filter((r) => r.id !== rid));
       if (myReview?.id === rid) setMyReview({ id: undefined, rating: 5, comment: '' });
-      toast.success('Avis supprimé');
+      toast.success('Review deleted');
     } catch (e: any) {
-      toast.error(e.message || 'Échec de la suppression');
+      toast.error(e.message || 'Failed to delete');
     }
   };
 
@@ -239,7 +239,7 @@ export default function DiscountDetail() {
             {coverSrc ? (
               <img src={coverSrc} alt={merchant.name} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">No image</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400">No image available</div>
             )}
             {images.length > 1 && (
               <>
@@ -341,7 +341,7 @@ export default function DiscountDetail() {
               isAdvantagesUrl ? (
                 <Button variant="outline" asChild className="w-full justify-center">
                   <a href={merchant.advantages!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                    Open advantages <ExternalLink className="h-4 w-4" />
+                    View advantages <ExternalLink className="h-4 w-4" />
                   </a>
                 </Button>
               ) : (
@@ -366,9 +366,9 @@ export default function DiscountDetail() {
             />
           </div>
           <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-            <MapPin className="h-4 w-4" /> {merchant.location || 'Adresse non fournie'}
+            <MapPin className="h-4 w-4" /> {merchant.location || 'Address not provided'}
             <Button variant="outline" size="sm" className="ml-auto" onClick={openMaps}>
-              Ouvrir dans Google Maps <ExternalLink className="h-4 w-4 ml-1" />
+              Open in Google Maps <ExternalLink className="h-4 w-4 ml-1" />
             </Button>
           </div>
         </div>
@@ -376,7 +376,7 @@ export default function DiscountDetail() {
 
       {/* Reviews */}
       <div className="mt-10">
-        <h3 className="font-semibold text-lg mb-3">Avis des utilisateurs {avgRating ? `(moyenne ${avgRating.toFixed(1)})` : ''}</h3>
+        <h3 className="font-semibold text-lg mb-3">User reviews {avgRating ? `(average ${avgRating.toFixed(1)})` : ''}</h3>
         {user ? (
           <div className="mb-6 p-4 border rounded-lg">
             <div className="flex items-center gap-3 mb-3">
@@ -397,36 +397,36 @@ export default function DiscountDetail() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-600 mb-4">Connectez-vous pour publier un avis.</p>
+          <p className="text-sm text-gray-600 mb-4">Please log in to post a review.</p>
         )}
         <div className="space-y-4">
           {reviews.map((r) => (
             <div key={r.id} className="p-4 border rounded-lg">
               <div className="flex items-center justify-between">
-                <div className="font-medium">{r.user_name || 'Utilisateur'}</div>
+                <div className="font-medium">{r.user_name || 'User'}</div>
                 <div className="flex items-center gap-1 text-yellow-500">{[1,2,3,4,5].map((n) => (<Star key={n} className="h-4 w-4" fill={r.rating >= n ? 'currentColor' : 'none'} />))}</div>
               </div>
               <p className="text-gray-700 mt-1">{r.comment}</p>
               {user?.id === r.user_id && (
                 <div className="mt-2 flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setMyReview({ id: r.id, rating: r.rating, comment: r.comment })}>
-                    <Pencil className="h-4 w-4 mr-1" /> Modifier
+                    <Pencil className="h-4 w-4 mr-1" /> Edit
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => deleteReview(r.id)}>
-                    <Trash2 className="h-4 w-4 mr-1" /> Supprimer
+                    <Trash2 className="h-4 w-4 mr-1" /> Delete
                   </Button>
                 </div>
               )}
             </div>
           ))}
-          {reviews.length === 0 && <p className="text-gray-500">Aucun avis pour le moment.</p>}
+          {reviews.length === 0 && <p className="text-gray-500">No reviews yet.</p>}
         </div>
       </div>
 
       {/* Recommendations */}
       {recommendations.length > 0 && (
         <div className="mt-10">
-          <h3 className="font-semibold text-lg mb-3">Vous pourriez aussi aimer</h3>
+          <h3 className="font-semibold text-lg mb-3">You might also like</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {recommendations.map((rec) => (
               <Card key={rec.id} className="overflow-hidden cursor-pointer" onClick={() => navigate(`/discounts/${rec.id}`)}>

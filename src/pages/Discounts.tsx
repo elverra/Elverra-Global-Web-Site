@@ -12,12 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, MapPin, Store, Percent, Star, Loader2 } from "lucide-react";
-import { useDiscountUsage } from "@/hooks/useDiscounts";
+import { Search, MapPin, Store, Star, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { useMembership } from "@/hooks/useMembership";
 import { supabase } from "@/lib/supabaseClient";
 import MembershipGuard from "@/components/auth/MembershipGuard";
 
@@ -98,7 +96,7 @@ const Discounts = () => {
         console.error("Error fetching discount data:", error);
         const raw = (error?.message || "").toString().toLowerCase();
         const friendly = raw.includes("permission denied") || raw.includes("rls") || raw.includes("policy") || raw.includes("403")
-          ? "Impossible de charger les discounts pour le moment"
+          ? "Unable to load discounts at this time"
           : (error.message || "Failed to load discount data");
         toast.error(friendly);
       } finally {
@@ -138,7 +136,7 @@ const Discounts = () => {
       setAllDiscounts(filtered);
     } catch (error: any) {
       console.error("Search error:", error);
-      toast.error(error.message || "Erreur lors de la recherche");
+      toast.error(error.message || "Error during search");
     }
   };
  
@@ -152,7 +150,7 @@ const Discounts = () => {
         <PremiumBanner
           title="Client Discounts"
           description="Unlock exclusive savings across our client network with Elverra Global client benefits"
-          backgroundImage="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
+          backgroundImage="/3.jpeg"
         />
         <div className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
           <div className="container mx-auto px-4">

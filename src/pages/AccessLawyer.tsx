@@ -41,7 +41,7 @@ const AccessLawyer = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Fonctions pour l'enregistrement vocal
+  // Functions for voice recording
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -62,9 +62,9 @@ const AccessLawyer = () => {
       
       mediaRecorder.start();
       setIsRecording(true);
-      toast.success('Enregistrement démarré');
+      toast.success('Recording started');
     } catch (error) {
-      toast.error('Erreur lors de l\'accès au microphone');
+      toast.error('Error accessing microphone');
     }
   };
 
@@ -72,7 +72,7 @@ const AccessLawyer = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      toast.success('Enregistrement terminé');
+      toast.success('Recording completed');
     }
   };
 

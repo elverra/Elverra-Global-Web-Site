@@ -92,7 +92,7 @@ const Events = () => {
       setEvents(data || []);
     } catch (error) {
       console.error('Error fetching events:', error);
-      toast.error('Erreur lors du chargement des événements');
+      toast.error('Error loading events');
     } finally {
       setLoading(false);
     }
@@ -136,11 +136,11 @@ const Events = () => {
 
   const getEventTypeLabel = (type: string) => {
     const types: { [key: string]: string } = {
-      'competition': 'Concours',
-      'announcement': 'Annonce',
-      'workshop': 'Atelier',
-      'webinar': 'Webinaire',
-      'conference': 'Conférence'
+      'competition': 'Competition',
+      'announcement': 'Announcement',
+      'workshop': 'Workshop',
+      'webinar': 'Webinar',
+      'conference': 'Conference'
     };
     return types[type] || type;
   };
@@ -185,23 +185,23 @@ const Events = () => {
         <div className="container mx-auto px-4">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Événements Elverra Global
+              Events Elverra Global
             </h1>
             <p className="text-xl mb-8 max-w-3xl mx-auto">
-              Participez à nos concours, ateliers et événements pour développer vos compétences et gagner des prix
+              Participate in our competitions, workshops, and events to develop your skills and win prizes
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-lg">
               <div className="flex items-center">
                 <Calendar className="h-5 w-5 mr-2" />
-                {events.length} événements
+                {events.length} events
               </div>
               <div className="flex items-center">
                 <Trophy className="h-5 w-5 mr-2" />
-                Concours et prix
+                Contests and prizes
               </div>
               <div className="flex items-center">
                 <Users className="h-5 w-5 mr-2" />
-                Communauté active
+                Active community
               </div>
             </div>
           </div>
@@ -219,10 +219,10 @@ const Events = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="relative">
+            <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Rechercher un événement..."
+                  placeholder="Search for an event..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -231,24 +231,24 @@ const Events = () => {
               
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Type d'événement" />
+                  <SelectValue placeholder="Type of event" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="competition">Concours</SelectItem>
-                  <SelectItem value="announcement">Annonce</SelectItem>
-                  <SelectItem value="workshop">Atelier</SelectItem>
-                  <SelectItem value="webinar">Webinaire</SelectItem>
-                  <SelectItem value="conference">Conférence</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="competition">Competition</SelectItem>
+                  <SelectItem value="announcement">Announcement</SelectItem>
+                  <SelectItem value="workshop">Workshop</SelectItem>
+                  <SelectItem value="webinar">Webinar</SelectItem>
+                  <SelectItem value="conference">Conference</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Catégorie" />
+                  <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Toutes les catégories</SelectItem>
+                  <SelectItem value="all">All categories</SelectItem>
                   {uniqueCategories.map(category => (
                     <SelectItem key={category} value={category!}>{category}</SelectItem>
                   ))}
@@ -257,15 +257,18 @@ const Events = () => {
 
               <Select value={locationFilter} onValueChange={setLocationFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Localisation" />
+                  <SelectValue placeholder="Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Toutes les localisations</SelectItem>
+                  <SelectItem value="all">All locations</SelectItem>
                   {uniqueLocations.map(location => (
                     <SelectItem key={location} value={location}>{location}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
+          
+            
             </div>
           </CardContent>
         </Card>
@@ -274,16 +277,16 @@ const Events = () => {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement des événements...</p>
+            <p className="mt-4 text-gray-600">Loading events...</p>
           </div>
         ) : events.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              Aucun événement trouvé
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">
+              No events found
             </h3>
             <p className="text-gray-500">
-              Essayez de modifier vos critères de recherche
+              Try adjusting your search criteria
             </p>
           </div>
         ) : (
@@ -317,7 +320,7 @@ const Events = () => {
                               {event.is_featured && (
                                 <Badge className="ml-2 bg-purple-100 text-purple-800">
                                   <Star className="h-3 w-3 mr-1" />
-                                  Mis en avant
+                                  Featured
                                 </Badge>
                               )}
                             </h3>
@@ -354,12 +357,12 @@ const Events = () => {
                           {event.entry_fee === 0 && (
                             <div className="flex items-center text-green-600">
                               <Award className="h-4 w-4 mr-1" />
-                              Gratuit
+                              Free
                             </div>
                           )}
                           <div className="flex items-center">
                             <Eye className="h-4 w-4 mr-1" />
-                            {event.views} vues
+                            {event.views} views
                           </div>
                           <div className="flex items-center">
                             <Users className="h-4 w-4 mr-1" />
@@ -375,7 +378,7 @@ const Events = () => {
                           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                             <div className="flex items-center">
                               <Trophy className="h-4 w-4 text-yellow-600 mr-2" />
-                              <span className="font-medium text-yellow-800">Prix:</span>
+                              <span className="font-medium text-yellow-800">Prize:</span>
                             </div>
                             <p className="text-yellow-700 text-sm mt-1">{event.prize_description}</p>
                           </div>
@@ -386,22 +389,22 @@ const Events = () => {
                             {event.registration_deadline && (
                               <div className="flex items-center">
                                 <Clock className="h-4 w-4 mr-1" />
-                                Participer jusqu'au {new Date(event.registration_deadline).toLocaleDateString('fr-FR')}
+                                Register until {new Date(event.registration_deadline).toLocaleDateString('en-US')}
                               </div>
                             )}
                             {event.max_participants && (
                               <div className="flex items-center mt-1">
                                 <Users className="h-4 w-4 mr-1" />
-                                Places limitées: illimité 
+                                Limited spots: unlimited
                               </div>
                             )}
                           </div>
 
                           <div className="flex gap-2">
                             {!isUpcoming ? (
-                              <Badge variant="secondary">Terminé</Badge>
+                              <Badge variant="secondary">Ended</Badge>
                             ) : !canRegister ? (
-                              <Badge variant="destructive">Inscriptions fermées</Badge>
+                              <Badge variant="destructive">Registration closed</Badge>
                             ) : event.requires_application ? (
                               <Button 
                                 asChild
@@ -409,7 +412,7 @@ const Events = () => {
                                 onClick={() => incrementEventViews(event.id)}
                               >
                                 <Link to={`/events/${event.id}`}>
-                                  Voir Plus
+                                  See More
                                 </Link>
                               </Button>
                             ) : (
@@ -419,7 +422,7 @@ const Events = () => {
                                 onClick={() => incrementEventViews(event.id)}
                               >
                                 <Link to={`/events/${event.id}`}>
-                                  Voir les détails
+                                  View Details
                                 </Link>
                               </Button>
                             )}

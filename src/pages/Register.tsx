@@ -216,7 +216,7 @@ const Register = () => {
             has_physical_card: false
           };
 
-          console.log('Saving profile with data:', profileData);
+          
           
           try {
             // Essayer d'abord une mise à jour
@@ -227,7 +227,7 @@ const Register = () => {
             
             // Si la mise à jour échoue (probablement parce que le profil n'existe pas)
             if (updateError) {
-              console.log('Update failed, trying insert...', updateError);
+             
               
               // Générer un code d'affiliation si c'est un nouvel utilisateur
               const affiliateCode = generateAffiliateCode();
@@ -240,26 +240,17 @@ const Register = () => {
                 }]);
               
               if (insertError) {
-                console.error('Profile insert error:', insertError);
+                
                 throw new Error('Failed to create profile: ' + insertError.message);
               }
-              console.log('Profile created successfully');
-            } else {
-              console.log('Profile updated successfully');
-            }
+             
+            } 
           } catch (error) {
-            console.error('Error saving profile:', error);
+            
             throw error;
           }
           
-          // Verify the data was saved
-          const { data: verifyProfile, error: verifyError } = await supabase
-            .from('profiles')
-            .select('profile_image_url, identity_card_image_url, full_name, city, address')
-            .eq('id', uid)
-            .single();
-          
-          console.log('Profile verification after save:', { verifyProfile, verifyError });
+      
 
           // Update physical card request status in profiles if requested
           if (registrationData.physical_card_requested) {
@@ -286,9 +277,8 @@ const Register = () => {
       return supa;
     },
     onSuccess: (_data) => {
-      console.log("🎉 Registration completed successfully!");
-      // Welcome notifications: Supabase will send email confirmation if configured.
-      toast.success("Account created! Please complete your membership card purchase to activate your account.");
+      
+      toast.success("Account created! Please complete your client card purchase to activate your account.");
       // Navigate to membership selection for mandatory card purchase
       navigate("/client-payment?new=true");
     },

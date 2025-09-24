@@ -68,7 +68,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   const sendMagicLink = async (email: string, redirectPath = '/dashboard') => {
     try {
-      const appUrl = "https://elverraglobalml.com/";
+      const appUrl = "https://elverraglobalml.com";
       const emailRedirectTo = `${appUrl}${redirectPath}`;
 
       // Attempt 1: Should create user + explicit redirect
