@@ -323,219 +323,233 @@ const AccessLawyer = () => {
             
             {/* Contact Form */}
             <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl">Demande de Consultation Juridique</CardTitle>
-                  <CardDescription>
-                    Choisissez votre mode de communication : formulaire écrit ou message vocal
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {/* Sélecteur de type de demande */}
-                  <div className="mb-6">
-                    <Label className="text-base font-medium">Mode de communication</Label>
-                    <div className="flex gap-4 mt-2">
-                      <Button
-                        type="button"
-                        variant={requestType === 'form' ? 'default' : 'outline'}
-                        onClick={() => setRequestType('form')}
-                        className="flex items-center gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        Formulaire écrit
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={requestType === 'voice' ? 'default' : 'outline'}
-                        onClick={() => setRequestType('voice')}
-                        className="flex items-center gap-2"
-                      >
-                        <Mic className="h-4 w-4" />
-                        Message vocal
-                      </Button>
-                    </div>
-                  </div>
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-2xl">Legal Consultation Request</CardTitle>
+      <CardDescription>
+        Choose your communication method: written form or voice message
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      {/* Request type selector */}
+      <div className="mb-6">
+        <Label className="text-base font-medium">Communication Method</Label>
+        <div className="flex gap-4 mt-2">
+          <Button
+            type="button"
+            variant={requestType === 'form' ? 'default' : 'outline'}
+            onClick={() => setRequestType('form')}
+            className="flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Written Form
+          </Button>
+          <Button
+            type="button"
+            variant={requestType === 'voice' ? 'default' : 'outline'}
+            onClick={() => setRequestType('voice')}
+            className="flex items-center gap-2"
+          >
+            <Mic className="h-4 w-4" />
+            Voice Message
+          </Button>
+        </div>
+      </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Champs communs ou spécifiques selon le mode */}
-                    {requestType === 'form' ? (
-                      // Mode formulaire : tous les champs requis
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="name">Nom complet *</Label>
-                            <Input
-                              id="name"
-                              value={formData.name}
-                              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                              required
-                              placeholder="Votre nom complet"
-                              data-testid="input-name"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="email">Adresse email *</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              value={formData.email}
-                              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                              required
-                              placeholder="votre.email@exemple.com"
-                              data-testid="input-email"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="phone">Numéro de téléphone *</Label>
-                            <Input
-                              id="phone"
-                              value={formData.phone}
-                              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                              required
-                              placeholder="+223 XX XX XX XX"
-                              data-testid="input-phone"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="caseType">Type d'affaire *</Label>
-                            <Input
-                              id="caseType"
-                              value={formData.caseType}
-                              onChange={(e) => setFormData(prev => ({ ...prev, caseType: e.target.value }))}
-                              required
-                              placeholder="ex: Droit des affaires, Droit de la famille"
-                              data-testid="input-case-type"
-                            />
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      // Mode vocal : seulement le numéro de téléphone
-                      <div className="max-w-md">
-                        <Label htmlFor="phone-voice">Votre numéro de téléphone *</Label>
-                        <Input
-                          id="phone-voice"
-                          value={formData.phone}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                          required
-                          placeholder="+223 XX XX XX XX"
-                          className="text-lg p-4"
-                          data-testid="input-phone-voice"
-                        />
-                        <p className="text-sm text-gray-600 mt-2">
-                          Nous vous contacterons sur ce numéro après avoir écouté votre message vocal
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Section message selon le type */}
-                    {requestType === 'form' ? (
-                      <div>
-                        <Label htmlFor="message">Décrivez votre problème juridique *</Label>
-                        <Textarea
-                          id="message"
-                          value={formData.message}
-                          onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                          required
-                          placeholder="Veuillez fournir les détails de votre affaire juridique..."
-                          rows={5}
-                          data-testid="textarea-message"
-                        />
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <Label>Enregistrement vocal de votre demande *</Label>
-                        
-                        {/* Contrôles d'enregistrement */}
-                        <div className="flex items-center gap-4">
-                          {!isRecording ? (
-                            <Button
-                              type="button"
-                              onClick={startRecording}
-                              className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
-                            >
-                              <Mic className="h-4 w-4" />
-                              Commencer l'enregistrement
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              onClick={stopRecording}
-                              className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700"
-                            >
-                              <Square className="h-4 w-4" />
-                              Arrêter l'enregistrement
-                            </Button>
-                          )}
-                          
-                          {isRecording && (
-                            <div className="flex items-center gap-2 text-red-600">
-                              <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-                              <span>Enregistrement en cours...</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Lecteur audio */}
-                        {audioUrl && (
-                          <div className="space-y-2">
-                            <Label>Votre enregistrement :</Label>
-                            <div className="flex items-center gap-4">
-                              <audio
-                                ref={audioRef}
-                                src={audioUrl}
-                                onPlay={() => setIsPlaying(true)}
-                                onPause={() => setIsPlaying(false)}
-                                onEnded={() => setIsPlaying(false)}
-                                className="hidden"
-                              />
-                              
-                              {!isPlaying ? (
-                                <Button
-                                  type="button"
-                                  onClick={playAudio}
-                                  variant="outline"
-                                  className="flex items-center gap-2"
-                                >
-                                  <Play className="h-4 w-4" />
-                                  Écouter
-                                </Button>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  onClick={pauseAudio}
-                                  variant="outline"
-                                  className="flex items-center gap-2"
-                                >
-                                  <Pause className="h-4 w-4" />
-                                  Pause
-                                </Button>
-                              )}
-                              
-                              <span className="text-sm text-gray-600">
-                                Enregistrement prêt à être envoyé
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-purple-600 hover:bg-purple-700"
-                      disabled={isSubmitting}
-                      data-testid="button-submit-consultation"
-                    >
-                      {isSubmitting ? 'Submitting Request...' : 'Request Consultation'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Fields depending on request type */}
+        {requestType === 'form' ? (
+          // Form mode: all fields required
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Full Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  required
+                  placeholder="Your full name"
+                  data-testid="input-name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  required
+                  placeholder="your.email@example.com"
+                  data-testid="input-email"
+                />
+              </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  required
+                  placeholder="+223 XX XX XX XX"
+                  data-testid="input-phone"
+                />
+              </div>
+              <div>
+                <Label htmlFor="caseType">Case Type *</Label>
+                <Input
+                  id="caseType"
+                  value={formData.caseType}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, caseType: e.target.value }))
+                  }
+                  required
+                  placeholder="e.g., Business Law, Family Law"
+                  data-testid="input-case-type"
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          // Voice mode: only phone number
+          <div className="max-w-md">
+            <Label htmlFor="phone-voice">Your Phone Number *</Label>
+            <Input
+              id="phone-voice"
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, phone: e.target.value }))
+              }
+              required
+              placeholder="+223 XX XX XX XX"
+              className="text-lg p-4"
+              data-testid="input-phone-voice"
+            />
+            <p className="text-sm text-gray-600 mt-2">
+              We will contact you on this number after reviewing your voice
+              message
+            </p>
+          </div>
+        )}
+
+        {/* Message Section */}
+        {requestType === 'form' ? (
+          <div>
+            <Label htmlFor="message">Describe your legal issue *</Label>
+            <Textarea
+              id="message"
+              value={formData.message}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, message: e.target.value }))
+              }
+              required
+              placeholder="Please provide details about your legal matter..."
+              rows={5}
+              data-testid="textarea-message"
+            />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Label>Voice Recording of Your Request *</Label>
+
+            {/* Recording Controls */}
+            <div className="flex items-center gap-4">
+              {!isRecording ? (
+                <Button
+                  type="button"
+                  onClick={startRecording}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
+                >
+                  <Mic className="h-4 w-4" />
+                  Start Recording
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={stopRecording}
+                  className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700"
+                >
+                  <Square className="h-4 w-4" />
+                  Stop Recording
+                </Button>
+              )}
+
+              {isRecording && (
+                <div className="flex items-center gap-2 text-red-600">
+                  <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+                  <span>Recording in progress...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Audio Player */}
+            {audioUrl && (
+              <div className="space-y-2">
+                <Label>Your Recording:</Label>
+                <div className="flex items-center gap-4">
+                  <audio
+                    ref={audioRef}
+                    src={audioUrl}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => setIsPlaying(false)}
+                    className="hidden"
+                  />
+
+                  {!isPlaying ? (
+                    <Button
+                      type="button"
+                      onClick={playAudio}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Play className="h-4 w-4" />
+                      Play
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={pauseAudio}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Pause className="h-4 w-4" />
+                      Pause
+                    </Button>
+                  )}
+
+                  <span className="text-sm text-gray-600">
+                    Recording ready to be sent
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          className="w-full bg-purple-600 hover:bg-purple-700"
+          disabled={isSubmitting}
+          data-testid="button-submit-consultation"
+        >
+          {isSubmitting ? 'Submitting Request...' : 'Request Consultation'}
+        </Button>
+      </form>
+    </CardContent>
+  </Card>
+</div>
+
 
             {/* Contact Information */}
             <div className="space-y-6">

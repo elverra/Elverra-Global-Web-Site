@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Search, ShoppingCart, MapPin, Phone, Mail, Package } from "lucide-react";
+import Layout from '@/components/layout/Layout';
 
 interface Product {
   id: string;
@@ -171,6 +172,7 @@ export default function PublicShop() {
   }
 
   return (
+    <Layout>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm">
@@ -370,5 +372,6 @@ export default function PublicShop() {
         )}
       </div>
     </div>
+    </Layout>
   );
 }

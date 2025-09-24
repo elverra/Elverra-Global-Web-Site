@@ -9,6 +9,7 @@ import {
   Linkedin,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { TikTokFilled, TikTokOutlined } from "@ant-design/icons";
 
 const Footer = () => {
   const [logoUrl, setLogoUrl] = useState<string>(
@@ -233,6 +234,9 @@ const Footer = () => {
               </a>
               <a href="https://www.instagram.com/elverrag/?utm_source=qr&r=nametag" className="text-gray-300 hover:text-club66-gold">
                 <Instagram className="h-5 w-5" />
+              </a>
+              <a href="https://www.instagram.com/elverrag/?utm_source=qr&r=nametag" className="text-gray-300 hover:text-club66-gold">
+                <TikTokOutlined className="h-5 w-8" />
               </a>
             
             </div>
