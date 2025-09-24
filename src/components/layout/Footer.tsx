@@ -235,7 +235,7 @@ const Footer = () => {
               <a href="https://www.instagram.com/elverrag/?utm_source=qr&r=nametag" className="text-gray-300 hover:text-club66-gold">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="https://www.instagram.com/elverrag/?utm_source=qr&r=nametag" className="text-gray-300 hover:text-club66-gold">
+              <a href="https://www.tiktok.com/@zenika902?_t=ZM-8zzpIUDCbNr&_r=1" className="text-gray-300 hover:text-club66-gold">
                 <TikTokOutlined className="h-5 w-8" />
               </a>
             
