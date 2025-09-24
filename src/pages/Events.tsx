@@ -214,7 +214,7 @@ const Events = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Filter className="h-5 w-5 mr-2" />
-              Filtrer les événements
+              Filter events
             </CardTitle>
           </CardHeader>
           <CardContent>

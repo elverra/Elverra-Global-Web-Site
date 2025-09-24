@@ -63,7 +63,7 @@ const translations = {
     'dashboard.welcome': 'Welcome',
     'dashboard.overview': 'Overview',
     'dashboard.profileTitle' : 'Profil Image',
-    'dashboard.profilesubtitle' : 'Téléchargez une photo pour personnaliser votre compte',
+    'dashboard.profilesubtitle' : 'Upload a photo to personalize your account',
     
     // Affiliate
     'affiliate.dashboard': 'Affiliate Dashboard',

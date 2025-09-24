@@ -551,7 +551,7 @@ const AccountSection = () => {
                       onClick={uploadProfileImage}
                       disabled={!selectedFile || isLoading}
                     >
-                      {isLoading ? 'Téléchargement...' : 'Enregistrer la photo'}
+                      {isLoading ? 'Uploading...' : 'Save the photo'}
                     </Button>
                   ) : (
                     <Button
@@ -559,7 +559,7 @@ const AccountSection = () => {
                       variant="outline"
                       onClick={() => setIsEditing(true)}
                     >
-                      Modifier le profil
+                      Edit profile
                     </Button>
                   )}
                 </div>
@@ -569,12 +569,12 @@ const AccountSection = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Nom complet
+                  Full name
                   </label>
                   <Input
                     value={profileData.fullName}
                     onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
-                    placeholder="Votre nom complet"
+                    placeholder="Your full name"
                     disabled={!isEditing}
                     className={!isEditing ? 'bg-gray-50' : ''}
                   />
@@ -582,28 +582,28 @@ const AccountSection = () => {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Adresse email
+                  E-mail address
                   </label>
                   <Input
                     type="email"
                     value={profileData.email}
                     onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                    placeholder="Votre adresse email"
+                    placeholder="Your email address"
                     disabled
                     className="bg-gray-100 cursor-not-allowed"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Contactez le support pour modifier votre email</p>
+                  <p className="text-xs text-gray-500 mt-1">Contact the support to modify your email</p>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Numéro de téléphone
+                  Phone number
                   </label>
                   <Input
                     type="tel"
                     value={profileData.phone}
                     onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                    placeholder="Votre numéro de téléphone"
+                    placeholder="Your phone number"
                     disabled={!isEditing}
                     className={!isEditing ? 'bg-gray-50' : ''}
                   />
@@ -612,12 +612,12 @@ const AccountSection = () => {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Ville
+                  City
                   </label>
                   <Input
                     value={profileData.city}
                     onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
-                    placeholder="Votre ville"
+                    placeholder="Your city"
                     disabled={!isEditing}
                     className={!isEditing ? 'bg-gray-50' : ''}
                   />
@@ -625,7 +625,7 @@ const AccountSection = () => {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Pays
+                  Country
                   </label>
                   <Select
                     value={profileData.country}
@@ -633,7 +633,7 @@ const AccountSection = () => {
                     disabled={!isEditing}
                   >
                     <SelectTrigger className={!isEditing ? 'bg-gray-50' : ''}>
-                      <SelectValue placeholder="Sélectionnez un pays" />
+                      <SelectValue placeholder="Select a country" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Mali">Mali</SelectItem>
@@ -651,12 +651,12 @@ const AccountSection = () => {
 
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Adresse
+                Address
                 </label>
                 <Input
                   value={profileData.address}
                   onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-                  placeholder="Votre adresse complète"
+                  placeholder="Your complete address"
                   disabled={!isEditing}
                   className={!isEditing ? 'bg-gray-50' : ''}
                 />
@@ -672,7 +672,7 @@ const AccountSection = () => {
                       disabled={isLoading}
                     >
                       <Save className="h-4 w-4 mr-2" />
-                      {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                      {isLoading ? 'Saving...' : 'Save the modifications'}
                     </Button>
                     <Button
                       variant="outline"
@@ -693,7 +693,7 @@ const AccountSection = () => {
                       disabled={isLoading}
                       className="w-full sm:w-auto"
                     >
-                      Annuler
+                      Cancel
                     </Button>
                   </>
                 ) : (
@@ -703,7 +703,7 @@ const AccountSection = () => {
                     className="w-full sm:w-auto"
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Modifier le profil
+                    Edit profile
                   </Button>
                 )}
               </div>

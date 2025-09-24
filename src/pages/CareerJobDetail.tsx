@@ -1,23 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  MapPin, 
-  Clock, 
-  DollarSign, 
-  Users, 
-  Calendar,
-  Briefcase,
-  Star,
-  Eye,
-  ArrowLeft,
-  Send,
-  FileText,
-  User,
-  Mail,
-  Phone,
-  Globe,
-  GraduationCap,
-  Award
+  MapPin, Clock, DollarSign, Users, Briefcase, 
+  Star, Eye, ArrowLeft, Send 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,102 +51,97 @@ interface ApplicationForm {
   available_from: string;
 }
 
+const initialApplicationForm: ApplicationForm = {
+  full_name: '',
+  email: '',
+  phone: '',
+  cover_letter: '',
+  work_experience: '',
+  education: '',
+  skills: '',
+  portfolio_url: '',
+  linkedin_url: '',
+  expected_salary: '',
+  available_from: ''
+};
+
 const CareerJobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [job, setJob] = useState<ElverraJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
-  const [applicationForm, setApplicationForm] = useState<ApplicationForm>({
-    full_name: '',
-    email: '',
-    phone: '',
-    cover_letter: '',
-    work_experience: '',
-    education: '',
-    skills: '',
-    portfolio_url: '',
-    linkedin_url: '',
-    expected_salary: '',
-    available_from: ''
-  });
+  const [applicationForm, setApplicationForm] = useState<ApplicationForm>(initialApplicationForm);
 
-  const fetchJob = async () => {
+  /** 🔹 Fetch job */
+  const fetchJob = useCallback(async () => {
     if (!id) return;
-    
     try {
       setLoading(true);
-      
       const { data, error } = await supabase
-        .from('elverra_jobs')
-        .select('*')
-        .eq('id', id)
-        .eq('is_active', true)
-        .single();
-
+      .from('elverra_jobs')
+      .select('*')
+      .eq('id', id)
+      .eq('is_active', true)
+      .single<ElverraJob>();  // Move the type parameter here
       if (error) throw error;
+      if (!data) return;
+
       setJob(data);
 
-      // Increment view count
-      await incrementJobViews(id);
+      // Increment views (assuming RPC exists in Supabase)
+      await supabase.rpc('increment_job_views', { job_id: id });
 
-      // Check if user has already applied
-      if (user) {
-        const { data: applicationData } = await supabase
-          .from('elverra_job_applications')
-          .select('id')
-          .eq('job_id', id)
-          .eq('user_id', user.id)
-          .single();
-        
-        setHasApplied(!!applicationData);
-      }
-    } catch (error) {
-      console.error('Error fetching job:', error);
-      toast.error('Erreur lors du chargement de l\'offre d\'emploi');
+    } catch (error: any) {
+      console.error('Error loading job:', error.message);
+      toast.error('Unable to load this job offer.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const incrementJobViews = async (jobId: string) => {
+  /** 🔹 Check if already applied */
+  const checkIfApplied = useCallback(async () => {
+    if (!id || !user) return;
     try {
-      const { data: currentJob, error: fetchError } = await supabase
-        .from('elverra_jobs')
-        .select('views')
-        .eq('id', jobId)
+      const { data } = await supabase
+        .from('elverra_job_applications')
+        .select('id')
+        .eq('job_id', id)
+        .eq('user_id', user.id)
         .single();
 
-      if (fetchError) return;
-
-      const newViews = (currentJob?.views || 0) + 1;
-      
-      await supabase
-        .from('elverra_jobs')
-        .update({ views: newViews })
-        .eq('id', jobId);
-    } catch (error) {
-      console.error('Error incrementing views:', error);
+      setHasApplied(!!data);
+    } catch {
+      // ignore if no application found
     }
-  };
+  }, [id, user]);
 
+  useEffect(() => {
+    fetchJob();
+  }, [fetchJob]);
+
+  useEffect(() => {
+    checkIfApplied();
+  }, [checkIfApplied]);
+
+  /** 🔹 Form handling */
   const handleInputChange = (field: keyof ApplicationForm, value: string) => {
-    setApplicationForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setApplicationForm(prev => ({ ...prev, [field]: value }));
   };
 
+  /** 🔹 Submit application */
   const handleSubmitApplication = async () => {
     if (!user || !job) {
-      toast.error('Vous devez être connecté pour postuler');
+      toast.error('You must be logged in to apply.');
       return;
     }
 
     if (!applicationForm.full_name || !applicationForm.email || !applicationForm.phone) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+      toast.error('Please fill in the required fields.');
       return;
     }
 
@@ -177,10 +157,14 @@ const CareerJobDetail = () => {
         cover_letter: applicationForm.cover_letter || null,
         work_experience: applicationForm.work_experience || null,
         education: applicationForm.education || null,
-        skills: applicationForm.skills ? applicationForm.skills.split(',').map(s => s.trim()) : null,
+        skills: applicationForm.skills
+          ? applicationForm.skills.split(',').map(s => s.trim())
+          : null,
         portfolio_url: applicationForm.portfolio_url || null,
         linkedin_url: applicationForm.linkedin_url || null,
-        expected_salary: applicationForm.expected_salary ? parseInt(applicationForm.expected_salary) : null,
+        expected_salary: applicationForm.expected_salary
+          ? parseInt(applicationForm.expected_salary)
+          : null,
         available_from: applicationForm.available_from || null,
       };
 
@@ -190,88 +174,73 @@ const CareerJobDetail = () => {
 
       if (error) throw error;
 
-      toast.success('Candidature soumise avec succès!');
+      toast.success('Your application has been submitted successfully ✅');
       setHasApplied(true);
-      
-      // Reset form
-      setApplicationForm({
-        full_name: '',
-        email: '',
-        phone: '',
-        cover_letter: '',
-        work_experience: '',
-        education: '',
-        skills: '',
-        portfolio_url: '',
-        linkedin_url: '',
-        expected_salary: '',
-        available_from: ''
-      });
+      setApplicationForm(initialApplicationForm);
 
-    } catch (error) {
-      console.error('Error submitting application:', error);
-      toast.error('Erreur lors de la soumission de la candidature');
+    } catch (error: any) {
+      console.error('Error submitting application:', error.message);
+      toast.error('Unable to submit your application.');
     } finally {
       setApplying(false);
     }
   };
 
-  useEffect(() => {
-    fetchJob();
-  }, [id, user]);
-
-  const formatSalary = (min?: number, max?: number, currency: string = 'FCFA') => {
-    if (!min && !max) return 'Salaire à négocier';
+  /** 🔹 Helpers */
+  const formatSalary = (min?: number, max?: number, currency: string = 'USD') => {
+    if (!min && !max) return 'Salary to be discussed';
     if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
-    if (min) return `À partir de ${min.toLocaleString()} ${currency}`;
-    return `Jusqu'à ${max?.toLocaleString()} ${currency}`;
+    if (min) return `From ${min.toLocaleString()} ${currency}`;
+    return `Up to ${max?.toLocaleString()} ${currency}`;
   };
 
   const getEmploymentTypeLabel = (type: string) => {
-    const types: { [key: string]: string } = {
-      'full-time': 'Temps plein',
-      'part-time': 'Temps partiel',
-      'contract': 'Contrat',
-      'internship': 'Stage'
+    const types: Record<string, string> = {
+      'full-time': 'Full-time',
+      'part-time': 'Part-time',
+      'contract': 'Contract',
+      'internship': 'Internship'
     };
     return types[type] || type;
   };
 
   const getExperienceLevelLabel = (level: string) => {
-    const levels: { [key: string]: string } = {
-      'entry': 'Débutant',
-      'mid': 'Intermédiaire',
+    const levels: Record<string, string> = {
+      'entry': 'Entry level',
+      'mid': 'Mid level',
       'senior': 'Senior',
-      'executive': 'Cadre supérieur'
+      'executive': 'Executive'
     };
     return levels[level] || level;
   };
 
+  /** 🔹 Loader */
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement de l'offre d'emploi...</p>
+          <p className="mt-4 text-gray-600">Loading job offer...</p>
         </div>
       </div>
     );
   }
 
+  /** 🔹 Not found */
   if (!job) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Briefcase className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-semibold text-gray-600 mb-2">
-            Offre d'emploi introuvable
+            Job not found
           </h2>
           <p className="text-gray-500 mb-4">
-            Cette offre d'emploi n'existe pas ou n'est plus disponible.
+            This job offer does not exist or is no longer available.
           </p>
           <Button onClick={() => navigate('/career')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour aux offres
+            Back to jobs
           </Button>
         </div>
       </div>
@@ -281,18 +250,18 @@ const CareerJobDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Back Button */}
+        {/* Back button */}
         <Button 
           variant="ghost" 
           onClick={() => navigate('/career')}
           className="mb-6"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour aux offres
+          Back to jobs
         </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
+          {/* Main content */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
@@ -303,7 +272,7 @@ const CareerJobDetail = () => {
                       {job.is_featured && (
                         <Badge className="ml-2 bg-purple-100 text-purple-800">
                           <Star className="h-3 w-3 mr-1" />
-                          Mis en avant
+                          Featured
                         </Badge>
                       )}
                     </CardTitle>
@@ -326,11 +295,11 @@ const CareerJobDetail = () => {
                   </div>
                   <div className="flex items-center">
                     <Eye className="h-4 w-4 mr-1" />
-                    {job.views} vues
+                    {job.views} views
                   </div>
                   <div className="flex items-center">
                     <Users className="h-4 w-4 mr-1" />
-                    {job.application_count} candidatures
+                    {job.application_count} applications
                   </div>
                 </div>
               </CardHeader>
@@ -338,46 +307,34 @@ const CareerJobDetail = () => {
               <CardContent className="space-y-6">
                 {/* Description */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Description du poste</h3>
-                  <div className="prose max-w-none">
-                    <p className="text-gray-700 whitespace-pre-line">{job.description}</p>
-                  </div>
+                  <h3 className="text-lg font-semibold mb-3">Job Description</h3>
+                  <p className="text-gray-700 whitespace-pre-line">{job.description}</p>
                 </div>
 
-                {/* Responsibilities */}
                 {job.responsibilities && (
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">Responsabilités</h3>
-                    <div className="prose max-w-none">
-                      <p className="text-gray-700 whitespace-pre-line">{job.responsibilities}</p>
-                    </div>
+                    <h3 className="text-lg font-semibold mb-3">Responsibilities</h3>
+                    <p className="text-gray-700 whitespace-pre-line">{job.responsibilities}</p>
                   </div>
                 )}
 
-                {/* Requirements */}
                 {job.requirements && (
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">Exigences</h3>
-                    <div className="prose max-w-none">
-                      <p className="text-gray-700 whitespace-pre-line">{job.requirements}</p>
-                    </div>
+                    <h3 className="text-lg font-semibold mb-3">Requirements</h3>
+                    <p className="text-gray-700 whitespace-pre-line">{job.requirements}</p>
                   </div>
                 )}
 
-                {/* Benefits */}
                 {job.benefits && (
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">Avantages</h3>
-                    <div className="prose max-w-none">
-                      <p className="text-gray-700 whitespace-pre-line">{job.benefits}</p>
-                    </div>
+                    <h3 className="text-lg font-semibold mb-3">Benefits</h3>
+                    <p className="text-gray-700 whitespace-pre-line">{job.benefits}</p>
                   </div>
                 )}
 
-                {/* Skills */}
                 {job.skills && job.skills.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">Compétences requises</h3>
+                    <h3 className="text-lg font-semibold mb-3">Skills required</h3>
                     <div className="flex flex-wrap gap-2">
                       {job.skills.map((skill, index) => (
                         <Badge key={index} variant="outline">
@@ -393,54 +350,54 @@ const CareerJobDetail = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Job Info Card */}
+            {/* Job info */}
             <Card>
               <CardHeader>
-                <CardTitle>Informations sur le poste</CardTitle>
+                <CardTitle>Job information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Niveau d'expérience</Label>
+                  <Label className="text-sm font-medium text-gray-600">Level</Label>
                   <p className="text-gray-900">{getExperienceLevelLabel(job.experience_level)}</p>
                 </div>
                 
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Date de publication</Label>
-                  <p className="text-gray-900">{new Date(job.created_at).toLocaleDateString('fr-FR')}</p>
+                  <Label className="text-sm font-medium text-gray-600">Posted on</Label>
+                  <p className="text-gray-900">{new Date(job.created_at).toLocaleDateString('en-US')}</p>
                 </div>
 
                 {job.application_deadline && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Date limite de candidature</Label>
-                    <p className="text-gray-900">{new Date(job.application_deadline).toLocaleDateString('fr-FR')}</p>
+                    <Label className="text-sm font-medium text-gray-600">Deadline</Label>
+                    <p className="text-gray-900">{new Date(job.application_deadline).toLocaleDateString('en-US')}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Application Card */}
+            {/* Apply */}
             <Card>
               <CardHeader>
-                <CardTitle>Postuler à cette offre</CardTitle>
+                <CardTitle>Apply for this job</CardTitle>
               </CardHeader>
               <CardContent>
                 {!user ? (
                   <div className="text-center">
                     <p className="text-gray-600 mb-4">
-                      Vous devez être connecté pour postuler à cette offre.
+                      You must be logged in to apply.
                     </p>
                     <Button asChild className="w-full">
-                      <a href="/login">Se connecter</a>
+                      <a href="/login">Login</a>
                     </Button>
                   </div>
                 ) : hasApplied ? (
                   <div className="text-center">
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                       <p className="text-green-800 font-medium">
-                        ✓ Candidature déjà soumise
+                        ✓ Application already submitted
                       </p>
                       <p className="text-green-600 text-sm mt-1">
-                        Nous examinerons votre candidature et vous contacterons bientôt.
+                        We will review your application and get back to you.
                       </p>
                     </div>
                   </div>
@@ -449,23 +406,25 @@ const CareerJobDetail = () => {
                     <DialogTrigger asChild>
                       <Button className="w-full bg-purple-600 hover:bg-purple-700">
                         <Send className="h-4 w-4 mr-2" />
-                        Postuler maintenant
+                        Apply now
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
-                        <DialogTitle>Postuler pour {job.title}</DialogTitle>
+                        <DialogTitle>Apply for {job.title}</DialogTitle>
                       </DialogHeader>
                       
                       <div className="space-y-4">
+                        {/* Name + Email */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="full_name">Nom complet *</Label>
+                            <Label htmlFor="full_name">Full name *</Label>
                             <Input
                               id="full_name"
+                              required
                               value={applicationForm.full_name}
                               onChange={(e) => handleInputChange('full_name', e.target.value)}
-                              placeholder="Votre nom complet"
+                              placeholder="Your full name"
                             />
                           </div>
                           <div>
@@ -473,78 +432,86 @@ const CareerJobDetail = () => {
                             <Input
                               id="email"
                               type="email"
+                              required
                               value={applicationForm.email}
                               onChange={(e) => handleInputChange('email', e.target.value)}
-                              placeholder="votre@email.com"
+                              placeholder="example@mail.com"
                             />
                           </div>
                         </div>
 
+                        {/* Phone + Salary */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="phone">Téléphone *</Label>
+                            <Label htmlFor="phone">Phone *</Label>
                             <Input
                               id="phone"
+                              required
                               value={applicationForm.phone}
                               onChange={(e) => handleInputChange('phone', e.target.value)}
-                              placeholder="+223 XX XX XX XX"
+                              placeholder="+1 234 567 890"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="expected_salary">Salaire souhaité (FCFA)</Label>
+                            <Label htmlFor="expected_salary">Expected salary (USD)</Label>
                             <Input
                               id="expected_salary"
                               type="number"
                               value={applicationForm.expected_salary}
                               onChange={(e) => handleInputChange('expected_salary', e.target.value)}
-                              placeholder="500000"
+                              placeholder="50000"
                             />
                           </div>
                         </div>
 
+                        {/* Cover letter */}
                         <div>
-                          <Label htmlFor="cover_letter">Lettre de motivation</Label>
+                          <Label htmlFor="cover_letter">Cover letter</Label>
                           <Textarea
                             id="cover_letter"
                             value={applicationForm.cover_letter}
                             onChange={(e) => handleInputChange('cover_letter', e.target.value)}
-                            placeholder="Expliquez pourquoi vous êtes le candidat idéal pour ce poste..."
+                            placeholder="Tell us why you are the right candidate..."
                             rows={4}
                           />
                         </div>
 
+                        {/* Experience */}
                         <div>
-                          <Label htmlFor="work_experience">Expérience professionnelle</Label>
+                          <Label htmlFor="work_experience">Work experience</Label>
                           <Textarea
                             id="work_experience"
                             value={applicationForm.work_experience}
                             onChange={(e) => handleInputChange('work_experience', e.target.value)}
-                            placeholder="Décrivez votre expérience professionnelle pertinente..."
+                            placeholder="Describe your professional background..."
                             rows={3}
                           />
                         </div>
 
+                        {/* Education */}
                         <div>
-                          <Label htmlFor="education">Formation</Label>
+                          <Label htmlFor="education">Education</Label>
                           <Textarea
                             id="education"
                             value={applicationForm.education}
                             onChange={(e) => handleInputChange('education', e.target.value)}
-                            placeholder="Votre parcours éducatif..."
+                            placeholder="Your academic background..."
                             rows={2}
                           />
                         </div>
 
+                        {/* Skills */}
                         <div>
-                          <Label htmlFor="skills">Compétences (séparées par des virgules)</Label>
+                          <Label htmlFor="skills">Skills (comma separated)</Label>
                           <Input
                             id="skills"
                             value={applicationForm.skills}
                             onChange={(e) => handleInputChange('skills', e.target.value)}
-                            placeholder="JavaScript, React, Node.js, etc."
+                            placeholder="JavaScript, React, Node.js..."
                           />
                         </div>
 
+                        {/* Portfolio + LinkedIn */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="portfolio_url">Portfolio (URL)</Label>
@@ -553,7 +520,7 @@ const CareerJobDetail = () => {
                               type="url"
                               value={applicationForm.portfolio_url}
                               onChange={(e) => handleInputChange('portfolio_url', e.target.value)}
-                              placeholder="https://monportfolio.com"
+                              placeholder="https://portfolio.com"
                             />
                           </div>
                           <div>
@@ -563,13 +530,14 @@ const CareerJobDetail = () => {
                               type="url"
                               value={applicationForm.linkedin_url}
                               onChange={(e) => handleInputChange('linkedin_url', e.target.value)}
-                              placeholder="https://linkedin.com/in/monprofil"
+                              placeholder="https://linkedin.com/in/yourprofile"
                             />
                           </div>
                         </div>
 
+                        {/* Availability */}
                         <div>
-                          <Label htmlFor="available_from">Disponible à partir du</Label>
+                          <Label htmlFor="available_from">Available from</Label>
                           <Input
                             id="available_from"
                             type="date"
@@ -578,23 +546,16 @@ const CareerJobDetail = () => {
                           />
                         </div>
 
-                        <Button 
-                          onClick={handleSubmitApplication}
-                          disabled={applying}
-                          className="w-full bg-purple-600 hover:bg-purple-700"
-                        >
-                          {applying ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Envoi en cours...
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4 mr-2" />
-                              Envoyer ma candidature
-                            </>
-                          )}
-                        </Button>
+                        {/* Submit */}
+                        <div className="pt-4">
+                          <Button
+                            className="w-full bg-purple-600 hover:bg-purple-700"
+                            onClick={handleSubmitApplication}
+                            disabled={applying}
+                          >
+                            {applying ? 'Submitting...' : 'Submit application'}
+                          </Button>
+                        </div>
                       </div>
                     </DialogContent>
                   </Dialog>

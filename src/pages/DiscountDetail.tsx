@@ -386,12 +386,12 @@ export default function DiscountDetail() {
                 </button>
               ))}
             </div>
-            <Textarea placeholder="Votre avis..." value={myReview?.comment || ''} onChange={(e) => setMyReview((prev) => ({ id: prev?.id, rating: prev?.rating || 5, comment: e.target.value }))} />
+            <Textarea placeholder="Your opinion..." value={myReview?.comment || ''} onChange={(e) => setMyReview((prev) => ({ id: prev?.id, rating: prev?.rating || 5, comment: e.target.value }))} />
             <div className="mt-3 flex gap-2">
-              <Button onClick={submitReview} disabled={savingReview}>{savingReview ? 'Envoi...' : (myReview?.id ? 'Mettre à jour' : 'Publier')}</Button>
+              <Button onClick={submitReview} disabled={savingReview}>{savingReview ? 'Sending...' : (myReview?.id ? 'Update' : 'Publish')}</Button>
               {myReview?.id && (
                 <Button variant="outline" onClick={() => deleteReview(myReview.id!)}>
-                  <Trash2 className="h-4 w-4 mr-1" /> Supprimer
+                  <Trash2 className="h-4 w-4 mr-1" /> Delete
                 </Button>
               )}
             </div>
