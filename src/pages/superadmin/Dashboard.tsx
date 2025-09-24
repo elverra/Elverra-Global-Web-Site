@@ -149,13 +149,7 @@ const SuperAdminDashboard = () => {
       route: "/admin/secours",
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
-    {
-      title: "Client Accounts",
-      description: "Manage rescue requests, subscriptions, and tokens",
-      icon: Shield,
-      route: "/admin/secours",
-      color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
-    },
+    
     {
       title: "Discount Management",
       description: "Manage merchants, sectors, and discount offers",
@@ -171,14 +165,6 @@ const SuperAdminDashboard = () => {
       route: "/superadmin/career-jobs",
       color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
-    {
-      title: "Physical Card Management",
-      description: "Manage physical membership card requests and deliveries",
-      icon: CreditCard,
-      route: "/superadmin/physical-cards",
-      color: "bg-green-50 hover:bg-green-100 border-green-200"
-    },
-   
     {
       title: "Partners Management",
       description: "Manage business partners and collaborations",
@@ -201,13 +187,7 @@ const SuperAdminDashboard = () => {
       route: "/superadmin/payment-gateways",
       color: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
     },
-    {
-      title: "Merchant Approvals",
-      description: "Review and approve merchant applications",
-      icon: UserCheck,
-      route: "/superadmin/merchant-approvals",
-      color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
-    },
+  
     {
       title: "News Letters",
       description: "Manage newsletters and communications",
@@ -222,13 +202,7 @@ const SuperAdminDashboard = () => {
       route: "/superadmin/events-management",
      color: "bg-purple-50 hover:bg-purple-100 border-purple-200"
     },
-    {
-      title: "E-Book library",
-      description: "Manage digital book library",
-      icon: Book,
-      route: "/superadmin/ebook-management",
-      color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
-    },
+   
     {
       title: "Admin Manager",
       description: "Manage admin users and permissions",

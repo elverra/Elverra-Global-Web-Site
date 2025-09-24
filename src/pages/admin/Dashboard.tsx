@@ -157,6 +157,13 @@ const AdminDashboard = () => {
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
     {
+          title: "Client Accounts",
+          description: "Manage rescue requests, subscriptions, and tokens",
+          icon: Shield,
+          route: "/admin/secours",
+          color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
+        },
+    {
       title: "Discount Management",
       description: "Manage merchants, sectors, and discount offers",
       icon: ShoppingBag,
