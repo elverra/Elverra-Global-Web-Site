@@ -26,89 +26,86 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'info' | 'success' | 'error'; message: string } | null>(null);
 
+// Modifiez la fonction handleSubmit comme suit :
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
+  setStatus(null);
+  if (!emailOrPhone) {
+    toast({
+      title: "Champ manquant",
+      description: "Veuillez entrer votre email ou numéro de téléphone.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  if (loading) return;
+  setLoading(true);
 
-    setStatus(null);
-    if (!emailOrPhone) {
-      toast({
-        title: "Missing identifier",
-        description: "Please enter your email or phone number.",
-        variant: "destructive",
+  try {
+    const isEmail = emailOrPhone.includes('@');
+    
+    if (!password) {
+      const msg = 'Veuillez entrer votre mot de passe.';
+      toast({ 
+        title: 'Mot de passe requis', 
+        description: msg, 
+        variant: 'destructive' 
       });
+      setStatus({ type: 'error', message: msg });
+      setLoading(false);
       return;
     }
 
-    // Prevent multiple submissions
-    if (loading) return;
+    const { error, meta } = await signInWithPassword(
+      emailOrPhone.trim(), 
+      password
+    );
 
-    setLoading(true);
-
-    try {
-      const isEmail = emailOrPhone.includes('@');
-      if (isEmail) {
-        // Always use magic link for email, show clear status to the user
-        const { error } = await sendMagicLink(emailOrPhone.trim(), '/dashboard');
-        if (error) {
-          toast({ title: 'Email not sent', description: error, variant: 'destructive' });
-          setStatus({ type: 'error', message: error });
-          setLoading(false);
-          return;
-        }
-        toast({ title: 'Confirmation email sent', description: `We sent a login link to ${emailOrPhone.trim()}. Please check your inbox.` });
-        setStatus({ type: 'info', message: `Veuillez vérifier votre email (${emailOrPhone.trim()}) et cliquer sur le lien pour vous connecter.` });
-      } else {
-        // Validate phone format: require country code. If user typed local 8 digits, ask them to add +223
-        const rawPhone = emailOrPhone.trim().replace(/\s|-/g, '');
-        if (/^\d{8}$/.test(rawPhone)) {
-          const msg = `Ajoutez l'indicatif pays: +223${rawPhone} (ex: +223 ${rawPhone.slice(0,2)} ${rawPhone.slice(2,4)} ${rawPhone.slice(4,6)} ${rawPhone.slice(6)})`;
-          toast({ title: 'Numéro incomplet', description: msg, variant: 'destructive' });
-          setStatus({ type: 'error', message: msg });
-          setLoading(false);
-          return;
-        }
-        if (!password) {
-          const msg = 'Veuillez entrer votre mot de passe pour vous connecter avec un numéro de téléphone.';
-          toast({ title: 'Mot de passe requis', description: msg, variant: 'destructive' });
-          setStatus({ type: 'error', message: msg });
-          setLoading(false);
-          return;
-        }
-        const { error, meta } = await signInWithPassword(emailOrPhone.trim(), password);
-        if (error) {
-          // Map common backend errors to user-friendly French messages
-          let friendly = error;
-          if (/invalid login credentials/i.test(error)) {
-            friendly = 'Identifiant ou mot de passe incorrect.';
-          } else if (/no account found for this phone/i.test(error)) {
-            friendly = 'Aucun compte trouvé pour ce numéro. Veuillez utiliser votre email ou vérifier le numéro saisi.';
-          } else if (/invalid phone format/i.test(error)) {
-            friendly = 'Format du numéro invalide. Utilisez +223XXXXXXXX ou 8 chiffres (Mali).';
-          }
-       
-       
-          setStatus({ type: 'error', message: friendly });
-          setLoading(false);
-          return;
-        }
-        // Force refresh role so header/dashboard reflects correct paths immediately
-        await checkUserRole(true);
-        toast({ title: 'Login successful', description: 'Redirecting to your dashboard...' });
-        navigate('/dashboard');
+    if (error) {
+      let friendly = error;
+      if (/invalid login credentials/i.test(error)) {
+        friendly = 'Email/Numéro ou mot de passe incorrect.';
+      } else if (/no account found/i.test(error)) {
+        friendly = isEmail 
+          ? 'Aucun compte trouvé avec cet email.' 
+          : 'Aucun compte trouvé avec ce numéro.';
+      } else if (/invalid phone format/i.test(error)) {
+        friendly = 'Format du numéro invalide. Utilisez +223XXXXXXXX ou 8 chiffres (Mali).';
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      toast({
-        title: "Login failed",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
+      
+      toast({ 
+        title: 'Erreur de connexion', 
+        description: friendly, 
+        variant: 'destructive' 
       });
+      setStatus({ type: 'error', message: friendly });
+      setLoading(false);
+      return;
     }
-    setLoading(false);
-  };
 
+    // Connexion réussie
+    await checkUserRole(true);
+    toast({ 
+      title: 'Connexion réussie', 
+      description: 'Redirection en cours...' 
+    });
+    navigate('/dashboard');
+    
+  } catch (error) {
+    console.error('Login error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue';
+    toast({
+      title: 'Erreur',
+      description: errorMessage,
+      variant: 'destructive',
+    });
+    setStatus({ type: 'error', message: errorMessage });
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   return (
