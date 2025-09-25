@@ -3,6 +3,25 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import Layout from "@/components/layout/Layout";
 import PremiumBanner from "@/components/layout/PremiumBanner";
+import { supabase } from "@/lib/supabaseClient";
+
+// Fonction utilitaire pour récupérer l'ID utilisateur à partir d'un code d'affiliation
+async function getUserIdByAffiliateCode(affiliateCode: string): Promise<string | null> {
+  if (!affiliateCode) return null;
+  
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('affiliate_code', affiliateCode)
+    .single();
+    
+  if (error || !data) {
+    console.error('Erreur lors de la récupération de l\'utilisateur par code d\'affiliation:', error);
+    return null;
+  }
+  
+  return data.id;
+}
 import {
   Card,
   CardContent,
@@ -20,7 +39,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabaseClient";
 import { uploadProfileImage, uploadIdentityCardImage, compressImage } from "@/utils/imageUpload";
 import { generateAffiliateCode, isValidAffiliateCode } from "@/utils/cardUtils";
 import { Upload, X, Camera, FileText } from "lucide-react";
@@ -112,7 +130,12 @@ const Register = () => {
         throw new Error("Full name is required");
       }
 
-      // Prepare the registration data
+      // Récupérer l'ID du référent à partir du code d'affiliation
+      const referredByUserId = data.referral_code 
+        ? await getUserIdByAffiliateCode(data.referral_code)
+        : null;
+
+      // Préparer les données d'inscription
       const registrationData = {
         email: data.email.trim(),
         password: data.password,
@@ -122,8 +145,15 @@ const Register = () => {
         city: data.city || "",
         country: data.country || "Mali",
         referral_code: data.referral_code || "",
+        referred_by: referredByUserId, // Ajout du champ referred_by
         physical_card_requested: data.physical_card_requested,
       };
+      
+      console.log('Données d\'inscription avec référent:', {
+        ...registrationData,
+        password: '***', // Ne pas logger le mot de passe
+        referred_by: referredByUserId
+      });
 
       // Generate affiliate code only (card_identifier will be generated after membership purchase)
       const affiliateCode = generateAffiliateCode();
@@ -232,11 +262,13 @@ const Register = () => {
               // Générer un code d'affiliation si c'est un nouvel utilisateur
               const affiliateCode = generateAffiliateCode();
               
-              const { error: insertError } = await supabase
+              // Inclure le referred_by lors de l'insertion du profil
+        const { error: insertError } = await supabase
                 .from('profiles')
                 .insert([{ 
                   ...profileData,
-                  affiliate_code: affiliateCode
+                  affiliate_code: affiliateCode,
+                  referred_by: registrationData.referred_by // S'assurer que referred_by est inclus
                 }]);
               
               if (insertError) {
