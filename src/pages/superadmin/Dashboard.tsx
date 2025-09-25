@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, ShoppingBag, CreditCard, TrendingUp, Shield, Settings, FileText, UserCheck, Download, Book } from 'lucide-react';
+import { Users, ShoppingBag, CreditCard, TrendingUp, Shield, Settings, FileText, UserCheck, Download, Book, UserCog } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -211,9 +211,9 @@ const SuperAdminDashboard = () => {
     },
    
     {
-      title: "Admin Manager",
-      description: "Manage admin users and permissions",
-      icon: UserCheck,
+      title: "User Management",
+      description: "Manage users, roles and permissions",
+      icon: UserCog,
       route: "/superadmin/user-management",
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
@@ -295,31 +295,7 @@ const SuperAdminDashboard = () => {
               })}
             </div>
           </div>
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>Database Management</CardTitle>
-              <CardDescription>Export and manage your database</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label>Export Database</Label>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Download a complete backup of your database as a JSON file
-                  </p>
-                </div>
-                <Button 
-                  onClick={handleDatabaseExport} 
-                  disabled={exporting}
-                  className="w-full sm:w-auto"
-                  data-testid="button-export-database"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  {exporting ? 'Exporting...' : 'Export Database'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      
         </div>
       </Layout>
     </ProtectedRoute>

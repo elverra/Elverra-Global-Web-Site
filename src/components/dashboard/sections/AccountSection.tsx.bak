@@ -992,70 +992,45 @@ const AccountSection = () => {
                     card_type: card.card_type
                   });
 
-                  // Déterminer le type de carte
-                  let cardTier = '';
-                  
-                  // 1. Vérifier d'abord le type dans les données QR (source la plus fiable)
-                  if (qrData) {
-                    // Si on a un type 'adult' ou 'child' dans qr_data
-                    if (qrData.type === 'child') {
+                  // Essayer de déterminer le tier en priorisant qr_data.tier, puis card_type, puis l'identifiant de la carte
+                  let cardTier = qrData?.tier || card.card_type;
+
+                  // Si on n'a toujours pas de tier, essayons de l'inférer depuis l'identifiant de la carte
+                  if (!cardTier && card.card_identifier) {
+                    if (card.card_identifier.startsWith('KID-')) {
                       cardTier = 'child';
-                    } 
-                    // Si on a un tier défini dans qr_data
-                    else if (qrData.tier) {
-                      cardTier = qrData.tier.toLowerCase();
+                    } else if (card.card_identifier.startsWith('PRM-')) {
+                      cardTier = 'premium';
+                    } else if (card.card_identifier.startsWith('ELT-')) {
+                      cardTier = 'elite';
                     }
                   }
-                  
-                  // 2. Si on n'a toujours pas de tier, essayer avec le type de carte défini
-                  if (!cardTier && card.card_type) {
-                    cardTier = card.card_type.toLowerCase();
-                  }
 
-                  // Si on n'a toujours pas de tier, on utilise 'unknown'
+                  // Si on n'a toujours pas de tier, on saute cette carte
                   if (!cardTier) {
-                    console.warn('Type de carte inconnu pour la carte:', card);
-                    cardTier = 'unknown';
+                    console.warn('Card missing tier information, skipping:', card);
+                    return null;
                   }
 
                   // Normalisation du tier pour la comparaison
-                  const normalizedTier = cardTier.trim().toLowerCase();
-                  console.log(`Card ${index} (${card.card_identifier}):`, { 
-                    normalizedTier, 
-                    isSelected: index === currentCardIndex,
-                    cardData: card 
-                  });
-
-                  // Mapper les types de cartes aux libellés en français
-                  const cardLabels: Record<string, { label: string; color: string }> = {
-                    'child': { label: 'Carte Enfant', color: 'bg-pink-500' },
-                    'kiddies': { label: 'Carte Enfant', color: 'bg-pink-500' },
-                    'premium': { label: 'Carte Adulte Premium', color: 'bg-blue-500' },
-                    'elite': { label: 'Carte Adulte Elite', color: 'bg-purple-600' },
-                    'essential': { label: 'Carte Adulte Essentiel', color: 'bg-gray-500' },
-                    'unknown': { label: 'Type de carte inconnu', color: 'bg-gray-400' }
-                  };
-
-                  const cardLabel = cardLabels[normalizedTier] || cardLabels['unknown'];
+                  const normalizedTier = cardTier.toLowerCase().trim();
+                  console.log(`Card ${index} (${card.card_identifier}):`, { normalizedTier, isSelected: index === currentCardIndex });
 
                   return (
                     <button
-                      key={card.card_identifier || index}
+                      key={card.card_identifier}
                       onClick={() => {
-                        console.log('Card selected:', { 
-                          index, 
-                          card_identifier: card.card_identifier, 
-                          normalizedTier 
-                        });
+                        console.log('Card selected:', { index, card_identifier: card.card_identifier, normalizedTier });
                         setCurrentCardIndex(index);
                       }}
-                      className={`px-4 py-2 rounded-full text-xs font-medium text-white transition-colors mr-2 ${
-                        index === currentCardIndex 
-                          ? `${cardLabel.color} text-white shadow-md`
-                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors mr-2 ${index === currentCardIndex
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
                     >
-                      {cardLabel.label}
+                      {normalizedTier === 'child' ? 'Child Card' :
+                        normalizedTier === 'premium' ? 'Premium Card' :
+                          normalizedTier === 'elite' ? 'Elite Card' : cardTier + ' Card'}
                     </button>
                   );
                 })}
@@ -1100,53 +1075,46 @@ const AccountSection = () => {
                     {/* Affichage des cartes actives */}
                     {userCards.length > 0 ? (
                       userCards.map((card, index) => {
-                        // Déterminer le type de carte de manière fiable
+                        // Déterminer le type de carte à partir des champs fiables
                         const qrData = parseQRData(card.qr_data);
-                        let cardType = '';
-
-                        // 1. Vérifier d'abord le type dans les données QR (source la plus fiable)
-                        if (qrData) {
-                          // Si on a un type 'child' dans qr_data
-                          if (qrData.type === 'child') {
-                            cardType = 'child';
-                          } 
-                          // Si on a un tier défini dans qr_data
-                          else if (qrData.tier) {
-                            cardType = qrData.tier.toLowerCase();
-                          }
-                        }
+                        // On utilise d'abord le type de carte défini, puis les données QR si disponibles
+                        let cardType = card.card_type || qrData?.tier;
                         
-                        // 2. Si on n'a toujours pas de type, essayer avec le type de carte défini
-                        if (!cardType && card.card_type) {
-                          cardType = card.card_type.toLowerCase();
-                        }
-                        
-                        // 3. Si on n'a toujours pas de type, on utilise 'unknown'
+                        // Si on n'a toujours pas de type, on utilise une valeur par défaut
                         if (!cardType) {
-                          console.warn('Type de carte inconnu pour la carte:', card);
+                          console.warn('Type de carte non défini pour la carte:', card);
                           cardType = 'unknown';
                         }
 
                         // Mapper les types de cartes aux libellés en français
                         const cardLabels: Record<string, { label: string; color: string }> = {
                           'child': { label: 'Carte Enfant', color: 'pink' },
+                          'kids': { label: 'Carte Enfant', color: 'pink' },
                           'kiddies': { label: 'Carte Enfant', color: 'pink' },
-                          'premium': { label: 'Carte Adulte Premium', color: 'blue' },
-                          'elite': { label: 'Carte Adulte Elite', color: 'purple' },
-                          'essential': { label: 'Carte Adulte Essentiel', color: 'gray' },
-                          'unknown': { label: 'Type de carte inconnu', color: 'gray' }
+                          'premium': { label: 'Abonnement Premium', color: 'blue' },
+                          'elite': { label: 'Abonnement Elite', color: 'purple' },
+                          'essential': { label: 'Abonnement Essentiel', color: 'gray' },
+                          'standard': { label: 'Abonnement Standard', color: 'gray' },
+                          'basic': { label: 'Abonnement Basique', color: 'gray' }
                         };
 
-                        // Normaliser le type de carte en minuscules pour la correspondance
-                        const normalizedCardType = cardType.toLowerCase().trim();
-                        const cardInfo = cardLabels[normalizedCardType] || 
-                                      { label: `Carte (${cardType})`, color: 'gray' };
+                        // Afficher les informations de débogage
+                        console.log('Card type before normalization:', cardType);
+                        console.log('QR Data:', qrData);
+
+                        // Normaliser le type de carte en minuscules et supprimer les espaces
+                        const normalizedCardType = String(cardType || '').toLowerCase().trim().replace(/\s/g, '');
+
+                        // Trouver la correspondance en ignorant la casse et les espaces
+                        const cardInfo = Object.entries(cardLabels).find(([key]) => 
+                          normalizedCardType.includes(key.toLowerCase().trim().replace(/\s/g, ''))
+                        )?.[1] || { label: `Carte (${cardType || 'inconnue'})`, color: 'gray' };
 
                         return (
                           <div 
                             key={card.card_identifier} 
                             className={`flex items-center justify-between ${index > 0 ? 'pt-2 border-t border-blue-100' : ''}`}
-                          >
+{{ ... }}
                             <h4 className="font-medium">{cardInfo.label}</h4>
                             <div className="flex items-center gap-2">
                               <Badge className={`bg-${cardInfo.color}-100 text-${cardInfo.color}-800 capitalize`}>

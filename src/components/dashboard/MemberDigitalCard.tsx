@@ -9,7 +9,13 @@ interface MemberDigitalCardProps {
   memberID: string; // This is the card_identifier for display
   userID: string; // This is the user ID for QR code
   qrData?: string; // Optional QR code data
-  expiryDate: string;
+  /**
+   * The expiration date of the membership card
+   * Should be a valid date string that can be parsed by the Date constructor
+   * Example: '2024-12-31' or '2024-12-31T23:59:59.000Z'
+   * If not provided, 'N/A' will be displayed
+   */
+  expiryDate?: string;
   membershipTier: 'Essential' | 'Premium' | 'Elite' | 'Child';
   profileImage?: string;
   address?: string;
@@ -258,21 +264,7 @@ const MemberDigitalCard = ({
     }
   };
   const cardImage = getCardImage();
-
-  // Format date as DD/MM/YY
-  const formatDate = (dateString: string) => {
-    if (!dateString || dateString === 'N/A') return 'N/A';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid Date';
-    
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = String(date.getFullYear()).slice(-2);
-    
-    return `${day}/${month}/${year}`;
-  };
   const cardStyles = getCardStyles(membershipTier);
-
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -315,7 +307,16 @@ const MemberDigitalCard = ({
             
             <div className="flex gap-4">
               <span className="font-medium">Exp:</span>
-              <span>{formatDate(expiryDate)}</span>
+              <span>
+                {expiryDate && !isNaN(new Date(expiryDate).getTime()) 
+                  ? (() => {
+                      const date = new Date(expiryDate);
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const year = date.getFullYear();
+                      return `${month}/${year}`;
+                    })()
+                  : 'N/A'}
+              </span>
             </div>
           </div>
           

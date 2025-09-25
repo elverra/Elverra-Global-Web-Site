@@ -65,7 +65,7 @@ import Cart from '@/pages/Cart';
 import Checkout from '@/pages/Checkout';
 import Wishlist from '@/pages/Wishlist';
 import ShopManagement from '@/pages/admin/ShopManagement';
-import UserManagement from '@/pages/admin/UserManagement';
+import UserManagementPage from '@/pages/superadmin/user-management';
 import ProjectRequests from '@/pages/ProjectRequests';
 import MerchantApprovals from '@/pages/admin/MerchantApprovals';
 import AccessLawyer from '@/pages/AccessLawyer';
@@ -503,10 +503,10 @@ const routes = [
     ),
   },
   {
-    path: '/admin/user-management',
+    path: '/superadmin/user-management',
     element: (
-      <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT', 'SUPERADMIN']}>
-        <UserManagement />
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <UserManagementPage />
       </ProtectedRoute>
     ),
   },
