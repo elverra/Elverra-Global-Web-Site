@@ -3,12 +3,14 @@ import PremiumBanner from '@/components/layout/PremiumBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Mail, Phone, MapPin, Send, ArrowLeft, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { submitContactForm } from '@/services/contactService';
+import type { InquiryType } from '@/types/contact';
 
 const contactInfo = [
   {
@@ -25,15 +27,15 @@ const contactInfo = [
   },
   {
     icon: MapPin,
-    title: 'Head Office',
-    details: ['Faladiè-Sema, Carrefour IJA', 'Rue 801, Bamako, MALI'],
-    description: 'Visit us during business hours'
+    title: 'Address',
+    details: ['Faladiè-Sema, Carrefour IJA, Rue 801', 'Bamako, MALI'],
+    description: 'Visit our office'
   },
   {
     icon: Clock,
-    title: 'Business Hours',
-    details: ['Mon - Fri: 9:00 AM - 6:00 PM', 'Saturday: Closed', 'Sunday: Closed'],
-    description: 'All times are GMT'
+    title: 'Working Hours',
+    details: ['Monday - Friday: 8:00 - 17:00', 'Saturday: 9:00 - 13:00'],
+    description: 'We are closed on Sundays and public holidays'
   }
 ];
 
@@ -48,25 +50,41 @@ const offices = [
 ];
 
 const Contact = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    subject: string;
+    message: string;
+    inquiryType: InquiryType;
+  }>({
     name: '',
     email: '',
     phone: '',
     subject: '',
     message: '',
-    inquiryType: 'general'
+    inquiryType: 'general' as InquiryType
   });
   const [loading, setLoading] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Simulate form submission
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await submitContactForm({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        message: formData.message,
+        inquiryType: formData.inquiryType
+      });
+
+      if (error) {
+        throw new Error(error);
+      }
       
-      toast.success('Message sent successfully! We\'ll get back to you within 24 hours.');
+      toast.success('Message envoyé avec succès ! Nous vous répondrons dans les 24 heures.');
       setFormData({
         name: '',
         email: '',
@@ -76,12 +94,12 @@ const Contact = () => {
         inquiryType: 'general'
       });
     } catch (error) {
-      toast.error('Failed to send message. Please try again.');
+      console.error('Erreur lors de l\'envoi du formulaire :', error);
+      toast.error(error instanceof Error ? error.message : 'Échec de l\'envoi du message. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
   };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,

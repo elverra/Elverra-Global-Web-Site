@@ -173,13 +173,20 @@ const SuperAdminDashboard = () => {
       color: "bg-pink-50 hover:bg-pink-100 border-pink-200"
     },
     {
+      title: "News Management",
+      description: "Manage business partners and collaborations",
+      icon: Users,
+      route: "/superadmin/news",
+      color: "bg-pink-50 hover:bg-pink-100 border-pink-200"
+    },
+    {
       title: "Projects Management",
       description: "Manage funding projects and initiatives",
       icon: TrendingUp,
       route: "/superadmin/projects-management",
       color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
     },
-  
+    
     {
       title: "Payment Gateway Management",
       description: "Configure payment methods and gateways",
@@ -210,18 +217,12 @@ const SuperAdminDashboard = () => {
       route: "/superadmin/user-management",
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
-    {
-      title: "Actualité",
-      description: "Manage news and updates",
-      icon: TrendingUp,
-      route: "/superadmin/news-management",
-      color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
-    },
+   
     {
       title: "Contact",
       description: "Manage contact requests and support",
       icon: TrendingUp,
-      route: "/superadmin/contact-management",
+      route: "/superadmin/contact",
       color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
     },
     

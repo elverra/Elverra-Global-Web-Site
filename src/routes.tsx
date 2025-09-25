@@ -107,6 +107,9 @@ import EventsManagement from './pages/admin/EventsManagement';
 import PhysicalCardRequests from './pages/admin/PhysicalCardRequests';
 import SuperAdminPhysicalCardManagement from './pages/superadmin/PhysicalCardManagement';
 import OSecours from './pages/services/OSecours';
+import NewsManagement from './pages/superadmin/NewsManagement';
+import ContactManagement from './pages/superadmin/ContactManagement';
+import ContactDetail from './pages/superadmin/ContactDetail';
 
 // Add the new route to the existing routes array
 const routes = [
@@ -167,7 +170,7 @@ const routes = [
     element: <PartnerDetail />,
   },
   {
-    path: '/news/:id',
+    path: '/news/:slug',
     element: <NewsDetail />,
   },
   {
@@ -420,6 +423,22 @@ const routes = [
     ),
   },
   {
+    path: '/superadmin/contact',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN', 'SUPPORT']}>
+        <ContactManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/superadmin/contact/:id',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN', 'SUPPORT']}>
+        <ContactDetail />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: '/superadmin/dashboard',
     element: (
       <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
@@ -608,6 +627,14 @@ const routes = [
     element: (
       <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
         <SuperAdminDiscountManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/superadmin/news',
+    element: (
+      <ProtectedRoute allowedRoles={['SUPERADMIN', 'ADMIN']}>
+        <NewsManagement />
       </ProtectedRoute>
     ),
   },
