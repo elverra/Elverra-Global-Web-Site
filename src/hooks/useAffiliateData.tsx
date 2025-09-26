@@ -11,7 +11,7 @@ interface ReferredUser {
   created_at?: string;  // Rendre ce champ optionnel
   membership_tier?: string;
   is_verified: boolean;
-  referral_code?: string;
+  affiliate_code?: string;
 }
 
 export interface ReferralData {
@@ -32,7 +32,7 @@ interface ReferrerData {
   id: string;
   full_name: string;
   email: string;
-  referral_code: string;
+  affiliate_code: string;
   phone?: string;
   created_at?: string;
   membership_tier?: string;
@@ -82,7 +82,7 @@ interface UserAnswer {
 }
 
 interface AffiliateStats {
-  referralCode: string;
+  affiliateCode: string;
   totalReferrals: number;
   pendingReferrals?: number;
   referralTarget: number;
@@ -139,18 +139,18 @@ export const useAffiliateData = () => {
       console.log('Récupération du code de parrainage pour l\'utilisateur:', user.id);
       const { data: currentUser, error: userError } = await supabase
         .from('users')
-        .select('referral_code, email, full_name')
+        .select('affiliate_code, email, full_name')
         .eq('id', user.id)
         .single();
         
-      console.log('Données utilisateur récupérées:', { hasReferralCode: !!currentUser?.referral_code, email: currentUser?.email });
+      console.log('Données utilisateur récupérées:', { hasReferralCode: !!currentUser?.affiliate_code, email: currentUser?.email });
       
       if (userError) {
         console.error('Erreur lors de la récupération des données utilisateur:', userError);
         throw userError;
       }
       
-      if (!currentUser?.referral_code) {
+      if (!currentUser?.affiliate_code) {
         console.log('Aucun code de parrainage trouvé, génération d\'un nouveau code...');
         // Générer un nouveau code de parrainage s'il n'en existe pas
         const newReferralCode = `ELV-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
@@ -159,7 +159,7 @@ export const useAffiliateData = () => {
         // Mettre à jour l'utilisateur avec le nouveau code
         const { error: updateError } = await supabase
           .from('users')
-          .update({ referral_code: newReferralCode })
+          .update({ affiliate_code: newReferralCode })
           .eq('id', user.id);
           
         if (updateError) {
@@ -168,14 +168,14 @@ export const useAffiliateData = () => {
         }
         
         // Mettre à jour currentUser avec le nouveau code
-        currentUser.referral_code = newReferralCode;
+        currentUser.affiliate_code = newReferralCode;
         console.log('Nouveau code de parrainage enregistré avec succès');
       }
 
       // Récupérer les utilisateurs qui ont été parrainés par l'utilisateur actuel
       console.log('Récupération des utilisateurs parrainés...');
       console.log('ID utilisateur actuel:', user.id);
-      console.log('Code de parrainage actuel:', currentUser.referral_code);
+      console.log('Code de parrainage actuel:', currentUser.affiliate_code);
       
       let referredUsers: any[] = [];
       let errorById = null;
@@ -198,12 +198,12 @@ export const useAffiliateData = () => {
         }
         
         // Essayer avec referrer_affiliate_code si un code de parrainage existe
-        if (currentUser.referral_code) {
+        if (currentUser.affiliate_code) {
           console.log('Recherche des utilisateurs par referrer_affiliate_code...');
           const { data: referredByCode, error: refByCodeError } = await supabase
             .from('users')
             .select('*')
-            .eq('referrer_affiliate_code', currentUser.referral_code);
+            .eq('referrer_affiliate_code', currentUser.affiliate_code);
             
           if (refByCodeError) {
             console.error('Erreur lors de la recherche par referrer_affiliate_code:', refByCodeError);
@@ -240,28 +240,34 @@ export const useAffiliateData = () => {
       
       // Vérifier d'abord referred_by (ID utilisateur)
       if (userData?.referred_by) {
-        const { data: refData, error: refError } = await supabase
+        const { data, error: refError } = await supabase
           .from('users')
-          .select('id, full_name, email, phone, referral_code, created_at, is_verified')
+          .select('id, full_name, email, phone, affiliate_code, created_at, is_verified')
           .eq('id', userData.referred_by)
           .maybeSingle();
           
-        if (!refError && refData) {
-          referrerData = refData;
+        if (!refError && data) {
+          referrerData = {
+            ...data,
+            affiliate_code: data.affiliate_code
+          };
         } else if (refError) {
           console.error('Erreur lors de la récupération du référent par ID:', refError);
         }
       } 
       // Si referred_by n'est pas défini, essayer avec referrer_affiliate_code
       else if (userData?.referrer_affiliate_code) {
-        const { data: refData, error: refError } = await supabase
+        const { data, error: refError } = await supabase
           .from('users')
-          .select('id, full_name, email, phone, referral_code, created_at, is_verified')
-          .eq('referral_code', userData.referrer_affiliate_code)
+          .select('id, full_name, email, phone, affiliate_code, created_at, is_verified')
+          .eq('affiliate_code', userData.referrer_affiliate_code)
           .maybeSingle();
           
-        if (!refError && refData) {
-          referrerData = refData;
+        if (!refError && data) {
+          referrerData = {
+            ...data,
+            affiliate_code: data.affiliate_code
+          };
         } else if (refError) {
           console.error('Erreur lors de la récupération du référent par code:', refError);
         }
@@ -328,7 +334,7 @@ export const useAffiliateData = () => {
             created_at: user.created_at,
             membership_tier: user.membership_tier,
             is_verified: user.is_verified || false,
-            referral_code: user.referral_code
+            affiliate_code: user.affiliate_code
           }
         };
       }) || [];
@@ -336,7 +342,7 @@ export const useAffiliateData = () => {
       // Créer l'objet avec les données d'affiliation
       const affiliateStats: AffiliateStats = {
         // Propriétés de base
-        referralCode: currentUser.referral_code || 'N/A',
+        affiliateCode: currentUser.affiliate_code || 'N/A',
         totalReferrals: referredUsers.length,
         pendingReferrals: pendingReferrals,
         referralTarget: 10, // Cible par défaut
@@ -348,7 +354,10 @@ export const useAffiliateData = () => {
         commissions: totalEarnings,
         
         // Informations sur le référent (si l'utilisateur a été parrainé)
-        referrer: referrerData || null,
+        referrer: referrerData ? {
+          ...referrerData,
+          affiliate_code: referrerData.affiliate_code || '' // S'assure que affiliate_code est défini
+        } : null,
         
         // État d'onboarding
         onboardingStatus: {
@@ -366,7 +375,7 @@ export const useAffiliateData = () => {
       };
       
       console.log('Statistiques d\'affiliation générées:', { 
-        referralCode: affiliateStats.referralCode,
+        affiliateCode: affiliateStats.affiliateCode,
         totalReferrals: affiliateStats.totalReferrals,
         progress: affiliateStats.progress + '%',
         totalEarnings: affiliateStats.totalEarnings
