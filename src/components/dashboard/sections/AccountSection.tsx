@@ -1080,13 +1080,8 @@ const AccountSection = () => {
                     return undefined;
                   })()}
                   membershipTier={getCurrentCardTier() as 'Essential' | 'Premium' | 'Elite' | 'Child'}
-                  profileImage={currentProfile?.profile_image_url}
-                  address={currentProfile?.address}
                   city={currentProfile?.city}
-                  serialNumber={currentCard?.card_identifier || membership?.member_id}
                   isPaymentComplete={membership?.is_active || false}
-                  subscriptionStatus={membership?.is_active ? 'active' : 'expired'}
-                  qrData={currentCard?.qr_data} // Passer les données brutes du QR code
                 />
               </div>
 

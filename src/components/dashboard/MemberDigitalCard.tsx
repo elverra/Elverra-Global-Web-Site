@@ -1,330 +1,167 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Download, Share2, QrCode } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import QRCodeGenerator from '@/components/utilities/QRCodeGenerator';
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import QRCodeGenerator from "@/components/utilities/QRCodeGenerator";
 
 interface MemberDigitalCardProps {
   memberName: string;
-  memberID: string; // This is the card_identifier for display
-  userID: string; // This is the user ID for QR code
-  qrData?: string; // Optional QR code data
-  /**
-   * The expiration date of the membership card
-   * Should be a valid date string that can be parsed by the Date constructor
-   * Example: '2024-12-31' or '2024-12-31T23:59:59.000Z'
-   * If not provided, 'N/A' will be displayed
-   */
+  memberID: string;
+  userID: string;
   expiryDate?: string;
-  membershipTier: 'Essential' | 'Premium' | 'Elite' | 'Child';
-  profileImage?: string;
-  address?: string;
+  membershipTier: "Essential" | "Premium" | "Elite" | "Child";
   city?: string;
-  serialNumber?: string;
   isPaymentComplete?: boolean;
-  subscriptionStatus?: 'active' | 'expired' | 'pending';
 }
 
-type PositionStyles = {
-  top?: string | number;
-  left?: string | number;
-  right?: string | number;
-  bottom?: string | number;
-  transform?: string;
-  marginTop?: string | number;
-  marginLeft?: string | number;
-  marginRight?: string | number;
-  marginBottom?: string | number;
-  textAlign?: 'start' | 'center' | 'end' | 'left' | 'right' | 'justify';
-  width?: string | number;
-  position?: 'absolute' | 'relative' | 'fixed' | 'sticky' | 'static';
+const tierAccent: Record<MemberDigitalCardProps["membershipTier"], string> = {
+  Essential: "text-red-600 border-blue-600",   // contour bleu, ZENIKA rouge
+  Premium: "text-orange-500 border-green-600", // contour vert, ZENIKA orange
+  Elite: "text-green-600 border-orange-500",   // contour orange, ZENIKA vert
+  Child: "text-red-600 border-blue-600",       // contour bleu, ZENIKA Kiddies rouge
 };
 
-type CardStyles = {
-  container: PositionStyles;
-  content: PositionStyles;
-  name: PositionStyles;
-  details: PositionStyles;
-  qrCode: PositionStyles;
-};
-
-
-const MemberDigitalCard = ({ 
-  memberName, 
-  memberID, 
+const MemberDigitalCard = ({
+  memberName,
+  memberID,
   userID,
-  expiryDate, 
+  expiryDate,
   membershipTier,
-  profileImage,
-  address,
   city,
-  serialNumber,
   isPaymentComplete = true,
-  subscriptionStatus = 'active'
 }: MemberDigitalCardProps) => {
-  const [showQR, setShowQR] = useState(false);
-  
-  // Generate serial number if not provided
-  const cardSerialNumber = serialNumber || `ELV-${membershipTier.toUpperCase()}-${Date.now().toString().slice(-6)}`;
-  
-  // Create QR data containing the user ID (not card_identifier)
   const qrData = userID;
-  
-  // Debug: Log the data being used
-  console.log('MemberDigitalCard Debug:', {
-    memberName,
-    memberID, // This is the card_identifier for display
-    userID, // This is the user ID for QR code
-    qrData,
-    membershipTier,
-    address,
-    city
-  });
 
-  // Don't show card if payment is not complete
   if (!isPaymentComplete) {
     return (
       <Card className="w-full max-w-md mx-auto">
-        <CardContent className="p-8">
-        <div className="text-center mb-4">
-          <h3 className="font-bold text-lg text-gray-900">Your Digital Value Card</h3>
-          <p className="text-sm text-gray-500">Complete payment to access your membership card</p>
-        </div>
-        
-        <div className="bg-gray-200 rounded-xl p-8 mb-4 text-center">
-          <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <span className="text-gray-500 text-2xl">🔒</span>
-          </div>
-          <h3 className="text-lg font-medium text-gray-600 mb-2">Card Locked</h3>
-          <p className="text-sm text-gray-500">
-            Your membership card will be available after payment completion
+        <CardContent className="p-4 sm:p-6 text-center">
+          <h3 className="font-bold text-[clamp(0.9rem,2vw,1.2rem)] text-gray-900">
+            Your Digital Value Card
+          </h3>
+          <p className="text-[clamp(0.7rem,1.5vw,0.9rem)] text-gray-500">
+            Complete payment to access your membership card
           </p>
-          <Button onClick={() => window.location.href = '/membership-payment'} className="mt-4">
-            Complete Payment
-          </Button>
-        </div>
+          <div className="bg-gray-200 rounded-xl p-4 sm:p-6 my-4">
+            <span className="text-gray-500 text-[clamp(1.5rem,4vw,2.2rem)]">🔒</span>
+            <p className="mt-2 text-gray-600 text-[clamp(0.8rem,1.5vw,1rem)]">Card Locked</p>
+            <Button
+              className="mt-4"
+              onClick={() => (window.location.href = "/membership-payment")}
+            >
+              Complete Payment
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
-  // Function to download card as image
-  const handleDownload = () => {
-    try {
-      // Determine which image to use based on membership tier
-      let imageName = '';
-      switch (membershipTier) {
-        case 'Essential':
-          imageName = 'Carte 1.png';
-          break;
-        case 'Premium':
-          imageName = 'Carte2.png';
-          break;
-        case 'Elite':
-          imageName = 'Carte3.png';
-          break;
-        case 'Child':
-          imageName = 'kiddies2.png';
-          break;
-        default:
-          alert('No card available for this membership type.');
-          return;
-      }
+  // --- Child Card ---
+  if (membershipTier === "Child") {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div
+          className={`relative rounded-2xl shadow-2xl bg-white border-4 ${tierAccent[membershipTier]} flex flex-col`}
+          style={{ aspectRatio: "1.6/1" }}
+        >
+          {/* Header */}
+          <div className="flex justify-between items-center px-3 sm:px-4 pt-3 sm:pt-4">
+            <span className={`font-bold leading-tight ${tierAccent[membershipTier]} text-[clamp(1rem,3vw,1.6rem)]`}>
+              ZENIKA <span className="block text-[clamp(0.7rem,2vw,1.1rem)]">Kiddies</span>
+            </span>
+            <img
+              src="/lovable-uploads/logo.png"
+              alt="Logo Globe"
+              className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16"
+            />
+          </div>
 
-      // Create a temporary link to trigger download
-      const link = document.createElement('a');
-      link.href = `/lovable-uploads/${imageName}`;
-      link.download = `${memberName.replace(/\s+/g, '_')}_${membershipTier}_card.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error('Error downloading card:', error);
-      alert('Error downloading card. Please try again or contact support.');
-    }
-  };
+          {/* Icons côté gauche */}
+          <div className="flex flex-col items-start space-y-2 sm:space-y-3 px-4 sm:px-6 mt-4 sm:mt-6">
+            <img
+              src="/lovable-uploads/image.png"
+              alt="Swing"
+              className="w-10 h-10 sm:w-14 sm:h-14 md:w-20 md:h-20"
+            />
+          </div>
 
-  // Mock function to share card
-  const handleShare = () => {
-    alert('Card sharing functionality would be implemented here.');
-  };
+          {/* Infos enfant */}
+          <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 text-gray-700 text-[clamp(0.65rem,1.5vw,0.9rem)]">
+            <p className="font-bold">{memberName}</p>
+            <p>ID: <span className="font-mono">{memberID}</span></p>
+            <p>
+              Exp:{" "}
+              {expiryDate && !isNaN(new Date(expiryDate).getTime())
+                ? (() => {
+                    const d = new Date(expiryDate);
+                    return `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+                  })()
+                : "N/A"}
+            </p>
 
-  // Get the appropriate card image based on hip tier
-  const getCardImage = () => {
-    switch (membershipTier) {
-      case 'Essential':
-        return '/lovable-uploads/Carte 1.png';
-      case 'Premium':
-        return '/lovable-uploads/Carte2.png';
-      case 'Elite':
-        return '/lovable-uploads/Carte3.png';
-      case 'Child':
-        return '/lovable-uploads/kiddies2.png';
-      default:
-        return '';
-    }
-  };
-  const getCardStyles = (tier: string) => {
-    const baseStyles = {
-      container: {
-        aspectRatio: '1.6/1',
-        width: '100%',
-        maxWidth: '480px',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        position: 'relative' as const,
-        color: 'white',
-        textShadow: '1px 1px 2px rgba(0,0,0,0.7)'
-      },
-      content: {
-        position: 'relative' as const,
-        padding: '1.25rem',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column' as const
-      }
-    };
-  
-    switch (tier) {
-      case 'Child':
-        return {
-          ...baseStyles,
-          name: { 
-            position: 'absolute' as const,
-            top: '45%',
-            left: '8rem',
-            transform: 'translateY(-50%)'
-          },
-          details: { 
-            position: 'absolute' as const,
-            bottom: '3rem',
-            left: '8rem',
-            width: 'calc(100% - 3rem)'
-          },
-          qrCode: { 
-            position: 'absolute' as const,
-            bottom: '1.5rem',
-            right: '1.5rem'
-          }
-        };
-      case 'Premium':
-        return {
-          ...baseStyles,
-          name: { 
-            marginTop: '4rem',
-            textAlign: 'center' as const
-          },
-          details: { 
-            marginTop: 'auto',
-            marginBottom: '2rem',
-            textAlign: 'end' as const
-          },
-          qrCode: { 
-            position: 'absolute' as const,
-            bottom: '1.5rem',
-            right: '1.5rem'
-          }
-        };
-      case 'Elite':
-        return {
-          ...baseStyles,
-          name: { 
-            marginTop: '3rem',
-            marginLeft: '2rem',
-            marginBottom: '1rem'
-          },
-          details: { 
-            marginLeft: '2rem',
-            marginBottom: '2rem'
-          },
-          qrCode: { 
-            position: 'absolute' as const,
-            bottom: '1.5rem',
-            right: '1.5rem'
-          }
-        };
-      default: // Essential
-        return {
-          ...baseStyles,
-          name: { 
-            marginTop: '6rem',
-            textAlign: 'start' as const
-          },
-          details: { 
-            marginTop: '1rem',
-            textAlign: 'center' as const,
-            marginBottom: '2rem'
-          },
-          qrCode: { 
-            position: 'absolute' as const,
-            bottom: '1.5rem',
-            right: '1.5rem'
-          }
-        };
-    }
-  };
-  const cardImage = getCardImage();
-  const cardStyles = getCardStyles(membershipTier);
+            {/* QR Code */}
+            <div className="mt-2 bg-white p-1.5 rounded">
+              <QRCodeGenerator
+                data={qrData}
+                size={40}
+                showDownload={false}
+                showShare={false}
+                showData={false}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
+  // --- Default Cards ---
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="text-center mb-4">
-        <h3 className="font-bold text-lg text-gray-900">Your Digital Value Card</h3>
-        <p className="text-sm text-gray-500">Present this at participating merchants for discounts</p>
-      </div>
-      
-      <div 
-        id="member-card"
-        className="relative overflow-hidden rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl"
-        style={{
-          ...cardStyles.container,
-          backgroundImage: `url('${cardImage}')`
-        }}
+      <div
+        className={`relative overflow-hidden rounded-2xl shadow-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white border-4 ${tierAccent[membershipTier]}`}
+        style={{ aspectRatio: "1.6/1" }}
       >
-        <div className="relative p-5 h-full flex flex-col" style={cardStyles.content}>
-          {/* Member Name and Status */}
-          <div style={cardStyles.name}>
-            <h2 className="text-2xl font-bold mb-1">{memberName}</h2>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs font-medium">
-                {membershipTier}
-              </span>
-            </div>
+        {/* Bande blanche */}
+        <div className="absolute top-0 left-0 w-full h-1/3 bg-white rounded-b-[40%] flex justify-between items-center px-4 sm:px-6">
+          <span className={`font-bold leading-tight ${tierAccent[membershipTier]} text-[clamp(1rem,3vw,1.6rem)]`}>
+            ZENIKA
+          </span>
+          <img
+            src="/lovable-uploads/logo.png"
+            alt="Logo Globe"
+            className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16"
+          />
+        </div>
+
+        {/* Infos principales */}
+        <div className="relative z-10 h-full flex flex-col justify-center px-4 sm:px-6">
+          <h2 className="font-bold mt-10 sm:mt-12 text-[clamp(1rem,3vw,1.6rem)]">{memberName}</h2>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="px-2 py-1 bg-white bg-opacity-30 rounded-full font-medium text-[clamp(0.6rem,1.5vw,0.8rem)]">
+              {membershipTier}
+            </span>
           </div>
-  
-          {/* Member Details */}
-          <div style={cardStyles.details} className="space-y-2 text-sm">
-            {city && (
-              <div className="flex items-center">
-                <span>{city}</span>
-              </div>
-            )}
-            
-            <div className="flex items-center">
-              <span className="w-10 font-medium">ID:</span>
-              <span className="font-mono">{memberID || 'N/A'}</span>
-            </div>
-            
-            <div className="flex gap-4">
-              <span className="font-medium">Exp:</span>
-              <span>
-                {expiryDate && !isNaN(new Date(expiryDate).getTime()) 
-                  ? (() => {
-                      const date = new Date(expiryDate);
-                      const month = String(date.getMonth() + 1).padStart(2, '0');
-                      const year = date.getFullYear();
-                      return `${month}/${year}`;
-                    })()
-                  : 'N/A'}
-              </span>
-            </div>
+
+          {/* Infos */}
+          <div className="mt-4 sm:mt-6 space-y-1 text-[clamp(0.65rem,1.5vw,0.9rem)]">
+            {city && <p>{city}</p>}
+            <p>ID: <span className="font-mono">{memberID}</span></p>
+            <p>
+              Exp:{" "}
+              {expiryDate && !isNaN(new Date(expiryDate).getTime())
+                ? (() => {
+                    const d = new Date(expiryDate);
+                    return `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+                  })()
+                : "N/A"}
+            </p>
           </div>
-          
+
           {/* QR Code */}
-          <div style={cardStyles.qrCode} className="bg-white p-1.5 rounded">
+          <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white p-1.5 rounded">
             <QRCodeGenerator
               data={qrData}
-              size={60}
+              size={45}
               showDownload={false}
               showShare={false}
               showData={false}
@@ -332,11 +169,8 @@ const MemberDigitalCard = ({
           </div>
         </div>
       </div>
-      
-     
     </div>
   );
-  
 };
 
 export default MemberDigitalCard;

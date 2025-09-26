@@ -3,36 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   Users, 
   DollarSign, 
   TrendingUp, 
   Copy, 
   Share2, 
-  Award,
   Gift,
-  Calendar,
-  Eye,
   Link as LinkIcon,
-  Wallet,
-  ArrowDownToLine,
-  Send,
   Clock,
   CheckCircle,
-  XCircle,
-  ArrowUpToLine
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 
 const AffiliateSection = () => {
   const { user } = useAuth();
-  const { t } = useLanguage();
   const [copiedCode, setCopiedCode] = useState(false);
   const [affiliateData, setAffiliateData] = useState<{
     id?: string;
@@ -44,42 +31,56 @@ const AffiliateSection = () => {
     totalReferrals?: number;
     monthlyEarnings?: number;
   }>({});
-  const [referrals, setReferrals] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Vérifier l'inscription au programme d'affiliation
+  const [referrals] = useState<any[]>([]); // Initialisé comme tableau vide
   useEffect(() => {
     if (user?.id) {
       checkAffiliateStatus();
+    } else {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to enroll in the affiliate program',
+        variant: 'destructive'
+      });
     }
   }, [user]);
-  if (!user) {
-    toast({
-      title: 'Error',
-      description: 'You must be logged in to enroll in the affiliate program',
-      variant: 'destructive'
-    });
-    return;
-  }
+
   const checkAffiliateStatus = async () => {
+    if (!user?.id) return;
+    
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // Vérifier d'abord si l'utilisateur a déjà un compte affilié
+      const { data: existingAffiliate, error } = await supabase
         .from('affiliates')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (data) {
+      if (error) throw error;
+
+      if (existingAffiliate) {
         // Si l'utilisateur est déjà affilié, charger les données
-        await fetchAffiliateData(data);
+        console.log('Données d\'affilié trouvées:', {
+          id: existingAffiliate.id,
+          referral_code: existingAffiliate.referral_code,
+          approved: existingAffiliate.approved
+        });
+        await fetchAffiliateData(existingAffiliate);
+      } else {
+        // Si l'utilisateur n'est pas encore affilié, on ne génère pas de code
+        // Le code sera généré uniquement lors de l'inscription
+        console.log('Aucune donnée d\'affilié trouvée pour cet utilisateur');
+        setAffiliateData({});
       }
     } catch (error) {
       console.error('Error checking affiliate status:', error);
       toast({
         title: 'Error',
-        description: 'Failed to check affiliate status',
+        description: 'Failed to load affiliate data. Please try again later.',
         variant: 'destructive'
       });
     } finally {
@@ -95,57 +96,75 @@ const AffiliateSection = () => {
 
   // S'inscrire au programme d'affiliation
   const enrollInAffiliateProgram = async () => {
+    if (!user?.id) {
+      toast({
+        title: 'Authentication Error',
+        description: 'You must be logged in to join the affiliate program',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsEnrolling(true);
+    
     try {
-      // 1. Get the current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      // Vérifier d'abord si l'utilisateur est déjà inscrit
+      const { data: existingAffiliate, error: checkError } = await supabase
+        .from('affiliates')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
       
-      if (authError || !user) {
-        toast({
-          title: 'Authentication Error',
-          description: 'Please sign in to join the affiliate program',
-          variant: 'destructive'
-        });
+      if (existingAffiliate) {
+        // Si l'utilisateur est déjà inscrit, recharger les données
+        await checkAffiliateStatus();
         return;
       }
-  
-      setIsEnrolling(true);
       
-      // 2. Generate referral code
+      // Générer un code de parrainage unique
       const referralCode = generateReferralCode();
       
-      // 3. Insert the affiliate record with explicit user_id
-      const { data, error } = await supabase
+      // Créer un nouvel enregistrement d'affilié
+      const { data: newAffiliate, error: insertError } = await supabase
         .from('affiliates')
         .insert([{
-          user_id: user.id,  // Make sure this is set
+          user_id: user.id,
           referral_code: referralCode,
-          approved: false,
+          approved: true, // Mettre à true si l'approbation n'est pas nécessaire
           created_at: new Date().toISOString()
         }])
         .select()
         .single();
   
-      if (error) {
-        console.error('Error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details
+      if (insertError) {
+        console.error('Error creating affiliate account:', {
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details
         });
-        throw error;
+        throw insertError;
       }
-  
-      // Refresh affiliate data
-      await checkAffiliateStatus();
+
+      // Mettre à jour les données locales
+      setAffiliateData({
+        ...newAffiliate,
+        totalEarnings: 0,
+        totalReferrals: 0,
+        monthlyEarnings: 0
+      });
       
       toast({
         title: 'Success',
-        description: 'Your affiliate application has been submitted for review.',
+        description: 'Welcome to the Elverra Global Affiliate Program!',
         variant: 'default'
       });
   
     } catch (error) {
       console.error('Failed to enroll in affiliate program:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to enroll in affiliate program';
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while processing your request';
+      
       toast({
         title: 'Error',
         description: errorMessage,
@@ -158,19 +177,67 @@ const AffiliateSection = () => {
 
   // Récupérer les données d'affiliation
   const fetchAffiliateData = async (affiliate: any) => {
+    console.log('Données brutes de l\'affilié reçues:', affiliate);
+    
     try {
-      // Ici, vous pouvez ajouter des appels pour récupérer les statistiques
-      // Par exemple, le nombre de parrainages, les gains, etc.
-      
-      setAffiliateData({
+      // Vérifier si l'affilié a un code d'affiliation
+      if (!affiliate.affiliate_code) {
+        console.error('Aucun code d\'affiliation trouvé pour cet utilisateur');
+        throw new Error('Aucun code d\'affiliation trouvé dans la base de données');
+      }
+
+      // Récupérer les statistiques de l'affilié
+      const { data: stats, error: statsError } = await supabase
+        .from('affiliate_stats')
+        .select('*')
+        .eq('affiliate_id', affiliate.id)
+        .maybeSingle();
+
+      if (statsError) {
+        console.error('Erreur lors de la récupération des statistiques:', statsError);
+        // On continue quand même avec des valeurs par défaut pour les stats
+      }
+
+      // Préparer les données à afficher
+      const affiliateData = {
         ...affiliate,
-        totalEarnings: 0, // Remplacer par les données réelles
-        totalReferrals: 0, // Remplacer par les données réelles
-        monthlyEarnings: 0 // Remplacer par les données réelles
-      });
+        // On s'assure que referral_code est défini avec la valeur de affiliate_code
+        referral_code: affiliate.affiliate_code,
+        totalEarnings: stats?.total_earnings || 0,
+        totalReferrals: stats?.total_referrals || 0,
+        monthlyEarnings: stats?.monthly_earnings || 0,
+        approved: affiliate.approved || false
+      };
+
+      console.log('Données de l\'affilié formatées:', affiliateData);
+      
+      // Mettre à jour l'état avec les données formatées
+      setAffiliateData(affiliateData);
+
     } catch (error) {
-      console.error('Error fetching affiliate data:', error);
-      throw error;
+      console.error('Erreur lors de la récupération des données d\'affiliation:', error);
+      
+      // Mettre à jour avec les données partielles en cas d'erreur
+      const fallbackData = {
+        ...affiliate,
+        // Inclure le code d'affiliation même en cas d'erreur s'il est disponible
+        referral_code: affiliate.affiliate_code,
+        totalEarnings: 0,
+        totalReferrals: 0,
+        monthlyEarnings: 0,
+        approved: affiliate.approved || false
+      };
+      
+      console.log('Utilisation des données de secours:', fallbackData);
+      setAffiliateData(fallbackData);
+      
+      // Afficher un message d'erreur à l'utilisateur
+      const errorMessage = error instanceof Error ? error.message : 'Impossible de charger les données d\'affiliation. Veuillez réessayer plus tard.';
+      toast({
+        title: 'Erreur',
+        description: errorMessage,
+        variant: 'destructive'
+      });
     }
   };
 
@@ -407,13 +474,12 @@ const AffiliateSection = () => {
             </div>
 
             <Button className="w-full" onClick={() => alert('Withdraw functionality coming soon!')}>
-              <Wallet className="h-4 w-4 mr-2" />
+              <Gift className="h-5 w-5 mr-2" />
               Request Withdrawal
             </Button>
           </CardContent>
         </Card>
       </div>
-
       {/* Referral History */}
       <Card>
         <CardHeader>
