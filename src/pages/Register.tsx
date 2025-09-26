@@ -249,78 +249,64 @@ const Register = () => {
           
           
           try {
-            // Essayer d'abord une mise à jour
+            // Try to update existing profile first
             const { error: updateError } = await supabase
               .from('profiles')
               .update(profileData)
               .eq('id', uid);
             
-            // Si la mise à jour échoue (probablement parce que le profil n'existe pas)
+            // If update fails (likely because profile doesn't exist), create a new one
             if (updateError) {
-              // Créer l'entrée dans la table commissions si un code de parrainage est fourni
-              if (data.referral_code) {
-                const { error: commissionError } = await supabase
-                  .from('commissions')
-                  .insert([
-                    {
-                      referrer_id: (await supabase
-                        .from('profiles')
-                        .select('id')
-                        .eq('affiliate_code', data.referral_code)
-                        .single()
-                      ).data?.id,
-                      referred_user_id: uid,
-                      amount: 0, // Montant initial à 0, sera mis à jour après paiement
-                      status: 'pending',
-                      payment_id: null // Aucun paiement pour l'instant
-                    }
-                  ]);
-                  
-                if (commissionError) {
-                  console.error('Erreur lors de la création de la commission:', commissionError);
-                } else {
-                  // Mettre à jour le profil avec le referrer_id
-                  if (data.referral_code) {
-                    const { data: referrerData, error: referrerError } = await supabase
-                      .from('profiles')
-                      .select('id')
-                      .eq('affiliate_code', data.referral_code)
-                      .single();
-
-                    if (referrerData && !referrerError) {
-                      await supabase
-                        .from('profiles')
-                        .update({ 
-                          referred_by: referrerData.id,
-                          referrer_affiliate_code: data.referral_code 
-                        })
-                        .eq('id', uid);
-                    }
-                  }
-                }
-              }
-             
-              
-              // Générer un code d'affiliation si c'est un nouvel utilisateur
+              // Generate affiliate code for new user
               const affiliateCode = generateAffiliateCode();
               
-              // Inclure le referred_by lors de l'insertion du profil
-        const { error: insertError } = await supabase
+              // Include referred_by in the profile data
+              const { error: insertError } = await supabase
                 .from('profiles')
                 .insert([{ 
                   ...profileData,
                   affiliate_code: affiliateCode,
-                  referred_by: registrationData.referred_by // S'assurer que referred_by est inclus
+                  referred_by: data.referral_code || null,
+                  referral_code: generateReferralCode(),
+                  physical_card_status: 'not_requested'
                 }]);
               
               if (insertError) {
-                
                 throw new Error('Failed to create profile: ' + insertError.message);
               }
-             
-            } 
+              
+              // Create commission entry if referral code was provided
+              if (data.referral_code) {
+                try {
+                  const { data: referrerData } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('affiliate_code', data.referral_code)
+                    .single();
+                  
+                  if (referrerData?.id) {
+                    const { error: commissionError } = await supabase
+                      .from('commissions')
+                      .insert([{
+                        referrer_id: referrerData.id,
+                        referred_user_id: uid,
+                        amount: 0,
+                        status: 'pending',
+                        payment_id: null
+                      }]);
+                      
+                    if (commissionError) {
+                      console.error('Erreur commission:', commissionError);
+                    }
+                  }
+                } catch (commissionError) {
+                  console.error('Error processing referral:', commissionError);
+                  // Non-blocking error
+                }
+              }
+            }
           } catch (error) {
-            
+            console.error('Error in profile creation/update:', error);
             throw error;
           }
           
@@ -361,6 +347,13 @@ const Register = () => {
       toast.error(error.message || "Registration failed");
     },
   });
+  // Génère un code de parrainage unique
+  const generateReferralCode = (): string => {
+    const prefix = 'ELV';
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${prefix}${random}`;
+  };
+
   if (user) {
     return <Navigate to="/" replace />;
   }
