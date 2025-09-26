@@ -257,6 +257,29 @@ const Register = () => {
             
             // Si la mise à jour échoue (probablement parce que le profil n'existe pas)
             if (updateError) {
+              // Créer l'entrée dans la table commissions si un code de parrainage est fourni
+              if (data.referral_code) {
+                const { error: commissionError } = await supabase
+                  .from('commissions')
+                  .insert([
+                    {
+                      referrer_id: (await supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('affiliate_code', data.referral_code)
+                        .single()
+                      ).data?.id,
+                      referred_user_id: uid,
+                      amount: 0, // Montant initial à 0, sera mis à jour après paiement
+                      status: 'pending',
+                      payment_id: null // Aucun paiement pour l'instant
+                    }
+                  ]);
+                  
+                if (commissionError) {
+                  console.error('Erreur lors de la création de la commission:', commissionError);
+                }
+              }
              
               
               // Générer un code d'affiliation si c'est un nouvel utilisateur

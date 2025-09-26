@@ -642,8 +642,42 @@ const AffiliateSection = () => {
       
       if (error) throw error;
       
+      // Vérifier s'il y a des utilisateurs qui ont ce profil comme référent
+      const { data: referredUsers, error: refError } = await supabase
+        .from('profiles')
+        .select('id, created_at')
+        .eq('referred_by', user.id);
+        
+      if (refError) throw refError;
+      
+      // Si on a des utilisateurs référencés mais pas de commissions
+      if ((!commissions || commissions.length === 0) && referredUsers && referredUsers.length > 0) {
+        // Créer des entrées de commission pour chaque utilisateur référencé
+        for (const referredUser of referredUsers) {
+          const { error: insertError } = await supabase
+            .from('commissions')
+            .upsert(
+              {
+                referrer_id: user.id,
+                referred_user_id: referredUser.id,
+                amount: 0,
+                status: 'pending',
+                created_at: referredUser.created_at || new Date().toISOString()
+              },
+              { onConflict: 'referrer_id,referred_user_id' }
+            );
+            
+          if (insertError) {
+            console.error('Erreur création commission:', insertError);
+          }
+        }
+        
+        // Recharger les commissions après création
+        return loadReferrals();
+      }
+      
       // Transformer les données pour l'affichage
-      const formattedReferrals = commissions.map(commission => ({
+      const formattedReferrals = (commissions || []).map(commission => ({
         id: commission.id,
         user_id: commission.referred_user_id || 'inconnu',
         created_at: new Date(commission.created_at).toLocaleDateString(),
@@ -657,7 +691,7 @@ const AffiliateSection = () => {
       if (affiliateData.id) {
         setAffiliateData(prev => ({
           ...prev,
-          totalReferrals: formattedReferrals.length,
+          totalReferrals: (referredUsers || []).length,
           totalEarnings: formattedReferrals.reduce((sum, ref) => sum + (ref.amount || 0), 0)
         }));
       }
