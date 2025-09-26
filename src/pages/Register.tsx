@@ -278,6 +278,25 @@ const Register = () => {
                   
                 if (commissionError) {
                   console.error('Erreur lors de la création de la commission:', commissionError);
+                } else {
+                  // Mettre à jour le profil avec le referrer_id
+                  if (data.referral_code) {
+                    const { data: referrerData, error: referrerError } = await supabase
+                      .from('profiles')
+                      .select('id')
+                      .eq('affiliate_code', data.referral_code)
+                      .single();
+
+                    if (referrerData && !referrerError) {
+                      await supabase
+                        .from('profiles')
+                        .update({ 
+                          referred_by: referrerData.id,
+                          referrer_affiliate_code: data.referral_code 
+                        })
+                        .eq('id', uid);
+                    }
+                  }
                 }
               }
              
@@ -398,7 +417,10 @@ const Register = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     
+    
+
     if (!validateForm()) {
       toast.error(t('form.validation_error'));
       return;

@@ -12,7 +12,7 @@ import WithdrawalRequest from '@/components/affiliates/WithdrawalRequest';
 import OnboardingFlow from '@/components/affiliates/OnboardingFlow';
 import MembershipGuard from '@/components/membership/MembershipGuard';
 import { toast } from 'sonner';
-import { useAffiliateData, type ReferralData } from '@/hooks/useAffiliateData';
+import { useAffiliateData } from '@/hooks/useAffiliateData';
 
 const AffiliateDashboard = () => {
   const [copied, setCopied] = useState(false);
@@ -22,7 +22,7 @@ const AffiliateDashboard = () => {
   const handleCopyReferralLink = () => {
     if (!affiliateData) return;
 
-    navigator.clipboard.writeText(`https://elverraglobalml.com/register?ref=${affiliateData.referralCode}`);
+    navigator.clipboard.writeText(`https://elverraglobalml.com/register?ref=${affiliateData.referrer?.affiliate_code}`);
     setCopied(true);
     toast("Referral link copied to clipboard.");
 
@@ -345,7 +345,7 @@ const AffiliateDashboard = () => {
                   <div className="flex">
                     <Input
                       readOnly
-                      value={`https://elverra-global.com/register?ref=${affiliateData.referralCode}`}
+                      value={`https://elverra-global.com/register?ref=${affiliateData.referrer?.affiliate_code}`}
                       className="rounded-r-none"
                     />
                     <Button
@@ -360,7 +360,7 @@ const AffiliateDashboard = () => {
                     <p className="text-sm font-medium">Referral Code:</p>
                     <div className="flex items-center mt-1">
                       <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded font-mono text-sm">
-                        {affiliateData.referralCode}
+                        {affiliateData.referrer?.affiliate_code || 'N/A'}
                       </span>
                     </div>
                   </div>

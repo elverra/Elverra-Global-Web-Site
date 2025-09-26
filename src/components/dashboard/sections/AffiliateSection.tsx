@@ -621,12 +621,53 @@ const AffiliateSection = () => {
     }
   };
 
-  // Fonction pour charger les références
   const loadReferrals = async () => {
     if (!user?.id || !affiliateData.approved) return;
     
     try {
-      // Récupérer les commissions qui correspondent à cet affilié
+      // Récupérer l'affiliate_code de l'utilisateur actuel
+      const { data: currentUserData, error: userError } = await supabase
+        .from('profiles')
+        .select('affiliate_code')
+        .eq('id', user.id)
+        .single();
+        
+      if (userError || !currentUserData) {
+        throw userError || new Error('Profil utilisateur non trouvé');
+      }
+      
+      // Récupérer les utilisateurs qui ont cet utilisateur comme référent
+      // Soit par referred_by, soit par referrer_affiliate_code
+      const { data: referredUsers, error: refError } = await supabase
+        .from('profiles')
+        .select('id, created_at, full_name, phone, referrer_affiliate_code')
+        .or(`referrer_affiliate_code.eq.${currentUserData.affiliate_code},referred_by.eq.${user.id}`);
+  
+      if (refError) throw refError;
+  
+      // Pour chaque utilisateur référencé, s'assurer qu'il a une entrée dans la table commissions
+      if (referredUsers && referredUsers.length > 0) {
+        const commissionsToInsert = referredUsers.map(user => ({
+          referrer_id: user.id,
+          referred_user_id: user.id,
+          amount: 0,
+          status: 'pending',
+          created_at: user.created_at || new Date().toISOString()
+        }));
+  
+        // Utiliser upsert pour éviter les doublons
+        const { error: upsertError } = await supabase
+          .from('commissions')
+          .upsert(commissionsToInsert, {
+            onConflict: 'referrer_id,referred_user_id'
+          });
+  
+        if (upsertError) {
+          console.error('Erreur lors de la création des commissions:', upsertError);
+        }
+      }
+  
+      // Maintenant, récupérer toutes les commissions pour l'affichage
       const { data: commissions, error } = await supabase
         .from('commissions')
         .select(`
@@ -635,46 +676,18 @@ const AffiliateSection = () => {
           amount,
           status,
           created_at,
-          referred_user:referred_user_id(email)
+          referred_user:referred_user_id(
+            id,
+            first_name,
+            last_name,
+            email,
+            created_at
+          )
         `)
         .eq('referrer_id', user.id)
         .order('created_at', { ascending: false });
-      
+  
       if (error) throw error;
-      
-      // Vérifier s'il y a des utilisateurs qui ont ce profil comme référent
-      const { data: referredUsers, error: refError } = await supabase
-        .from('profiles')
-        .select('id, created_at')
-        .eq('referred_by', user.id);
-        
-      if (refError) throw refError;
-      
-      // Si on a des utilisateurs référencés mais pas de commissions
-      if ((!commissions || commissions.length === 0) && referredUsers && referredUsers.length > 0) {
-        // Créer des entrées de commission pour chaque utilisateur référencé
-        for (const referredUser of referredUsers) {
-          const { error: insertError } = await supabase
-            .from('commissions')
-            .upsert(
-              {
-                referrer_id: user.id,
-                referred_user_id: referredUser.id,
-                amount: 0,
-                status: 'pending',
-                created_at: referredUser.created_at || new Date().toISOString()
-              },
-              { onConflict: 'referrer_id,referred_user_id' }
-            );
-            
-          if (insertError) {
-            console.error('Erreur création commission:', insertError);
-          }
-        }
-        
-        // Recharger les commissions après création
-        return loadReferrals();
-      }
       
       // Transformer les données pour l'affichage
       const formattedReferrals = (commissions || []).map(commission => ({
@@ -684,24 +697,23 @@ const AffiliateSection = () => {
         status: commission.status || 'pending',
         amount: commission.amount || 0
       }));
-      
+  
       setReferrals(formattedReferrals);
       
       // Mettre à jour le nombre total de références
       if (affiliateData.id) {
         setAffiliateData(prev => ({
           ...prev,
-          totalReferrals: (referredUsers || []).length,
+          totalReferrals: formattedReferrals.length,
           totalEarnings: formattedReferrals.reduce((sum, ref) => sum + (ref.amount || 0), 0)
         }));
       }
-      
     } catch (error) {
       console.error('Erreur lors du chargement des références:', error);
       toast({
         title: 'Erreur',
         description: 'Impossible de charger la liste des parrainages.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
