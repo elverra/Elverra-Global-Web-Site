@@ -259,15 +259,31 @@ const Register = () => {
             if (updateError) {
               // Generate affiliate code for new user
               const affiliateCode = generateAffiliateCode();
+              const newReferralCode = generateReferralCode();
               
-              // Include referred_by in the profile data
+              // Find referrer's user ID if referral code is provided
+              let referrerId = null;
+              if (data.referral_code) {
+                const { data: referrerData } = await supabase
+                  .from('profiles')
+                  .select('id, affiliate_code')
+                  .or(`referral_code.eq.${data.referral_code},affiliate_code.eq.${data.referral_code}`)
+                  .single();
+                
+                if (referrerData) {
+                  referrerId = referrerData.id;
+                }
+              }
+              
+              // Create the new profile with referrer info
               const { error: insertError } = await supabase
                 .from('profiles')
                 .insert([{ 
                   ...profileData,
-                  affiliate_code: affiliateCode,
-                  referred_by: data.referral_code || null,
-                  referral_code: generateReferralCode(),
+                  affiliate_code: `ELV-${affiliateCode}`,
+                  referred_by: referrerId,
+                  referrer_affiliate_code: data.referral_code || null,
+                  referral_code: newReferralCode,
                   physical_card_status: 'not_requested'
                 }]);
               
@@ -275,29 +291,24 @@ const Register = () => {
                 throw new Error('Failed to create profile: ' + insertError.message);
               }
               
-              // Create commission entry if referral code was provided
-              if (data.referral_code) {
+              // Create commission entry if referrer was found
+              if (referrerId) {
                 try {
-                  const { data: referrerData } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('affiliate_code', data.referral_code)
-                    .single();
                   
-                  if (referrerData?.id) {
-                    const { error: commissionError } = await supabase
-                      .from('commissions')
-                      .insert([{
-                        referrer_id: referrerData.id,
-                        referred_user_id: uid,
-                        amount: 0,
-                        status: 'pending',
-                        payment_id: null
-                      }]);
-                      
-                    if (commissionError) {
-                      console.error('Erreur commission:', commissionError);
-                    }
+                  const { error: commissionError } = await supabase
+                    .from('commissions')
+                    .insert([{
+                      referrer_id: referrerId,
+                      referred_user_id: uid,
+                      amount: 0,
+                      status: 'pending',
+                      payment_id: null,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    }]);
+                    
+                  if (commissionError) {
+                    console.error('Erreur commission:', commissionError);
                   }
                 } catch (commissionError) {
                   console.error('Error processing referral:', commissionError);
