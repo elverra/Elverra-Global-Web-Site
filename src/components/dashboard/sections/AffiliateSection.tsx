@@ -40,7 +40,7 @@ interface Lesson {
 
 const AffiliateSection = () => {
   const { user } = useAuth();
-  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [affiliateData, setAffiliateData] = useState<{
     id?: string;
     user_id?: string;
@@ -51,10 +51,17 @@ const AffiliateSection = () => {
     totalReferrals?: number;
     monthlyEarnings?: number;
   }>({});
+  
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [referrals, setReferrals] = useState<Array<{
+    id: string;
+    user_id: string;
+    created_at: string;
+    status: 'active' | 'inactive' | 'pending';
+    amount: number;
+  }>>([]);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [referrals] = useState<any[]>([]);
-  const [score, setScore] = useState({ correct: 0, total: 0 });
   
   // États pour l'onboarding
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -190,6 +197,64 @@ const AffiliateSection = () => {
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la progression:', error);
       throw error;
+    }
+  };
+
+  // Copy referral code to clipboard
+  const copyReferralCode = async () => {
+    if (!affiliateData.affiliate_code) return;
+    
+    try {
+      await navigator.clipboard.writeText(affiliateData.affiliate_code);
+      setCopiedCode(true);
+      
+      // Reset after 2 seconds
+      setTimeout(() => setCopiedCode(false), 2000);
+      
+      toast({
+        title: 'Code copié !',
+        description: 'Votre code de parrainage a été copié dans le presse-papier.',
+      });
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de copier le code de parrainage',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Share referral link
+  const shareReferralLink = async () => {
+    const shareUrl = `https://elverraglobalml.com/register?ref=${affiliateData.affiliate_code}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Rejoignez-moi sur Elverra Global',
+          text: 'Découvrez les avantages de la carte Elverra Global avec mon lien de parrainage !',
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: 'Lien copié !',
+          description: 'Le lien de parrainage a été copié dans votre presse-papier.',
+        });
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+        toast({
+          title: 'Erreur',
+          description: 'Impossible de copier le lien de parrainage',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -332,11 +397,12 @@ const AffiliateSection = () => {
     const totalQuestions = currentLesson.questions.length;
     const isPassingScore = correctAnswers / totalQuestions >= 0.7; // 70% to pass
     
-    // Update score state
-    setScore({
+    // Mise à jour du score localement (pas besoin de state séparé)
+    const newScore = {
       correct: correctAnswers,
       total: totalQuestions
-    });
+    };
+    console.log('Score du quiz:', newScore);
 
     if (isPassingScore) {
       const completedLessons = [...new Set([...userProgress.completed_lessons || [], onboardingStep])];
@@ -541,33 +607,13 @@ const AffiliateSection = () => {
     }
   };
 
-  // Copier le code de parrainage
-  const copyReferralCode = () => {
+  // Copier le lien de parrainage
+  const copyReferralLink = () => {
     if (affiliateData?.affiliate_code) {
-      navigator.clipboard.writeText(affiliateData.affiliate_code);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-      toast({
-        title: 'Copié !',
-        description: 'Le code de parrainage a été copié dans le presse-papier',
-      });
-    }
-  };
-
-  // Partager le lien de parrainage
-  const shareReferralLink = () => {
-    if (!affiliateData?.affiliate_code) return;
-    
-    const referralLink = `https://elverraglobalml.com/register?ref=${affiliateData.affiliate_code}`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: 'Rejoignez Elverra Global',
-        text: 'Rejoignez-moi sur Elverra Global et bénéficiez d\'avantages exclusifs !',
-        url: referralLink
-      }).catch(console.error);
-    } else {
+      const referralLink = `https://elverraglobal.com/register?ref=${affiliateData.affiliate_code}`;
       navigator.clipboard.writeText(referralLink);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
       toast({
         title: 'Lien copié !',
         description: 'Le lien de parrainage a été copié dans le presse-papier',
@@ -575,6 +621,57 @@ const AffiliateSection = () => {
     }
   };
 
+  // Fonction pour charger les références
+  const loadReferrals = async () => {
+    if (!user?.id || !affiliateData.approved) return;
+    
+    try {
+      // Récupérer les commissions qui correspondent à cet affilié
+      const { data: commissions, error } = await supabase
+        .from('commissions')
+        .select(`
+          id,
+          referred_user_id,
+          amount,
+          status,
+          created_at,
+          referred_user:referred_user_id(email)
+        `)
+        .eq('referrer_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Transformer les données pour l'affichage
+      const formattedReferrals = commissions.map(commission => ({
+        id: commission.id,
+        user_id: commission.referred_user_id || 'inconnu',
+        created_at: new Date(commission.created_at).toLocaleDateString(),
+        status: commission.status || 'pending',
+        amount: commission.amount || 0
+      }));
+      
+      setReferrals(formattedReferrals);
+      
+      // Mettre à jour le nombre total de références
+      if (affiliateData.id) {
+        setAffiliateData(prev => ({
+          ...prev,
+          totalReferrals: formattedReferrals.length,
+          totalEarnings: formattedReferrals.reduce((sum, ref) => sum + (ref.amount || 0), 0)
+        }));
+      }
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des références:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de charger la liste des parrainages.',
+        variant: 'destructive'
+      });
+    }
+  };
+  
   // Charger la progression et les données d'affiliation au montage
   useEffect(() => {
     const initialize = async () => {
@@ -587,6 +684,13 @@ const AffiliateSection = () => {
     
     initialize();
   }, [user]);
+  
+  // Charger les références quand les données d'affiliation sont mises à jour
+  useEffect(() => {
+    if (affiliateData.approved) {
+      loadReferrals();
+    }
+  }, [affiliateData.approved]);
 
   // Si l'utilisateur n'a pas encore terminé l'onboarding
   if (isLoadingProgress) {
@@ -769,7 +873,6 @@ const AffiliateSection = () => {
       </div>
     );
   }
-
   // Vérifier si l'utilisateur a des données d'affiliation valides
   // On se base uniquement sur la table affiliates pour la vérification
   const hasAffiliateData = affiliateData && (affiliateData.id || affiliateData.user_id);
@@ -1158,26 +1261,26 @@ const AffiliateSection = () => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-3 px-4 font-semibold">Nom</th>
-                    <th className="text-left py-3 px-4 font-semibold">Email</th>
+                    <th className="text-left py-3 px-4 font-semibold">Utilisateur</th>
+                    <th className="text-left py-3 px-4 font-semibold">ID</th>
                     <th className="text-left py-3 px-4 font-semibold">Date d'adhésion</th>
                     <th className="text-left py-3 px-4 font-semibold">Statut</th>
-                    <th className="text-left py-3 px-4 font-semibold">Gains</th>
+                    <th className="text-left py-3 px-4 font-semibold">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
                   {referrals.map((referral) => (
                     <tr key={referral.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4 font-medium">{referral.name}</td>
-                      <td className="py-4 px-4">{referral.email}</td>
-                      <td className="py-4 px-4">{new Date(referral.joinDate).toLocaleDateString()}</td>
+                      <td className="py-4 px-4 font-medium">Utilisateur {referral.user_id}</td>
+                      <td className="py-4 px-4">ID: {referral.user_id}</td>
+                      <td className="py-4 px-4">{referral.created_at}</td>
                       <td className="py-4 px-4">
                         <Badge variant="outline" className={referral.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}>
-                          {referral.status}
+                          {referral.status === 'active' ? 'Actif' : 'En attente'}
                         </Badge>
                       </td>
                       <td className="py-4 px-4 font-semibold text-green-600">
-                        {referral.earnings?.toLocaleString()} FCFA
+                        {referral.amount?.toLocaleString()} FCFA
                       </td>
                     </tr>
                   ))}
