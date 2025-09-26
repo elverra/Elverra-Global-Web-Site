@@ -5,22 +5,39 @@ import Layout from "@/components/layout/Layout";
 import PremiumBanner from "@/components/layout/PremiumBanner";
 import { supabase } from "@/lib/supabaseClient";
 
-// Fonction utilitaire pour récupérer l'ID utilisateur à partir d'un code d'affiliation
+// Fonction utilitaire pour récupérer l'ID utilisateur à partir d'un code d'affiliation ou de référence
 async function getUserIdByAffiliateCode(affiliateCode: string): Promise<string | null> {
   if (!affiliateCode) return null;
   
-  const { data, error } = await supabase
-    .from('users')
-    .select('id')
-    .eq('affiliate_code', affiliateCode)
-    .single();
+  console.log('🔍 Recherche du code de parrainage:', affiliateCode);
+  
+  try {
+    // Essayer d'abord avec le code de référence
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, referral_code, affiliate_code')
+      .or(`referral_code.eq.${affiliateCode},affiliate_code.eq.${affiliateCode}`)
+      .single();
+      
+    if (error) {
+      console.error('❌ Erreur lors de la recherche du code de parrainage:', error);
+      return null;
+    }
     
-  if (error || !data) {
-    console.error('Erreur lors de la récupération de l\'utilisateur par code d\'affiliation:', error);
+    if (!data) {
+      console.log('ℹ️ Aucun utilisateur trouvé avec ce code de parrainage');
+      return null;
+    }
+    
+    console.log('✅ Utilisateur trouvé avec l\'ID:', data.id);
+    console.log('   - Code de référence:', data.referral_code);
+    console.log('   - Code d\'affiliation:', data.affiliate_code);
+    
+    return data.id;
+  } catch (error) {
+    console.error('❌ Erreur inattendue dans getUserIdByAffiliateCode:', error);
     return null;
   }
-  
-  return data.id;
 }
 import {
   Card,
@@ -131,9 +148,12 @@ const Register = () => {
       }
 
       // Récupérer l'ID du référent à partir du code d'affiliation
-      const referredByUserId = data.referral_code 
-        ? await getUserIdByAffiliateCode(data.referral_code)
-        : null;
+      let referredByUserId = null;
+      if (data.referral_code) {
+        console.log('🔍 Recherche du référent avec le code:', data.referral_code);
+        referredByUserId = await getUserIdByAffiliateCode(data.referral_code);
+        console.log('🔗 ID du référent trouvé:', referredByUserId);
+      }
 
       // Préparer les données d'inscription
       const registrationData = {
@@ -149,7 +169,7 @@ const Register = () => {
         physical_card_requested: data.physical_card_requested,
       };
       
-      console.log('Données d\'inscription avec référent:', {
+      console.log('📝 Données d\'inscription complètes:', {
         ...registrationData,
         password: '***', // Ne pas logger le mot de passe
         referred_by: referredByUserId
@@ -276,16 +296,25 @@ const Register = () => {
               }
               
               // Create the new profile with referrer info
+              const profileToInsert = {
+                ...profileData,
+                affiliate_code: `ELV-${affiliateCode}`,
+                referred_by: referredByUserId, // Utiliser referredByUserId de la fonction parente
+                referrer_affiliate_code: data.referral_code || null,
+                referral_code: newReferralCode,
+                physical_card_status: 'not_requested',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              
+              console.log('💾 Création du profil avec les données:', {
+                ...profileToInsert,
+                referred_by: referredByUserId
+              });
+              
               const { error: insertError } = await supabase
                 .from('profiles')
-                .insert([{ 
-                  ...profileData,
-                  affiliate_code: `ELV-${affiliateCode}`,
-                  referred_by: referrerId,
-                  referrer_affiliate_code: data.referral_code || null,
-                  referral_code: newReferralCode,
-                  physical_card_status: 'not_requested'
-                }]);
+                .insert([profileToInsert]);
               
               if (insertError) {
                 throw new Error('Failed to create profile: ' + insertError.message);

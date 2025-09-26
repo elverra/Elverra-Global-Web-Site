@@ -584,28 +584,7 @@ const SubscriptionsSection = () => {
         </TabsContent>
 
         <TabsContent value="plans" className="space-y-6">
-          {/* Billing Cycle Toggle */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-center gap-4">
-                <span className={selectedBillingCycle === 'monthly' ? 'font-semibold' : 'text-gray-600'}>
-                  Monthly
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedBillingCycle(selectedBillingCycle === 'monthly' ? 'yearly' : 'monthly')}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-                <span className={selectedBillingCycle === 'yearly' ? 'font-semibold' : 'text-gray-600'}>
-                  Yearly
-                  <Badge className="ml-2 bg-green-100 text-green-800">Save 17%</Badge>
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
+       
           {/* Your Cards (reflect child + one adult if available) */}
           <Card>
             <CardHeader>
@@ -618,7 +597,7 @@ const SubscriptionsSection = () => {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="capitalize">{c.cardType === 'child' ? 'Kiddies' : c.cardType}</Badge>
-                        <span className="text-xs text-gray-500">{c.cardNumber}</span>
+                        
                       </div>
                       <Badge className={c.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>{c.status}</Badge>
                     </div>
