@@ -529,8 +529,8 @@ const Register = () => {
   return (
     <Layout>
       <PremiumBanner
-        title={t('register.banner.title')}
-        description={t('register.banner.description')}
+        title="Register to Access Your Account"
+        description="Create your account and start enjoying our services"
         backgroundImage="https://images.unsplash.com/photo-1560472355-536de3962603?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
       />
 

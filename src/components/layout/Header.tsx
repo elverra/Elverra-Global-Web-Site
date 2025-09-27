@@ -113,7 +113,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import CountrySelector from "./CountrySelector";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -324,7 +323,7 @@ const Header = () => {
 
           {/* Right Side Actions */}
           <div className="flex items-center space-x-3">
-            <CountrySelector />
+      
 
             {user ? (
               <DropdownMenu>
