@@ -59,6 +59,7 @@ const AffiliateSection = () => {
     created_at: string;
     status: 'active' | 'inactive' | 'pending';
     amount: number;
+    full_name: String;
   }>>([]);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -668,37 +669,39 @@ const AffiliateSection = () => {
       }
   
       // Maintenant, récupérer toutes les commissions pour l'affichage
-      const { data: commissions, error } = await supabase
-        .from('commissions')
-        .select(`
-          id,
-          referred_user_id,
-          amount,
-          status,
-          created_at,
-          referred_user:referred_user_id(
-            id,
-            first_name,
-            last_name,
-            email,
-            created_at
-          )
-        `)
-        .eq('referrer_id', user.id)
-        .order('created_at', { ascending: false });
-  
-      if (error) throw error;
-      
-      // Transformer les données pour l'affichage
-      const formattedReferrals = (commissions || []).map(commission => ({
-        id: commission.id,
-        user_id: commission.referred_user_id || 'inconnu',
-        created_at: new Date(commission.created_at).toLocaleDateString(),
-        status: commission.status || 'pending',
-        amount: commission.amount || 0
-      }));
-  
-      setReferrals(formattedReferrals);
+     const { data: commissions, error } = await supabase
+  .from('commissions')
+  .select('id, referred_user_id, amount, status, created_at')
+  .eq('referrer_id', user.id)
+  .order('created_at', { ascending: false });
+
+if (error) throw error;
+
+// Récupérer les profils correspondants
+const userIds = commissions.map(c => c.referred_user_id);
+
+const { data: profiles, error: profileError } = await supabase
+  .from('profiles')
+  .select("*")
+  .in('id', userIds);
+
+if (profileError) throw profileError;
+
+// Fusionner
+const formattedReferrals = commissions.map(c => {
+  const profile = profiles.find(p => p.id === c.referred_user_id);
+  return {
+    id: c.id,
+    user_id: c.referred_user_id,
+    full_name: profile ? `${profile.full_name}` : 'Inconnu',
+    phone: profile?.phone || 'N/A',
+    created_at: new Date(c.created_at).toLocaleDateString(),
+    status: c.status,
+    amount: c.amount
+  };
+});
+
+setReferrals(formattedReferrals);
       
       // Mettre à jour le nombre total de références
       if (affiliateData.id) {
@@ -1307,8 +1310,8 @@ const AffiliateSection = () => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-3 px-4 font-semibold">Utilisateur</th>
                     <th className="text-left py-3 px-4 font-semibold">ID</th>
+                    <th className="text-left py-3 px-4 font-semibold">Utilisateur</th>
                     <th className="text-left py-3 px-4 font-semibold">Date d'adhésion</th>
                     <th className="text-left py-3 px-4 font-semibold">Statut</th>
                     <th className="text-left py-3 px-4 font-semibold">Montant</th>
@@ -1317,8 +1320,8 @@ const AffiliateSection = () => {
                 <tbody>
                   {referrals.map((referral) => (
                     <tr key={referral.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4 font-medium">Utilisateur {referral.user_id}</td>
-                      <td className="py-4 px-4">ID: {referral.user_id}</td>
+                      <td className="py-4 px-4">{referral.user_id}</td>
+                      <td className="py-4 px-4 font-medium">{referral.full_name}</td>
                       <td className="py-4 px-4">{referral.created_at}</td>
                       <td className="py-4 px-4">
                         <Badge variant="outline" className={referral.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}>
