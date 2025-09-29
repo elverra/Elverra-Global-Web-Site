@@ -25,7 +25,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 
-// Types pour l'onboarding
+// Types for onboarding
 interface Lesson {
   id: number;
   title: string;
@@ -64,7 +64,7 @@ const AffiliateSection = () => {
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // États pour l'onboarding
+  // States for onboarding
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [userAnswers, setUserAnswers] = useState<{[key: string]: string}>({});
@@ -72,87 +72,87 @@ const AffiliateSection = () => {
   const [userProgress, setUserProgress] = useState<any>(null);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
-  // Leçons de l'onboarding
+  // Onboarding lessons
   const lessons: Lesson[] = [
     {
       id: 1,
-      title: "Introduction au Programme d'Affiliation",
+      title: "Introduction to the Affiliate Program",
       videoUrl: "https://www.youtube.com/embed/IlhVuGv0zcM",
-      description: "Découvrez comment fonctionne notre programme d'affiliation et comment gagner de l'argent avec nous.",
+      description: "Discover how our affiliate program works and how to earn money with us.",
       questions: [
         {
-          question: "Quel est le nom de la carte proposée par Elverra Global ?",
-          options: ["Carte Africaine", "Carte ZENIKA", "Carte Elverra", "Carte de Progrès"],
-          correctAnswer: "Carte Elverra"
+          question: "What is the name of the card offered by Elverra Global?",
+          options: ["African Card", "ZENIKA Card", "Elverra Card", "Progress Card"],
+          correctAnswer: "Elverra Card"
         },
         {
-          question: "Quels sont les avantages de la carte ZENIKA ?",
-          options: ["Réductions uniquement", "Privilèges spéciaux uniquement", "Réductions et privilèges spéciaux", "Aucun avantage"],
-          correctAnswer: "Réductions et privilèges spéciaux"
+          question: "What are the benefits of the ZENIKA card?",
+          options: ["Discounts only", "Special privileges only", "Discounts and special privileges", "No benefits"],
+          correctAnswer: "Discounts and special privileges"
         },
         {
-          question: "Quel est l'objectif principal d'Elverra Global ?",
-          options: ["Fournir des services financiers", "Fournir des services financiers", "Favoriser l'autonomisation et le progrès", "Offrir des emplois"],
-          correctAnswer: "Favoriser l'autonomisation et le progrès"
+          question: "What is the main goal of Elverra Global?",
+          options: ["Provide financial services", "Provide financial services", "Promote empowerment and progress", "Offer jobs"],
+          correctAnswer: "Promote empowerment and progress"
         }
       ]
     },
     {
       id: 2,
-      title: "Introduction au Programme d'Affiliation",
+      title: "Introduction to the Affiliate Program",
       videoUrl: "https://www.youtube.com/embed/cxvlO0NCG9g",
-      description: "Découvrez comment fonctionne notre programme d'affiliation et comment gagner de l'argent avec nous.",
+      description: "Discover how our affiliate program works and how to earn money with us.",
       questions: [
         {
-          question: "Quels services sont proposés par Elverra Global ?",
-          options: ["Centre d'emploi, prêts à court terme, boutique en ligne", "Bibliothèque en ligne gratuite, Ô Secours", "Tous les services mentionnés ci-dessus", "Aucun des services mentionnés ci-dessus"],
-          correctAnswer: "Tous les services mentionnés ci-dessus"
+          question: "What services are offered by Elverra Global?",
+          options: ["Employment center, short-term loans, online store", "Free online library, Ô Secours", "All the services mentioned above", "None of the services mentioned above"],
+          correctAnswer: "All the services mentioned above"
         },
         {
-          question: "Combien de temps dure la période d'essai ?",
-          options: ["7 jours", "14 jours", "30 jours", "Pas de période d'essai"],
-          correctAnswer: "14 jours"
+          question: "How long is the trial period?",
+          options: ["7 days", "14 days", "30 days", "No trial period"],
+          correctAnswer: "14 days"
         },
         {
-          question: "Quand êtes-vous payé pour vos parrainages ?",
-          options: ["Immédiatement", "À la fin du mois", "Après 30 jours", "Après approbation manuelle"],
-          correctAnswer: "À la fin du mois"
+          question: "When are you paid for your referrals?",
+          options: ["Immediately", "At the end of the month", "After 30 days", "After manual approval"],
+          correctAnswer: "At the end of the month"
         }
       ]
     },
     {
       id: 3,
-      title: "Introduction au Programme d'Affiliation",
+      title: "Introduction to the Affiliate Program",
       videoUrl: "https://www.youtube.com/embed/Pgd4bfipIKk",
-      description: "Découvrez comment fonctionne notre programme d'affiliation et comment gagner de l'argent avec nous.",
+      description: "Discover how our affiliate program works and how to earn money with us.",
       questions: [
         {
-          question: "Quel est le pourcentage de commission sur les parrainages ?",
+          question: "What is the commission percentage on referrals?",
           options: ["5%", "10%", "15%", "20%"],
           correctAnswer: "10%"
         },
         {
-          question: "Combien de temps dure la période d'essai ?",
-          options: ["7 jours", "14 jours", "30 jours", "Pas de période d'essai"],
-          correctAnswer: "14 jours"
+          question: "How long is the trial period?",
+          options: ["7 days", "14 days", "30 days", "No trial period"],
+          correctAnswer: "14 days"
         },
         {
-          question: "Quand êtes-vous payé pour vos parrainages ?",
-          options: ["Immédiatement", "À la fin du mois", "Après 30 jours", "Après approbation manuelle"],
-          correctAnswer: "À la fin du mois"
+          question: "When are you paid for your referrals?",
+          options: ["Immediately", "At the end of the month", "After 30 days", "After manual approval"],
+          correctAnswer: "At the end of the month"
         }
       ]
     },
     
   ];
 
-  // Charger la progression de l'utilisateur
+  // Load user progress
   const loadUserProgress = async () => {
     if (!user?.id) return;
     
     setIsLoadingProgress(true);
     try {
-      // Vérifier d'abord si l'utilisateur a déjà une entrée
+      // First check if the user already has an entry
       const { data, error } = await supabase
         .from('user_progress')
         .select('*')
@@ -163,13 +163,13 @@ const AffiliateSection = () => {
   
       if (data) {
         setUserProgress(data);
-        // Si l'onboarding n'est pas terminé, on l'affiche
+        // If onboarding is not completed, show it
         if (!data.onboarding_complete) {
           setShowOnboarding(true);
           setOnboardingStep(data.current_lesson || 0);
         }
       } else {
-        // Créer une nouvelle entrée
+        // Create a new entry
         const newProgress = {
           user_id: user.id,
           current_lesson: 0,
@@ -202,7 +202,7 @@ const AffiliateSection = () => {
       setIsLoadingProgress(false);
     }
   };
-  // Mettre à jour la progression de l'utilisateur
+  // Update user progress
   const updateUserProgress = async (updates: any) => {
     if (!user?.id) return;
 
@@ -219,7 +219,7 @@ const AffiliateSection = () => {
       setUserProgress(data);
       return data;
     } catch (error) {
-      console.error('Erreur lors de la mise à jour de la progression:', error);
+      console.error('Error updating progress:', error);
       throw error;
     }
   };
@@ -236,14 +236,14 @@ const AffiliateSection = () => {
       setTimeout(() => setCopiedCode(false), 2000);
       
       toast({
-        title: 'Code copié !',
-        description: 'Votre code de parrainage a été copié dans le presse-papier.',
+        title: 'Code copied!',
+        description: 'Your referral code has been copied to the clipboard.',
       });
     } catch (err) {
       console.error('Failed to copy:', err);
       toast({
-        title: 'Erreur',
-        description: 'Impossible de copier le code de parrainage',
+        title: 'Error',
+        description: 'Unable to copy the referral code',
         variant: 'destructive',
       });
     }
@@ -256,8 +256,8 @@ const AffiliateSection = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Rejoignez-moi sur Elverra Global',
-          text: 'Découvrez les avantages de la carte Elverra Global avec mon lien de parrainage !',
+          title: 'Join me on Elverra Global',
+          text: 'Discover the benefits of the Elverra Global card with my referral link!',
           url: shareUrl,
         });
       } catch (err) {
@@ -268,14 +268,14 @@ const AffiliateSection = () => {
       try {
         await navigator.clipboard.writeText(shareUrl);
         toast({
-          title: 'Lien copié !',
-          description: 'Le lien de parrainage a été copié dans votre presse-papier.',
+          title: 'Link copied!',
+          description: 'The referral link has been copied to your clipboard.',
         });
       } catch (err) {
         console.error('Failed to copy link:', err);
         toast({
-          title: 'Erreur',
-          description: 'Impossible de copier le lien de parrainage',
+          title: 'Error',
+          description: 'Unable to copy the referral link',
           variant: 'destructive',
         });
       }
@@ -331,14 +331,14 @@ const AffiliateSection = () => {
 
         if (!affiliate.approved) {
           toast({
-            title: 'En attente d\'approbation',
-            description: 'Votre demande d\'affiliation est en cours de traitement.',
+            title: 'Pending Approval',
+            description: 'Your affiliate application is being processed.',
             variant: 'default'
           });
         } else {
           toast({
-            title: 'Bienvenue !',
-            description: 'Votre compte d\'affilié est actif.',
+            title: 'Welcome!',
+            description: 'Your affiliate account is active.',
             variant: 'default'
           });
         }
@@ -396,8 +396,8 @@ const AffiliateSection = () => {
     } catch (error) {
       console.error('Error checking affiliate status:', error);
       toast({
-        title: 'Erreur',
-        description: 'Impossible de charger les données d\'affiliation. Veuillez réessayer plus tard.',
+        title: 'Error',
+        description: 'Unable to load affiliate data. Please try again later.',
         variant: 'destructive'
       });
     } finally {
@@ -421,12 +421,12 @@ const AffiliateSection = () => {
     const totalQuestions = currentLesson.questions.length;
     const isPassingScore = correctAnswers / totalQuestions >= 0.7; // 70% to pass
     
-    // Mise à jour du score localement (pas besoin de state séparé)
+    // Update score locally (no need for separate state)
     const newScore = {
       correct: correctAnswers,
       total: totalQuestions
     };
-    console.log('Score du quiz:', newScore);
+    console.log('Quiz score:', newScore);
 
     if (isPassingScore) {
       const completedLessons = [...new Set([...userProgress.completed_lessons || [], onboardingStep])];
@@ -465,8 +465,8 @@ const AffiliateSection = () => {
       } catch (error) {
         console.error('Error updating progress:', error);
         toast({
-          title: 'Erreur',
-          description: 'Une erreur est survenue lors de la mise à jour de votre progression.',
+          title: 'Error',
+          description: 'An error occurred while updating your progress.',
           variant: 'destructive'
         });
       }
@@ -488,39 +488,39 @@ const AffiliateSection = () => {
     }
   };
 
-  // Gérer l'inscription au programme d'affiliation
+  // Handle enrollment in affiliate program
   const enrollInAffiliateProgram = async () => {
     console.log('1. Starting enrollment process...');
     
-    // Vérifier si l'utilisateur est connecté
+    // Check if the user is logged in
     if (!user?.id) {
       console.log('❌ No user ID available');
       toast({
-        title: 'Authentification requise',
-        description: 'Vous devez être connecté pour rejoindre le programme d\'affiliation.',
+        title: 'Authentication Required',
+        description: 'You must be logged in to join the affiliate program.',
         variant: 'destructive'
       });
       return;
     }
 
-    // Vérifier si la formation est terminée
+    // Check if training is completed
     if (userProgress && !userProgress.onboarding_complete) {
       console.log('❌ Onboarding not completed');
       toast({
-        title: 'Formation requise',
-        description: 'Veuvez d\'abord terminer la formation avant de rejoindre le programme d\'affiliation.',
+        title: 'Training Required',
+        description: 'Please complete the training first before joining the affiliate program.',
         variant: 'default'
       });
       setShowOnboarding(true);
       return;
     }
 
-    // Vérifier si le quiz est réussi
+    // Check if quiz is passed
     if (userProgress && !userProgress.quiz_passed) {
       console.log('❌ Quiz not passed');
       toast({
-        title: 'Quiz requis',
-        description: 'Veuvez d\'abord réussir le quiz pour rejoindre le programme d\'affiliation.',
+        title: 'Quiz Required',
+        description: 'Please pass the quiz first to join the affiliate program.',
         variant: 'destructive'
       });
       setShowOnboarding(true);
@@ -532,7 +532,7 @@ const AffiliateSection = () => {
     setIsEnrolling(true);
     
     try {
-      // Vérifier d'abord si l'utilisateur est déjà affilié
+      // First check if the user is already an affiliate
       console.log('3. Checking if user is already an affiliate...');
       const { data: existingAffiliate, error: checkError } = await supabase
         .from('affiliates')
@@ -549,21 +549,21 @@ const AffiliateSection = () => {
         console.log('4. User is already an affiliate:', existingAffiliate);
         if (existingAffiliate.approved) {
           toast({
-            title: 'Déjà inscrit',
-            description: 'Vous faites déjà partie du programme d\'affiliation Elverra Global !',
+            title: 'Already Enrolled',
+            description: 'You are already part of the Elverra Global affiliate program!',
             variant: 'default'
           });
         } else {
           toast({
-            title: 'En attente d\'approbation',
-            description: 'Votre demande est en cours d\'examen. Vous serez notifié une fois approuvé.',
+            title: 'Pending Approval',
+            description: 'Your application is under review. You will be notified once approved.',
             variant: 'default'
           });
         }
         return;
       }
       
-      // Générer un code de parrainage unique à 5 caractères aléatoires
+      // Generate a unique 5-character random referral code
       const randomChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let referralCode = 'ELV-';
       for (let i = 0; i < 5; i++) {
@@ -571,16 +571,16 @@ const AffiliateSection = () => {
       }
       console.log('5. Generated referral code:', referralCode);
       
-      // Créer un nouveau profil d'affilié dans la table affiliates
+      // Create a new affiliate profile in the affiliates table
       console.log('6. Creating new affiliate in affiliates table...');
       const { data: newAffiliate, error: insertError } = await supabase
         .from('affiliates')
         .insert([{
           user_id: user.id,
           affiliate_code: referralCode,
-          approved: false, // Nécessite l'approbation d'un administrateur
+          approved: false, // Requires admin approval
           created_at: new Date().toISOString()
-          // Ne pas inclure total_earnings et monthly_earnings car ils n'existent pas dans la table
+          // Do not include total_earnings and monthly_earnings as they do not exist in the table
         }])
         .select('*')
         .single();
@@ -594,27 +594,27 @@ const AffiliateSection = () => {
 
       console.log('7. New affiliate created:', newAffiliate);
 
-      // Mettre à jour l'état local avec les valeurs par défaut
+      // Update local state with default values
       setAffiliateData({
         ...newAffiliate,
-        // Ces valeurs sont gérées côté client uniquement
+        // These values are handled client-side only
         totalEarnings: 0,
         totalReferrals: 0,
         monthlyEarnings: 0,
-        approved: false // Par défaut, non approuvé
+        approved: false // Default not approved
       });
       
       console.log('8. Updated affiliate data in state:', affiliateData);
       
-      // Afficher un message de succès
+      // Show success message
       toast({
-        title: 'Demande envoyée !',
-        description: 'Votre demande d\'adhésion au programme d\'affiliation a été reçue. Vous serez notifié une fois approuvé.',
+        title: 'Application Sent!',
+        description: 'Your application to join the affiliate program has been received. You will be notified once approved.',
         variant: 'default',
         duration: 5000
       });
       
-      // Vérifier à nouveau le statut pour s'assurer que tout est à jour
+      // Check status again to ensure everything is up to date
       await checkAffiliateStatus();
   
     } catch (error) {
@@ -631,7 +631,7 @@ const AffiliateSection = () => {
     }
   };
 
-  // Copier le lien de parrainage
+  // Copy referral link
   const copyReferralLink = () => {
     if (affiliateData?.affiliate_code) {
       const referralLink = `https://elverraglobal.com/register?ref=${affiliateData.affiliate_code}`;
@@ -639,8 +639,8 @@ const AffiliateSection = () => {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
       toast({
-        title: 'Lien copié !',
-        description: 'Le lien de parrainage a été copié dans le presse-papier',
+        title: 'Link copied!',
+        description: 'The referral link has been copied to the clipboard',
       });
     }
   };
@@ -649,7 +649,7 @@ const AffiliateSection = () => {
     if (!user?.id || !affiliateData.approved) return;
     
     try {
-      // Récupérer l'affiliate_code de l'utilisateur actuel
+      // Get the affiliate_code of the current user
       const { data: currentUserData, error: userError } = await supabase
         .from('profiles')
         .select('affiliate_code')
@@ -657,11 +657,11 @@ const AffiliateSection = () => {
         .single();
         
       if (userError || !currentUserData) {
-        throw userError || new Error('Profil utilisateur non trouvé');
+        throw userError || new Error('User profile not found');
       }
       
-      // Récupérer les utilisateurs qui ont cet utilisateur comme référent
-      // Soit par referred_by, soit par referrer_affiliate_code
+      // Get users who have this user as referrer
+      // Either by referred_by or referrer_affiliate_code
       const { data: referredUsers, error: refError } = await supabase
         .from('profiles')
         .select('id, created_at, full_name, phone, referrer_affiliate_code')
@@ -669,7 +669,7 @@ const AffiliateSection = () => {
   
       if (refError) throw refError;
   
-      // Pour chaque utilisateur référencé, s'assurer qu'il a une entrée dans la table commissions
+      // For each referred user, ensure they have an entry in the commissions table
       if (referredUsers && referredUsers.length > 0) {
         const commissionsToInsert = referredUsers.map(user => ({
           referrer_id: user.id,
@@ -679,7 +679,7 @@ const AffiliateSection = () => {
           created_at: user.created_at || new Date().toISOString()
         }));
   
-        // Utiliser upsert pour éviter les doublons
+        // Use upsert to avoid duplicates
         const { error: upsertError } = await supabase
           .from('commissions')
           .upsert(commissionsToInsert, {
@@ -687,11 +687,11 @@ const AffiliateSection = () => {
           });
   
         if (upsertError) {
-          console.error('Erreur lors de la création des commissions:', upsertError);
+          console.error('Error creating commissions:', upsertError);
         }
       }
   
-      // Maintenant, récupérer toutes les commissions pour l'affichage
+      // Now, get all commissions for display
      const { data: commissions, error } = await supabase
   .from('commissions')
   .select('id, referred_user_id, amount, status, created_at')
@@ -700,7 +700,7 @@ const AffiliateSection = () => {
 
 if (error) throw error;
 
-// Récupérer les profils correspondants
+// Get corresponding profiles
 const userIds = commissions.map(c => c.referred_user_id);
 
 const { data: profiles, error: profileError } = await supabase
@@ -710,13 +710,13 @@ const { data: profiles, error: profileError } = await supabase
 
 if (profileError) throw profileError;
 
-// Fusionner
+// Merge
 const formattedReferrals = commissions.map(c => {
   const profile = profiles.find(p => p.id === c.referred_user_id);
   return {
     id: c.id,
     user_id: c.referred_user_id,
-    full_name: profile ? `${profile.full_name}` : 'Inconnu',
+    full_name: profile ? `${profile.full_name}` : 'Unknown',
     phone: profile?.phone || 'N/A',
     created_at: new Date(c.created_at).toLocaleDateString(),
     status: c.status,
@@ -726,7 +726,7 @@ const formattedReferrals = commissions.map(c => {
 
 setReferrals(formattedReferrals);
       
-      // Mettre à jour le nombre total de références
+      // Update total referrals count
       if (affiliateData.id) {
         setAffiliateData(prev => ({
           ...prev,
@@ -735,16 +735,16 @@ setReferrals(formattedReferrals);
         }));
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des références:', error);
+      console.error('Error loading referrals:', error);
       toast({
-        title: 'Erreur',
-        description: 'Impossible de charger la liste des parrainages.',
+        title: 'Error',
+        description: 'Unable to load the referrals list.',
         variant: 'destructive',
       });
     }
   };
   
-  // Charger la progression et les données d'affiliation au montage
+  // Load progress and affiliate data on mount
   useEffect(() => {
     const initialize = async () => {
       if (user?.id) {
@@ -757,14 +757,14 @@ setReferrals(formattedReferrals);
     initialize();
   }, [user]);
   
-  // Charger les références quand les données d'affiliation sont mises à jour
+  // Load referrals when affiliate data is updated
   useEffect(() => {
     if (affiliateData.approved) {
       loadReferrals();
     }
   }, [affiliateData.approved]);
 
-  // Si l'utilisateur n'a pas encore terminé l'onboarding
+  // If the user has not yet completed onboarding
   if (isLoadingProgress) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -772,172 +772,172 @@ setReferrals(formattedReferrals);
       </div>
     );
   }
-  if (userProgress && !userProgress.onboarding_complete) {
-    return (
-      <>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5" />
-              Training Required
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-2">Before you start:</h4>
-              <p className="text-sm text-gray-700 mb-4">
-                To join our affiliate program, you must first complete a short training.
-              </p>
-              <Button 
-                onClick={() => {
-                  console.log('Start Training clicked');
-                  setShowOnboarding(true);
-                }}
-                className="w-full"
-              >
-                Start Training
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+  // if (userProgress && !userProgress.onboarding_complete) {
+  //   return (
+  //     <>
+  //       <Card>
+  //         <CardHeader>
+  //           <CardTitle className="flex items-center gap-2">
+  //             <Gift className="h-5 w-5" />
+  //             Training Required
+  //           </CardTitle>
+  //         </CardHeader>
+  //         <CardContent className="space-y-4">
+  //           <div className="bg-blue-50 p-4 rounded-lg">
+  //             <h4 className="font-semibold mb-2">Before you start:</h4>
+  //             <p className="text-sm text-gray-700 mb-4">
+  //               To join our affiliate program, you must first complete a short training.
+  //             </p>
+  //             <Button 
+  //               onClick={() => {
+  //                 console.log('Start Training clicked');
+  //                 setShowOnboarding(true);
+  //               }}
+  //               className="w-full"
+  //             >
+  //               Start Training
+  //             </Button>
+  //           </div>
+  //         </CardContent>
+  //       </Card>
   
-        {/* Modal d'onboarding */}
-        <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <div className="flex justify-between items-center">
-                <DialogTitle>
-                  Affiliate Training - Step {onboardingStep + 1} of {lessons.length}
-                </DialogTitle>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setShowOnboarding(false)}
-                  className="h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <Progress 
-                value={((onboardingStep + (showQuiz ? 0.5 : 0)) / (lessons.length + 0.5)) * 100} 
-                className="my-4 h-2" 
-              />
-            </DialogHeader>
+  //       {/* Onboarding modal */}
+  //       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
+  //         <DialogContent className="max-w-4xl">
+  //           <DialogHeader>
+  //             <div className="flex justify-between items-center">
+  //               <DialogTitle>
+  //                 Affiliate Training - Step {onboardingStep + 1} of {lessons.length}
+  //               </DialogTitle>
+  //               <Button 
+  //                 variant="ghost" 
+  //                 size="icon" 
+  //                 onClick={() => setShowOnboarding(false)}
+  //                 className="h-8 w-8"
+  //               >
+  //                 <X className="h-4 w-4" />
+  //               </Button>
+  //             </div>
+  //             <Progress 
+  //               value={((onboardingStep + (showQuiz ? 0.5 : 0)) / (lessons.length + 0.5)) * 100} 
+  //               className="my-4 h-2" 
+  //             />
+  //           </DialogHeader>
             
-            {!showQuiz ? (
-              <div className="space-y-6">
-                <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                  <iframe
-                    src={lessons[onboardingStep]?.videoUrl}
-                    className="w-full h-full"
-                    allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  />
-                </div>
+  //           {!showQuiz ? (
+  //             <div className="space-y-6">
+  //               <div className="aspect-video bg-black rounded-lg overflow-hidden">
+  //                 <iframe
+  //                   src={lessons[onboardingStep]?.videoUrl}
+  //                   className="w-full h-full"
+  //                   allowFullScreen
+  //                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  //                 />
+  //               </div>
                 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">{lessons[onboardingStep]?.title}</h3>
-                  <p className="text-sm text-gray-600">{lessons[onboardingStep]?.description}</p>
-                </div>
+  //               <div className="space-y-2">
+  //                 <h3 className="text-lg font-semibold">{lessons[onboardingStep]?.title}</h3>
+  //                 <p className="text-sm text-gray-600">{lessons[onboardingStep]?.description}</p>
+  //               </div>
                 
-                <div className="flex justify-between pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      if (onboardingStep > 0) {
-                        setOnboardingStep(prev => prev - 1);
-                        setShowQuiz(false);
-                      } else {
-                        setShowOnboarding(false);
-                      }
-                    }}
-                    disabled={onboardingStep === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    {onboardingStep === 0 ? 'Close' : 'Previous'}
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      console.log('Take Quiz clicked');
-                      setShowQuiz(true);
-                    }}
-                  >
-                    Take the Quiz
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Quiz: {lessons[onboardingStep]?.title}</h3>
+  //               <div className="flex justify-between pt-4">
+  //                 <Button 
+  //                   variant="outline" 
+  //                   onClick={() => {
+  //                     if (onboardingStep > 0) {
+  //                       setOnboardingStep(prev => prev - 1);
+  //                       setShowQuiz(false);
+  //                     } else {
+  //                       setShowOnboarding(false);
+  //                     }
+  //                   }}
+  //                   disabled={onboardingStep === 0}
+  //                 >
+  //                   <ChevronLeft className="h-4 w-4 mr-2" />
+  //                   {onboardingStep === 0 ? 'Close' : 'Previous'}
+  //                 </Button>
+  //                 <Button 
+  //                   onClick={() => {
+  //                     console.log('Take Quiz clicked');
+  //                     setShowQuiz(true);
+  //                   }}
+  //                 >
+  //                   Take the Quiz
+  //                   <ChevronRight className="h-4 w-4 ml-2" />
+  //                 </Button>
+  //               </div>
+  //             </div>
+  //           ) : (
+  //             <div className="space-y-6">
+  //               <h3 className="text-lg font-semibold">Quiz: {lessons[onboardingStep]?.title}</h3>
                 
-                <div className="space-y-6">
-                  {lessons[onboardingStep]?.questions?.map((q, i) => (
-                    <div key={i} className="space-y-3">
-                      <p className="font-medium">{i + 1}. {q.question}</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {q.options.map((option, j) => (
-                          <Button
-                            key={j}
-                            variant={
-                              userAnswers[`${onboardingStep}-${i}`] === option 
-                                ? "default" 
-                                : "outline"
-                            }
-                            onClick={() => {
-                              console.log('Answer selected:', { step: onboardingStep, question: i, answer: option });
-                              setUserAnswers(prev => ({
-                                ...prev,
-                                [`${onboardingStep}-${i}`]: option
-                              }));
-                            }}
-                            className="justify-start h-auto py-2 text-left whitespace-normal"
-                          >
-                            <span className="flex-1">{option}</span>
-                            {userAnswers[`${onboardingStep}-${i}`] === option && (
-                              <Check className="h-4 w-4 ml-2" />
-                            )}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+  //               <div className="space-y-6">
+  //                 {lessons[onboardingStep]?.questions?.map((q, i) => (
+  //                   <div key={i} className="space-y-3">
+  //                     <p className="font-medium">{i + 1}. {q.question}</p>
+  //                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+  //                       {q.options.map((option, j) => (
+  //                         <Button
+  //                           key={j}
+  //                           variant={
+  //                             userAnswers[`${onboardingStep}-${i}`] === option 
+  //                               ? "default" 
+  //                               : "outline"
+  //                           }
+  //                           onClick={() => {
+  //                             console.log('Answer selected:', { step: onboardingStep, question: i, answer: option });
+  //                             setUserAnswers(prev => ({
+  //                               ...prev,
+  //                               [`${onboardingStep}-${i}`]: option
+  //                             }));
+  //                           }}
+  //                           className="justify-start h-auto py-2 text-left whitespace-normal"
+  //                         >
+  //                           <span className="flex-1">{option}</span>
+  //                           {userAnswers[`${onboardingStep}-${i}`] === option && (
+  //                             <Check className="h-4 w-4 ml-2" />
+  //                           )}
+  //                         </Button>
+  //                       ))}
+  //                     </div>
+  //                   </div>
+  //                 ))}
+  //               </div>
                 
-                <div className="flex justify-between pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      console.log('Back to video clicked');
-                      setShowQuiz(false);
-                    }}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back to Video
-                  </Button>
-                  <Button 
-                    onClick={async () => {
-                      console.log('Submit answers clicked', { userAnswers });
-                      await handleAnswerSubmit();
-                    }}
-                    disabled={
-                      !lessons[onboardingStep]?.questions.every((_, i) => 
-                        userAnswers[`${onboardingStep}-${i}`]
-                      )
-                    }
-                  >
-                    {onboardingStep === lessons.length - 1 ? "Finish" : "Next"}
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
-  // Vérifier l'état de chargement
+  //               <div className="flex justify-between pt-4">
+  //                 <Button 
+  //                   variant="outline" 
+  //                   onClick={() => {
+  //                     console.log('Back to video clicked');
+  //                     setShowQuiz(false);
+  //                   }}
+  //                 >
+  //                   <ChevronLeft className="h-4 w-4 mr-2" />
+  //                   Back to Video
+  //                 </Button>
+  //                 <Button 
+  //                   onClick={async () => {
+  //                     console.log('Submit answers clicked', { userAnswers });
+  //                     await handleAnswerSubmit();
+  //                   }}
+  //                   disabled={
+  //                     !lessons[onboardingStep]?.questions.every((_, i) => 
+  //                       userAnswers[`${onboardingStep}-${i}`]
+  //                     )
+  //                   }
+  //                 >
+  //                   {onboardingStep === lessons.length - 1 ? "Finish" : "Next"}
+  //                   <ChevronRight className="h-4 w-4 ml-2" />
+  //                 </Button>
+  //               </div>
+  //             </div>
+  //           )}
+  //         </DialogContent>
+  //       </Dialog>
+  //     </>
+  //   );
+  // }
+  // Check loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -945,11 +945,11 @@ setReferrals(formattedReferrals);
       </div>
     );
   }
-  // Vérifier si l'utilisateur a des données d'affiliation valides
-  // On se base uniquement sur la table affiliates pour la vérification
+  // Check if the user has valid affiliate data
+  // We rely solely on the affiliates table for verification
   const hasAffiliateData = affiliateData && (affiliateData.id || affiliateData.user_id);
   
-  // Vérifier si l'utilisateur est approuvé dans la table affiliates
+  // Check if the user is approved in the affiliates table
   const isApproved = hasAffiliateData && 
                    affiliateData.approved === true && 
                    affiliateData.affiliate_code && 
@@ -963,24 +963,24 @@ setReferrals(formattedReferrals);
     loading: isLoading 
   });
   
-  // Si l'utilisateur n'est pas encore inscrit au programme d'affiliation
+  // If the user is not yet enrolled in the affiliate program
   if (!hasAffiliateData) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Gift className="h-5 w-5" />
-            Rejoindre le Programme d'Affiliation
+            Join the Affiliate Program
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-semibold mb-2">Avantages du programme :</h4>
+            <h4 className="font-semibold mb-2">Program Benefits:</h4>
             <ul className="text-sm space-y-2 text-gray-700">
-              <li>• Gagnez 10% de commission sur les clients parrainés</li>
-              <li>• Soyez payé pour chaque renouvellement et paiement de carte</li>
-              <li>• Suivi en temps réel de vos parrainages</li>
-              <li>• Processus de retrait simple et rapide</li>
+              <li>• Earn 10% commission on referred clients</li>
+              <li>• Get paid for every renewal and card payment</li>
+              <li>• Real-time tracking of your referrals</li>
+              <li>• Simple and fast withdrawal process</li>
             </ul>
           </div>
           <Button 
@@ -988,33 +988,33 @@ setReferrals(formattedReferrals);
             disabled={isEnrolling}
             className="w-full"
           >
-            {isEnrolling ? 'Traitement...' : 'Rejoindre le Programme d\'Affiliation'}
+            {isEnrolling ? 'Processing...' : 'Join the Affiliate Program'}
           </Button>
         </CardContent>
       </Card>
     );
   }
 
-  // Cette section a été déplacée plus haut dans le code pour une meilleure logique de rendu
+  // This section has been moved higher in the code for better rendering logic
 
-  // Si l'utilisateur est dans la table mais pas encore approuvé
+  // If the user is in the table but not yet approved
   if (hasAffiliateData && !isApproved) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            En attente d'approbation
+            Pending Approval
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-yellow-50 p-4 rounded-lg">
             <p className="text-yellow-800">
-              Votre demande d'adhésion au programme d'affiliation est en cours d'examen. 
-              Vous recevrez une notification par e-mail une fois approuvé.
+              Your application to join the affiliate program is under review. 
+              You will receive an email notification once approved.
             </p>
             
-            {/* Afficher le code de parrainage si disponible */}
+            {/* Display the referral code if available */}
          
           </div>
         </CardContent>
@@ -1022,25 +1022,25 @@ setReferrals(formattedReferrals);
     );
   }
 
-  // Vérification finale avant d'afficher le tableau de bord
+  // Final check before displaying the dashboard
   if (!isApproved) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            En attente d'activation
+            Pending Activation
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p>Votre compte d'affiliation est en cours d'activation. Veuillez patienter.</p>
+          <p>Your affiliate account is being activated. Please wait.</p>
           {affiliateData.affiliate_code ? (
             <p className="mt-2 text-sm text-gray-600">
-              Code actuel: {affiliateData.affiliate_code}
+              Current code: {affiliateData.affiliate_code}
             </p>
           ) : (
             <p className="mt-2 text-sm text-yellow-600">
-              En attente de génération de votre code d'affiliation.
+              Waiting for your affiliate code to be generated.
             </p>
           )}
         </CardContent>
@@ -1050,13 +1050,13 @@ setReferrals(formattedReferrals);
   
   return (
     <div className="space-y-6">
-      {/* Modal d'onboarding */}
+      {/* Onboarding modal */}
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <div className="flex justify-between items-center">
               <DialogTitle>
-                Formation des Affiliés - Étape {onboardingStep + 1} sur {lessons.length}
+                Affiliate Training - Step {onboardingStep + 1} of {lessons.length}
               </DialogTitle>
               <Button 
                 variant="ghost" 
@@ -1102,10 +1102,10 @@ setReferrals(formattedReferrals);
                   disabled={onboardingStep === 0}
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
-                  {onboardingStep === 0 ? 'Fermer' : 'Précédent'}
+                  {onboardingStep === 0 ? 'Close' : 'Previous'}
                 </Button>
                 <Button onClick={() => setShowQuiz(true)}>
-                  Passer le quiz
+                  Take the Quiz
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -1150,7 +1150,7 @@ setReferrals(formattedReferrals);
                   onClick={() => setShowQuiz(false)}
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
-                  Revoir la vidéo
+                  Review Video
                 </Button>
                 <Button 
                   onClick={handleAnswerSubmit}
@@ -1160,7 +1160,7 @@ setReferrals(formattedReferrals);
                     )
                   }
                 >
-                  {onboardingStep === lessons.length - 1 ? "Terminer" : "Suivant"}
+                  {onboardingStep === lessons.length - 1 ? "Finish" : "Next"}
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -1169,24 +1169,24 @@ setReferrals(formattedReferrals);
         </DialogContent>
       </Dialog>
 
-      {/* Tableau de bord d'affiliation */}
+      {/* Affiliate dashboard */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Tableau de Bord d'Affiliation</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Affiliate Dashboard</h2>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-green-100 text-green-800">
             <CheckCircle className="h-4 w-4 mr-1" />
-            Actif
+            Active
           </Badge>
         </div>
       </div>
 
-      {/* Statistiques rapides */}
+      {/* Quick stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Gains Totaux</p>
+                <p className="text-sm text-gray-600">Total Earnings</p>
                 <p className="text-2xl font-bold text-green-600">
                   {affiliateData.totalEarnings?.toLocaleString() || '0'} FCFA
                 </p>
@@ -1200,7 +1200,7 @@ setReferrals(formattedReferrals);
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Parrainages Totaux</p>
+                <p className="text-sm text-gray-600">Total Referrals</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {affiliateData.totalReferrals || '0'}
                 </p>
@@ -1214,7 +1214,7 @@ setReferrals(formattedReferrals);
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Ce Mois</p>
+                <p className="text-sm text-gray-600">This Month</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {affiliateData.monthlyEarnings?.toLocaleString() || '0'} FCFA
                 </p>
@@ -1225,39 +1225,39 @@ setReferrals(formattedReferrals);
         </Card>
       </div>
 
-      {/* Code de parrainage et liens */}
+      {/* Referral code and links */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LinkIcon className="h-5 w-5" />
-              Votre Code de Parrainage
+              Your Referral Code
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Code de Parrainage</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Code</label>
               <div className="flex gap-2">
                 <Input
-                  value={affiliateData.affiliate_code || 'Chargement...'}
+                  value={affiliateData.affiliate_code || 'Loading...'}
                   readOnly
                   className="font-mono"
                 />
                 <Button onClick={copyReferralCode} variant="outline">
                   <Copy className="h-4 w-4 mr-2" />
-                  {copiedCode ? 'Copié !' : 'Copier'}
+                  {copiedCode ? 'Copied!' : 'Copy'}
                 </Button>
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Lien de Parrainage</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Referral Link</label>
               <div className="flex gap-2">
                 <Input
                   value={
                     affiliateData.affiliate_code 
                       ? `https://elverraglobalml.com/register?ref=${affiliateData.affiliate_code}`
-                      : 'Chargement...'
+                      : 'Loading...'
                   }
                   readOnly
                   className="text-sm"
@@ -1268,18 +1268,18 @@ setReferrals(formattedReferrals);
                   disabled={!affiliateData.affiliate_code}
                 >
                   <Share2 className="h-4 w-4" />
-                  Partager
+                  Share
                 </Button>
               </div>
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-2">Comment gagner de l'argent :</h4>
+              <h4 className="font-semibold mb-2">How to Earn Money:</h4>
               <ul className="text-sm space-y-1 text-gray-700">
-                <li>• Partagez votre code de parrainage avec vos amis</li>
-                <li>• Gagnez 10% de commission sur les achats de cartes</li>
-                <li>• Soyez payé pour chaque renouvellement</li>
-                <li>• Retirez vos gains à tout moment</li>
+                <li>• Share your referral code with friends</li>
+                <li>• Earn 10% commission on card purchases</li>
+                <li>• Get paid for every renewal</li>
+                <li>• Withdraw your earnings at any time</li>
               </ul>
             </div>
           </CardContent>
@@ -1289,43 +1289,43 @@ setReferrals(formattedReferrals);
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Gift className="h-5 w-5" />
-              Informations de Paiement
+              Payment Information
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-green-50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-2">Informations sur les Commissions :</h4>
+              <h4 className="font-semibold mb-2">Commission Information:</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Taux de Commission :</span>
-                  <span className="font-semibold">10% sur tous les paiements</span>
+                  <span>Commission Rate:</span>
+                  <span className="font-semibold">10% on all payments</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Types de Paiement :</span>
-                  <span>Achats et renouvellements de cartes</span>
+                  <span>Payment Types:</span>
+                  <span>Purchases and card renewals</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Paiement :</span>
-                  <span>À la fin de chaque mois</span>
+                  <span>Payment:</span>
+                  <span>At the end of each month</span>
                 </div>
               </div>
             </div>
 
             <Button 
               className="w-full" 
-              onClick={() => alert('La fonctionnalité de retrait sera bientôt disponible !')}
+              onClick={() => alert('The withdrawal feature will be available soon!')}
             >
               <Gift className="h-5 w-5 mr-2" />
-              Demander un Retrait
+              Request Withdrawal
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Historique des parrainages */}
+      {/* Referrals history */}
       <Card>
         <CardHeader>
-          <CardTitle>Vos Parrainages ({referrals.length})</CardTitle>
+          <CardTitle>Your Referrals ({referrals.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {referrals.length > 0 ? (
@@ -1334,10 +1334,10 @@ setReferrals(formattedReferrals);
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="text-left py-3 px-4 font-semibold">ID</th>
-                    <th className="text-left py-3 px-4 font-semibold">Utilisateur</th>
-                    <th className="text-left py-3 px-4 font-semibold">Date d'adhésion</th>
-                    <th className="text-left py-3 px-4 font-semibold">Statut</th>
-                    <th className="text-left py-3 px-4 font-semibold">Montant</th>
+                    <th className="text-left py-3 px-4 font-semibold">User</th>
+                    <th className="text-left py-3 px-4 font-semibold">Join Date</th>
+                    <th className="text-left py-3 px-4 font-semibold">Status</th>
+                    <th className="text-left py-3 px-4 font-semibold">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1348,7 +1348,7 @@ setReferrals(formattedReferrals);
                       <td className="py-4 px-4">{referral.created_at}</td>
                       <td className="py-4 px-4">
                         <Badge variant="outline" className={referral.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}>
-                          {referral.status === 'active' ? 'Actif' : 'En attente'}
+                          {referral.status === 'active' ? 'Active' : 'Pending'}
                         </Badge>
                       </td>
                       <td className="py-4 px-4 font-semibold text-green-600">
@@ -1361,7 +1361,7 @@ setReferrals(formattedReferrals);
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              <p>Vous n'avez pas encore de parrainages. Partagez votre lien pour commencer à gagner !</p>
+              <p>You have no referrals yet. Share your link to start earning!</p>
             </div>
           )}
         </CardContent>

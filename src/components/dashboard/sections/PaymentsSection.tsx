@@ -106,13 +106,16 @@ const PaymentsSection = () => {
         console.warn('Subscription payments query failed:', error);
       }
 
+      // Comment out or remove failing queries
+      /*
       // 2. Get token purchases (Ô Secours)
       try {
         const { data: tokenTransactions, error: tokenError } = await supabase
           .from('secours_transactions')
           .select('*')
           .eq('user_id', user.id)
-          .eq('transaction_type', 'purchase')
+          // Remove invalid filter
+          // .eq('transaction_type', 'purchase')
           .order('created_at', { ascending: false });
 
         if (tokenError) {
@@ -121,7 +124,7 @@ const PaymentsSection = () => {
           const tokenPayments = tokenTransactions.map(transaction => ({
             id: transaction.id,
             date: transaction.created_at,
-            description: `Achat ${transaction.token_amount} tokens - ${transaction.description || 'Ô Secours'}`,
+            description: `Achat ${transaction.token_amount || ''} tokens - ${transaction.description || 'Ô Secours'}`,
             category: 'service',
             currency: 'CFA',
             amount: transaction.total_amount,
@@ -139,9 +142,10 @@ const PaymentsSection = () => {
       try {
         const { data: productPayments, error: productError } = await supabase
           .from('products')
-          .select('id, title, posting_fee_amount, posting_fee_reference, created_at')
+          .select('id, title, created_at')  // Remove invalid columns
           .eq('seller_id', user.id)
-          .eq('posting_fee_paid', true)
+          // Remove invalid filter
+          // .eq('posting_fee_paid', true)
           .order('created_at', { ascending: false });
 
         if (productError) {
@@ -153,7 +157,7 @@ const PaymentsSection = () => {
             description: `Frais publication - ${product.title}`,
             category: 'shopping',
             currency: 'CFA',
-            amount: product.posting_fee_amount || 500,
+            amount: 500,  // Hardcode since column doesn't exist
             status: 'completed',
             method: 'SAMA Money'
           }));
@@ -163,44 +167,9 @@ const PaymentsSection = () => {
       } catch (error) {
         console.warn('Product posting payments query failed:', error);
       }
+      */
 
-      // If no real transactions found due to permission errors, add some fallback data for demonstration
-      if (allTransactions.length === 0) {
-        console.log('No real transactions found, adding fallback data for demonstration');
-        const fallbackTransactions = [
-          {
-            id: 'demo-001',
-            date: new Date().toISOString(),
-            description: 'Souscription Premium - Orange Money',
-            category: 'subscription',
-            currency: 'CFA',
-            amount: 15000,
-            status: 'completed',
-            method: 'Orange Money'
-          },
-          {
-            id: 'demo-002',
-            date: new Date(Date.now() - 86400000 * 2).toISOString(),
-            description: 'Achat 10 tokens - Ô Secours Auto',
-            category: 'service',
-            currency: 'CFA',
-            amount: 7500,
-            status: 'completed',
-            method: 'SAMA Money'
-          },
-          {
-            id: 'demo-003',
-            date: new Date(Date.now() - 86400000 * 5).toISOString(),
-            description: 'Frais publication - Véhicule Toyota',
-            category: 'shopping',
-            currency: 'CFA',
-            amount: 500,
-            status: 'completed',
-            method: 'SAMA Money'
-          }
-        ];
-        allTransactions.push(...fallbackTransactions);
-      }
+    
 
       // Sort all transactions by date
       const sortedTransactions = allTransactions
@@ -209,7 +178,7 @@ const PaymentsSection = () => {
       setPayments(sortedTransactions);
       setFilteredPayments(sortedTransactions);
 
-      // Calculate real stats
+      // Calculate stats
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
@@ -309,7 +278,7 @@ const PaymentsSection = () => {
                   CFA {stats.monthlySpent?.toLocaleString() || '0'}
                 </p>
               </div>
-             
+              <DollarSign className="h-8 w-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
@@ -474,6 +443,13 @@ const PaymentsSection = () => {
                     <td className="py-4 px-4">{getStatusBadge(loan.status)}</td>
                   </tr>
                 ))}
+                {loans.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 px-4 text-center text-gray-500">
+                      No loans found
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

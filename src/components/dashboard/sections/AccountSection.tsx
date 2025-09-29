@@ -33,7 +33,6 @@ import MemberDigitalCard from '@/components/dashboard/MemberDigitalCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMembership } from '@/hooks/useMembership';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
@@ -41,7 +40,6 @@ const AccountSection = () => {
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const { membership } = useMembership();
-  const { t, language, setLanguage } = useLanguage();
 
   // Local profile state as fallback
   const [localProfile, setLocalProfile] = useState<any>(null);
@@ -177,6 +175,7 @@ const AccountSection = () => {
     country: currentProfile?.country || 'Mali',
     profileImage: currentProfile?.profile_image_url || ''
   });
+
   const parseQRData = (qrData: any) => {
     if (!qrData) return { tier: 'essential', type: 'adult' };
 
@@ -417,7 +416,7 @@ const AccountSection = () => {
 
   // Language and region settings
   const [regionSettings, setRegionSettings] = useState({
-    language: language,
+    language: 'fr',
     timezone: 'GMT',
     currency: 'CFA',
     dateFormat: 'DD/MM/YYYY'
@@ -441,13 +440,12 @@ const AccountSection = () => {
 
   const handleLanguageChange = (newLanguage: 'en' | 'fr') => {
     setRegionSettings({ ...regionSettings, language: newLanguage });
-    setLanguage(newLanguage);
     alert('Language updated successfully!');
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between ">
+    <div className="space-y-6 notranslate">
+      <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Account Settings</h2>
         <Badge className="bg-blue-100 text-blue-800">
           <User className="h-3 w-3 mr-1" />
@@ -457,7 +455,7 @@ const AccountSection = () => {
 
       <Tabs defaultValue="profile" className="w-full">
         <div className="relative">
-          <TabsList className="w-full grid-cols-5 overflow-x-auto pb-2 md:pb-0 hide-scrollbar ">
+          <TabsList className="w-full grid-cols-5 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
             <TabsTrigger
               value="profile"
               className=""
@@ -514,7 +512,7 @@ const AccountSection = () => {
                 <div className="relative group">
                   <img
                     src={previewUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=3b82f6&color=ffffff&size=128`}
-                    alt= {t('dashboard.profileTitle')}
+                    alt="Profile Image"
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-gray-200"
                   />
                   {isEditing && (
@@ -540,9 +538,9 @@ const AccountSection = () => {
                   )}
                 </div>
                 <div className="text-center sm:text-left">
-                  <h3 className="font-semibold text-sm sm:text-base mb-1">{t('dashboard.profileTitle')}</h3>
+                  <h3 className="font-semibold text-sm sm:text-base mb-1">Profile Title</h3>
                   <p className="text-xs sm:text-sm text-gray-600 mb-3">
-                  {t('dashboard.profilesubtitle')}
+                  Profile subtitle
                   </p>
                   {isEditing ? (
                     <Button
@@ -1170,7 +1168,39 @@ const AccountSection = () => {
                 </div>
 
                 {/* Available Plan Changes */}
-
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-2">Essential</h4>
+                    <p className="text-sm text-gray-600 mb-3">Basic features</p>
+                    <Button 
+                      onClick={() => handleUpgradePlan('essential')} 
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Switch to Essential
+                    </Button>
+                  </Card>
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-2">Premium</h4>
+                    <p className="text-sm text-gray-600 mb-3">Advanced features</p>
+                    <Button 
+                      onClick={() => handleUpgradePlan('premium')} 
+                      className="w-full"
+                    >
+                      Upgrade to Premium
+                    </Button>
+                  </Card>
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-2">Elite</h4>
+                    <p className="text-sm text-gray-600 mb-3">All features + priority support</p>
+                    <Button 
+                      onClick={() => handleUpgradePlan('elite')} 
+                      className="w-full"
+                    >
+                      Upgrade to Elite
+                    </Button>
+                  </Card>
+                </div>
 
                 {/* Payment Status Notice */}
                 {!membership?.is_active && (
@@ -1208,7 +1238,10 @@ const AccountSection = () => {
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Language
                   </label>
-                  <Select value={regionSettings.language} onValueChange={handleLanguageChange}>
+                  <Select 
+                    value={regionSettings.language} 
+                    onValueChange={(value: 'en' | 'fr') => handleLanguageChange(value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
