@@ -416,7 +416,6 @@ const AccountSection = () => {
 
   // Language and region settings
   const [regionSettings, setRegionSettings] = useState({
-    language: 'fr',
     timezone: 'GMT',
     currency: 'CFA',
     dateFormat: 'DD/MM/YYYY'
@@ -438,10 +437,6 @@ const AccountSection = () => {
     alert('Notification preferences updated successfully!');
   };
 
-  const handleLanguageChange = (newLanguage: 'en' | 'fr') => {
-    setRegionSettings({ ...regionSettings, language: newLanguage });
-    alert('Language updated successfully!');
-  };
 
   return (
     <div className="space-y-6 notranslate">
@@ -540,7 +535,7 @@ const AccountSection = () => {
                 <div className="text-center sm:text-left">
                   <h3 className="font-semibold text-sm sm:text-base mb-1">Profile Title</h3>
                   <p className="text-xs sm:text-sm text-gray-600 mb-3">
-                  Profile subtitle
+                    Profile subtitle
                   </p>
                   {isEditing ? (
                     <Button
@@ -567,7 +562,7 @@ const AccountSection = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Full name
+                    Full name
                   </label>
                   <Input
                     value={profileData.fullName}
@@ -580,7 +575,7 @@ const AccountSection = () => {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  E-mail address
+                    E-mail address
                   </label>
                   <Input
                     type="email"
@@ -595,7 +590,7 @@ const AccountSection = () => {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Phone number
+                    Phone number
                   </label>
                   <Input
                     type="tel"
@@ -610,7 +605,7 @@ const AccountSection = () => {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  City
+                    City
                   </label>
                   <Input
                     value={profileData.city}
@@ -623,7 +618,7 @@ const AccountSection = () => {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Country
+                    Country
                   </label>
                   <Select
                     value={profileData.country}
@@ -649,7 +644,7 @@ const AccountSection = () => {
 
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Address
+                  Address
                 </label>
                 <Input
                   value={profileData.address}
@@ -992,19 +987,19 @@ const AccountSection = () => {
 
                   // Déterminer le type de carte
                   let cardTier = '';
-                  
+
                   // 1. Vérifier d'abord le type dans les données QR (source la plus fiable)
                   if (qrData) {
                     // Si on a un type 'adult' ou 'child' dans qr_data
                     if (qrData.type === 'child') {
                       cardTier = 'child';
-                    } 
+                    }
                     // Si on a un tier défini dans qr_data
                     else if (qrData.tier) {
                       cardTier = qrData.tier.toLowerCase();
                     }
                   }
-                  
+
                   // 2. Si on n'a toujours pas de tier, essayer avec le type de carte défini
                   if (!cardTier && card.card_type) {
                     cardTier = card.card_type.toLowerCase();
@@ -1018,10 +1013,10 @@ const AccountSection = () => {
 
                   // Normalisation du tier pour la comparaison
                   const normalizedTier = cardTier.trim().toLowerCase();
-                  console.log(`Card ${index} (${card.card_identifier}):`, { 
-                    normalizedTier, 
+                  console.log(`Card ${index} (${card.card_identifier}):`, {
+                    normalizedTier,
                     isSelected: index === currentCardIndex,
-                    cardData: card 
+                    cardData: card
                   });
 
                   // Mapper les types de cartes aux libellés en français
@@ -1040,18 +1035,17 @@ const AccountSection = () => {
                     <button
                       key={card.card_identifier || index}
                       onClick={() => {
-                        console.log('Card selected:', { 
-                          index, 
-                          card_identifier: card.card_identifier, 
-                          normalizedTier 
+                        console.log('Card selected:', {
+                          index,
+                          card_identifier: card.card_identifier,
+                          normalizedTier
                         });
                         setCurrentCardIndex(index);
                       }}
-                      className={`px-4 py-2 rounded-full text-xs font-medium text-white transition-colors mr-2 ${
-                        index === currentCardIndex 
+                      className={`px-4 py-2 rounded-full text-xs font-medium text-white transition-colors mr-2 ${index === currentCardIndex
                           ? `${cardLabel.color} text-white shadow-md`
                           : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                      }`}
+                        }`}
                     >
                       {cardLabel.label}
                     </button>
@@ -1102,18 +1096,18 @@ const AccountSection = () => {
                           // Si on a un type 'child' dans qr_data
                           if (qrData.type === 'child') {
                             cardType = 'child';
-                          } 
+                          }
                           // Si on a un tier défini dans qr_data
                           else if (qrData.tier) {
                             cardType = qrData.tier.toLowerCase();
                           }
                         }
-                        
+
                         // 2. Si on n'a toujours pas de type, essayer avec le type de carte défini
                         if (!cardType && card.card_type) {
                           cardType = card.card_type.toLowerCase();
                         }
-                        
+
                         // 3. Si on n'a toujours pas de type, on utilise 'unknown'
                         if (!cardType) {
                           console.warn('Type de carte inconnu pour la carte:', card);
@@ -1132,12 +1126,12 @@ const AccountSection = () => {
 
                         // Normaliser le type de carte en minuscules pour la correspondance
                         const normalizedCardType = cardType.toLowerCase().trim();
-                        const cardInfo = cardLabels[normalizedCardType] || 
-                                      { label: `Carte (${cardType})`, color: 'gray' };
+                        const cardInfo = cardLabels[normalizedCardType] ||
+                          { label: `Carte (${cardType})`, color: 'gray' };
 
                         return (
-                          <div 
-                            key={card.card_identifier} 
+                          <div
+                            key={card.card_identifier}
                             className={`flex items-center justify-between ${index > 0 ? 'pt-2 border-t border-blue-100' : ''}`}
                           >
                             <h4 className="font-medium">{cardInfo.label}</h4>
@@ -1158,10 +1152,10 @@ const AccountSection = () => {
                         Aucune carte active trouvée
                       </div>
                     )}
-                    
+
                     <p className="text-sm text-gray-600 pt-2">
-                      {membership?.is_active 
-                        ? 'Votre abonnement est actif' 
+                      {membership?.is_active
+                        ? 'Votre abonnement est actif'
                         : 'Complétez le paiement pour activer votre abonnement'}
                     </p>
                   </div>
@@ -1172,8 +1166,8 @@ const AccountSection = () => {
                   <Card className="p-4">
                     <h4 className="font-semibold mb-2">Essential</h4>
                     <p className="text-sm text-gray-600 mb-3">Basic features</p>
-                    <Button 
-                      onClick={() => handleUpgradePlan('essential')} 
+                    <Button
+                      onClick={() => handleUpgradePlan('essential')}
                       variant="outline"
                       className="w-full"
                     >
@@ -1183,8 +1177,8 @@ const AccountSection = () => {
                   <Card className="p-4">
                     <h4 className="font-semibold mb-2">Premium</h4>
                     <p className="text-sm text-gray-600 mb-3">Advanced features</p>
-                    <Button 
-                      onClick={() => handleUpgradePlan('premium')} 
+                    <Button
+                      onClick={() => handleUpgradePlan('premium')}
                       className="w-full"
                     >
                       Upgrade to Premium
@@ -1193,8 +1187,8 @@ const AccountSection = () => {
                   <Card className="p-4">
                     <h4 className="font-semibold mb-2">Elite</h4>
                     <p className="text-sm text-gray-600 mb-3">All features + priority support</p>
-                    <Button 
-                      onClick={() => handleUpgradePlan('elite')} 
+                    <Button
+                      onClick={() => handleUpgradePlan('elite')}
                       className="w-full"
                     >
                       Upgrade to Elite
@@ -1234,23 +1228,6 @@ const AccountSection = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Language
-                  </label>
-                  <Select 
-                    value={regionSettings.language} 
-                    onValueChange={(value: 'en' | 'fr') => handleLanguageChange(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="fr">Français</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -1305,7 +1282,7 @@ const AccountSection = () => {
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h4 className="font-semibold mb-2">Current Settings Preview</h4>
                 <div className="text-sm space-y-1">
-                  <p><strong>Language:</strong> {regionSettings.language === 'en' ? 'English' : 'Français'}</p>
+
                   <p><strong>Timezone:</strong> {regionSettings.timezone}</p>
                   <p><strong>Currency:</strong> {regionSettings.currency}</p>
                   <p><strong>Date Format:</strong> {regionSettings.dateFormat}</p>
