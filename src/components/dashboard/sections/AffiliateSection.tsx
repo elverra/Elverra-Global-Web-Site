@@ -823,6 +823,8 @@ const AffiliateSection = () => {
       </div>
     );
   }
+
+  
   // if (userProgress && !userProgress.onboarding_complete) {
   //   return (
   //     <>
@@ -1005,6 +1007,8 @@ const AffiliateSection = () => {
   //     </>
   //   );
   // }
+
+
   // Check loading state
   if (isLoading) {
     return (
