@@ -83,73 +83,72 @@ const AffiliateSection = () => {
   const lessons: Lesson[] = [
     {
       id: 1,
-      title: "Introduction au Programme d'Affiliation",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      description:
-        "Découvrez comment fonctionne notre programme d'affiliation et comment gagner de l'argent avec nous.",
+      title: "Introduction to the Affiliate Program",
+      videoUrl: "https://www.youtube.com/embed/IlhVuGv0zcM",
+      description: "Discover how our affiliate program works and how to earn money with us.",
       questions: [
         {
-          question:
-            "Quel est le pourcentage de commission sur les parrainages ?",
-          options: ["5%", "10%", "15%", "20%"],
-          correctAnswer: "10%",
+          question: "What is the name of the card offered by Elverra Global?",
+          options: ["African Card", "ZENIKA Card", "Elverra Card", "Progress Card"],
+          correctAnswer: "ZENIKA Card"
         },
         {
-          question: "Combien de temps dure la période d'essai ?",
-          options: [
-            "7 jours",
-            "14 jours",
-            "30 jours",
-            "Pas de période d'essai",
-          ],
-          correctAnswer: "14 jours",
+          question: "What are the benefits of the ZENIKA card?",
+          options: ["Discounts only", "Special privileges only", "Discounts and special privileges", "No benefits"],
+          correctAnswer: "Discounts and special privileges"
         },
         {
-          question: "Quand êtes-vous payé pour vos parrainages ?",
-          options: [
-            "Immédiatement",
-            "À la fin du mois",
-            "Après 30 jours",
-            "Après approbation manuelle",
-          ],
-          correctAnswer: "À la fin du mois",
-        },
-      ],
+          question: "What is the main goal of Elverra Global?",
+          options: ["Provide financial services", "Provide financial services", "Promote empowerment and progress", "Offer jobs"],
+          correctAnswer: "Promote empowerment and progress"
+        }
+      ]
     },
     {
-      id: 1,
-      title: "Introduction au Programme d'Affiliation",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      description:
-        "Découvrez comment fonctionne notre programme d'affiliation et comment gagner de l'argent avec nous.",
+      id: 2,
+      title: "Introduction to the Affiliate Program",
+      videoUrl: "https://www.youtube.com/embed/cxvlO0NCG9g",
+      description: "Discover how our affiliate program works and how to earn money with us.",
       questions: [
         {
-          question:
-            "Quel est le pourcentage de commission sur les parrainages ?",
+          question: "What services are offered by Elverra Global?",
+          options: ["Employment center, short-term loans, online store", "Free online library, Ô Secours", "All the services mentioned above", "None of the services mentioned above"],
+          correctAnswer: "All the services mentioned above"
+        },
+        {
+          question: "How long is the trial period?",
+          options: ["7 days", "14 days", "30 days", "No trial period"],
+          correctAnswer: "No trial period"
+        },
+        {
+          question: "When are you paid for your referrals?",
+          options: ["Immediately", "At the end of the month", "After 24 hours", "After manual approval"],
+          correctAnswer: "After 24 hours"
+        }
+      ]
+    },
+    {
+      id: 3,
+      title: "Introduction to the Affiliate Program",
+      videoUrl: "https://www.youtube.com/embed/Pgd4bfipIKk",
+      description: "Discover how our affiliate program works and how to earn money with us.",
+      questions: [
+        {
+          question: "What is the commission percentage on referrals?",
           options: ["5%", "10%", "15%", "20%"],
-          correctAnswer: "10%",
+          correctAnswer: "10%"
         },
         {
-          question: "Combien de temps dure la période d'essai ?",
-          options: [
-            "7 jours",
-            "14 jours",
-            "30 jours",
-            "Pas de période d'essai",
-          ],
-          correctAnswer: "14 jours",
+          question: "How long is the trial period?",
+          options: ["7 days", "14 days", "30 days", "No trial period"],
+          correctAnswer: "14 days"
         },
         {
-          question: "Quand êtes-vous payé pour vos parrainages ?",
-          options: [
-            "Immédiatement",
-            "À la fin du mois",
-            "Après 30 jours",
-            "Après approbation manuelle",
-          ],
-          correctAnswer: "À la fin du mois",
-        },
-      ],
+          question: "When are you paid for your referrals?",
+          options: ["Immediately", "At the end of the month", "After 30 days", "After manual approval"],
+          correctAnswer: "At the end of the month"
+        }
+      ]
     },
     
   ];
@@ -583,20 +582,18 @@ const AffiliateSection = () => {
       }
 
       if (existingAffiliate) {
-        console.log("4. User is already an affiliate:", existingAffiliate);
+        console.log('4. User is already an affiliate:', existingAffiliate);
         if (existingAffiliate.approved) {
           toast({
-            title: "Déjà inscrit",
-            description:
-              "Vous faites déjà partie du programme d'affiliation Elverra Global !",
-            variant: "default",
+            title: 'Already Enrolled',
+            description: 'You are already part of the Elverra Global affiliate program!',
+            variant: 'default'
           });
         } else {
           toast({
-            title: "En attente d'approbation",
-            description:
-              "Votre demande est en cours d'examen. Vous serez notifié une fois approuvé.",
-            variant: "default",
+            title: 'Pending Approval',
+            description: 'Your application is under review. You will be notified once approved.',
+            variant: 'default'
           });
         }
         return;
@@ -651,11 +648,10 @@ const AffiliateSection = () => {
 
       // Afficher un message de succès
       toast({
-        title: "Demande envoyée !",
-        description:
-          "Votre demande d'adhésion au programme d'affiliation a été reçue. Vous serez notifié une fois approuvé.",
-        variant: "default",
-        duration: 10000,
+        title: 'Application Sent!',
+        description: 'Your application to join the affiliate program has been received. You will be notified once approved.',
+        variant: 'default',
+        duration: 5000
       });
 
       // Vérifier à nouveau le statut pour s'assurer que tout est à jour
@@ -668,9 +664,9 @@ const AffiliateSection = () => {
           : "An error occurred while processing your request.";
 
       toast({
-        title: "Error",
+        title: 'Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setIsEnrolling(false);
@@ -685,8 +681,8 @@ const AffiliateSection = () => {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
       toast({
-        title: "Lien copié !",
-        description: "Le lien de parrainage a été copié dans le presse-papier",
+        title: 'Link Copied!',
+        description: 'The referral link has been copied to your clipboard.',
       });
     }
   };
@@ -827,188 +823,188 @@ const AffiliateSection = () => {
       </div>
     );
   }
-  if (userProgress && !userProgress.onboarding_complete) {
-    return (
-      <>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5" />
-              Training Required
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-2">Before you start:</h4>
-              <p className="text-sm text-gray-700 mb-4">
-                To join our affiliate program, you must first complete a short
-                training.
-              </p>
-              <Button
-                onClick={() => {
-                  console.log("Start Training clicked");
-                  setShowOnboarding(true);
-                }}
-                className="w-full"
-              >
-                Start Training
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+  // if (userProgress && !userProgress.onboarding_complete) {
+  //   return (
+  //     <>
+  //       <Card>
+  //         <CardHeader>
+  //           <CardTitle className="flex items-center gap-2">
+  //             <Gift className="h-5 w-5" />
+  //             Training Required
+  //           </CardTitle>
+  //         </CardHeader>
+  //         <CardContent className="space-y-4">
+  //           <div className="bg-blue-50 p-4 rounded-lg">
+  //             <h4 className="font-semibold mb-2">Before you start:</h4>
+  //             <p className="text-sm text-gray-700 mb-4">
+  //               To join our affiliate program, you must first complete a short
+  //               training.
+  //             </p>
+  //             <Button
+  //               onClick={() => {
+  //                 console.log("Start Training clicked");
+  //                 setShowOnboarding(true);
+  //               }}
+  //               className="w-full"
+  //             >
+  //               Start Training
+  //             </Button>
+  //           </div>
+  //         </CardContent>
+  //       </Card>
 
-        {/* Modal d'onboarding */}
-        <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <div className="flex justify-between items-center">
-                <DialogTitle>
-                  Affiliate Training - Step {onboardingStep + 1} of{" "}
-                  {lessons.length}
-                </DialogTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowOnboarding(false)}
-                  className="h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <Progress
-                value={
-                  ((onboardingStep + (showQuiz ? 0.5 : 0)) /
-                    (lessons.length + 0.5)) *
-                  100
-                }
-                className="my-4 h-2"
-              />
-            </DialogHeader>
+  //       {/* Modal d'onboarding */}
+  //       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
+  //         <DialogContent className="max-w-4xl">
+  //           <DialogHeader>
+  //             <div className="flex justify-between items-center">
+  //               <DialogTitle>
+  //                 Affiliate Training - Step {onboardingStep + 1} of{" "}
+  //                 {lessons.length}
+  //               </DialogTitle>
+  //               <Button
+  //                 variant="ghost"
+  //                 size="icon"
+  //                 onClick={() => setShowOnboarding(false)}
+  //                 className="h-8 w-8"
+  //               >
+  //                 <X className="h-4 w-4" />
+  //               </Button>
+  //             </div>
+  //             <Progress
+  //               value={
+  //                 ((onboardingStep + (showQuiz ? 0.5 : 0)) /
+  //                   (lessons.length + 0.5)) *
+  //                 100
+  //               }
+  //               className="my-4 h-2"
+  //             />
+  //           </DialogHeader>
 
-            {!showQuiz ? (
-              <div className="space-y-6">
-                <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                  <iframe
-                    src={lessons[onboardingStep]?.videoUrl}
-                    className="w-full h-full"
-                    allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  />
-                </div>
+  //           {!showQuiz ? (
+  //             <div className="space-y-6">
+  //               <div className="aspect-video bg-black rounded-lg overflow-hidden">
+  //                 <iframe
+  //                   src={lessons[onboardingStep]?.videoUrl}
+  //                   className="w-full h-full"
+  //                   allowFullScreen
+  //                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  //                 />
+  //               </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">
-                    {lessons[onboardingStep]?.title}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {lessons[onboardingStep]?.description}
-                  </p>
-                </div>
+  //               <div className="space-y-2">
+  //                 <h3 className="text-lg font-semibold">
+  //                   {lessons[onboardingStep]?.title}
+  //                 </h3>
+  //                 <p className="text-sm text-gray-600">
+  //                   {lessons[onboardingStep]?.description}
+  //                 </p>
+  //               </div>
 
-                <div className="flex justify-between pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (onboardingStep > 0) {
-                        setOnboardingStep((prev) => prev - 1);
-                        setShowQuiz(false);
-                      } else {
-                        setShowOnboarding(false);
-                      }
-                    }}
-                    disabled={onboardingStep === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    {onboardingStep === 0 ? "Close" : "Previous"}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      console.log("Take Quiz clicked");
-                      setShowQuiz(true);
-                    }}
-                  >
-                    Take the Quiz
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">
-                  Quiz: {lessons[onboardingStep]?.title}
-                </h3>
+  //               <div className="flex justify-between pt-4">
+  //                 <Button
+  //                   variant="outline"
+  //                   onClick={() => {
+  //                     if (onboardingStep > 0) {
+  //                       setOnboardingStep((prev) => prev - 1);
+  //                       setShowQuiz(false);
+  //                     } else {
+  //                       setShowOnboarding(false);
+  //                     }
+  //                   }}
+  //                   disabled={onboardingStep === 0}
+  //                 >
+  //                   <ChevronLeft className="h-4 w-4 mr-2" />
+  //                   {onboardingStep === 0 ? "Close" : "Previous"}
+  //                 </Button>
+  //                 <Button
+  //                   onClick={() => {
+  //                     console.log("Take Quiz clicked");
+  //                     setShowQuiz(true);
+  //                   }}
+  //                 >
+  //                   Take the Quiz
+  //                   <ChevronRight className="h-4 w-4 ml-2" />
+  //                 </Button>
+  //               </div>
+  //             </div>
+  //           ) : (
+  //             <div className="space-y-6">
+  //               <h3 className="text-lg font-semibold">
+  //                 Quiz: {lessons[onboardingStep]?.title}
+  //               </h3>
 
-                <div className="space-y-6">
-                  {lessons[onboardingStep]?.questions?.map((q, i) => (
-                    <div key={i} className="space-y-3">
-                      <p className="font-medium">
-                        {i + 1}. {q.question}
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {q.options.map((option, j) => (
-                          <Button
-                            key={j}
-                            variant={
-                              userAnswers[`${onboardingStep}-${i}`] === option
-                                ? "default"
-                                : "outline"
-                            }
-                            onClick={() => {
-                              console.log("Answer selected:", {
-                                step: onboardingStep,
-                                question: i,
-                                answer: option,
-                              });
-                              setUserAnswers((prev) => ({
-                                ...prev,
-                                [`${onboardingStep}-${i}`]: option,
-                              }));
-                            }}
-                            className="justify-start h-auto py-2 text-left whitespace-normal"
-                          >
-                            <span className="flex-1">{option}</span>
-                            {userAnswers[`${onboardingStep}-${i}`] ===
-                              option && <Check className="h-4 w-4 ml-2" />}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+  //               <div className="space-y-6">
+  //                 {lessons[onboardingStep]?.questions?.map((q, i) => (
+  //                   <div key={i} className="space-y-3">
+  //                     <p className="font-medium">
+  //                       {i + 1}. {q.question}
+  //                     </p>
+  //                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+  //                       {q.options.map((option, j) => (
+  //                         <Button
+  //                           key={j}
+  //                           variant={
+  //                             userAnswers[`${onboardingStep}-${i}`] === option
+  //                               ? "default"
+  //                               : "outline"
+  //                           }
+  //                           onClick={() => {
+  //                             console.log("Answer selected:", {
+  //                               step: onboardingStep,
+  //                               question: i,
+  //                               answer: option,
+  //                             });
+  //                             setUserAnswers((prev) => ({
+  //                               ...prev,
+  //                               [`${onboardingStep}-${i}`]: option,
+  //                             }));
+  //                           }}
+  //                           className="justify-start h-auto py-2 text-left whitespace-normal"
+  //                         >
+  //                           <span className="flex-1">{option}</span>
+  //                           {userAnswers[`${onboardingStep}-${i}`] ===
+  //                             option && <Check className="h-4 w-4 ml-2" />}
+  //                         </Button>
+  //                       ))}
+  //                     </div>
+  //                   </div>
+  //                 ))}
+  //               </div>
 
-                <div className="flex justify-between pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      console.log("Back to video clicked");
-                      setShowQuiz(false);
-                    }}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back to Video
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      console.log("Submit answers clicked", { userAnswers });
-                      await handleAnswerSubmit();
-                    }}
-                    disabled={
-                      !lessons[onboardingStep]?.questions.every(
-                        (_, i) => userAnswers[`${onboardingStep}-${i}`]
-                      )
-                    }
-                  >
-                    {onboardingStep === lessons.length - 1 ? "Finish" : "Next"}
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
+  //               <div className="flex justify-between pt-4">
+  //                 <Button
+  //                   variant="outline"
+  //                   onClick={() => {
+  //                     console.log("Back to video clicked");
+  //                     setShowQuiz(false);
+  //                   }}
+  //                 >
+  //                   <ChevronLeft className="h-4 w-4 mr-2" />
+  //                   Back to Video
+  //                 </Button>
+  //                 <Button
+  //                   onClick={async () => {
+  //                     console.log("Submit answers clicked", { userAnswers });
+  //                     await handleAnswerSubmit();
+  //                   }}
+  //                   disabled={
+  //                     !lessons[onboardingStep]?.questions.every(
+  //                       (_, i) => userAnswers[`${onboardingStep}-${i}`]
+  //                     )
+  //                   }
+  //                 >
+  //                   {onboardingStep === lessons.length - 1 ? "Finish" : "Next"}
+  //                   <ChevronRight className="h-4 w-4 ml-2" />
+  //                 </Button>
+  //               </div>
+  //             </div>
+  //           )}
+  //         </DialogContent>
+  //       </Dialog>
+  //     </>
+  //   );
+  // }
   // Check loading state
   if (isLoading) {
     return (
