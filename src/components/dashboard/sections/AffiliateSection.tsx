@@ -1306,7 +1306,7 @@ setReferrals(formattedReferrals);
                 </div>
                 <div className="flex justify-between">
                   <span>Payment:</span>
-                  <span>At the end of each month</span>
+                  <span>Within 24 hours</span>
                 </div>
               </div>
             </div>
