@@ -9,15 +9,17 @@ import { supabase } from "@/lib/supabaseClient";
 async function getUserIdByAffiliateCode(affiliateCode: string): Promise<string | null> {
   if (!affiliateCode) return null;
   
-  console.log('🔍 Recherche du code de parrainage:', affiliateCode);
+  console.log('🔍 Recherche du code de parrainage :', affiliateCode);
   
   try {
     // Essayer d'abord avec le code de référence
     const { data, error } = await supabase
-      .from('profiles')
-      .select('id, referral_code, affiliate_code')
-      .or(`referral_code.eq.${affiliateCode},affiliate_code.eq.${affiliateCode}`)
-      .single();
+      .from('affiliates')
+      .select("*")
+      .eq('affiliate_code', affiliateCode)
+      // .or(`referral_code.eq.${affiliateCode},affiliate_code.eq.${affiliateCode}`)
+      .maybeSingle();
+      console.log("affilate result",data)
       
     if (error) {
       console.error('❌ Erreur lors de la recherche du code de parrainage:', error);
@@ -29,11 +31,11 @@ async function getUserIdByAffiliateCode(affiliateCode: string): Promise<string |
       return null;
     }
     
-    console.log('✅ Utilisateur trouvé avec l\'ID:', data.id);
-    console.log('   - Code de référence:', data.referral_code);
+    console.log('✅ Utilisateur trouvé avec l\'ID:', data.user_id);
+    console.log('   - Code de référence:', data.referral_affiliate_code);
     console.log('   - Code d\'affiliation:', data.affiliate_code);
     
-    return data.id;
+    return data.user_id;
   } catch (error) {
     console.error('❌ Erreur inattendue dans getUserIdByAffiliateCode:', error);
     return null;
@@ -57,7 +59,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadProfileImage, uploadIdentityCardImage, compressImage } from "@/utils/imageUpload";
-import { generateAffiliateCode, isValidAffiliateCode } from "@/utils/cardUtils";
+import { generateAffiliateCode,} from "@/utils/cardUtils";
 import { Upload, X, Camera, FileText } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -103,6 +105,66 @@ const Register = () => {
   // Redirect logic now handled after Supabase signup
   const shouldRedirectToDashboard = false;
   const shouldRedirectToPayment = false;
+// Après le signup et création du profil
+async function handleReferral(userId: string, referralCode?: string) {
+  if (!referralCode) return; // Pas de code, on sort
+
+  try {
+    // 1️⃣ Récupérer l'ID du parrain grâce au code
+    const { data: referrerData, error: referrerError } = await supabase
+      .from('affiliates')
+      .select('user_id')
+      .eq('affiliate_code', referralCode)
+      .maybeSingle();
+console.log("affiliate result",referrerData)
+    if (referrerError) {
+      console.error('Erreur récupération du parrain :', referrerError);
+      return;
+    }
+    if (!referrerData) {
+      console.log('Code de parrainage invalide');
+      return;
+    }
+
+    const referrerId = referrerData.user_id;
+
+    // 2️⃣ Vérifier si l'utilisateur n'a pas déjà été référé
+    const { data: existingReferral } = await supabase
+      .from('commissions')
+      .select('*')
+      .eq('referred_user_id', userId)
+      .single();
+
+    if (existingReferral) {
+      console.log('Utilisateur déjà référé, aucune ligne créée');
+      return;
+    }
+
+    // 3️⃣ Créer la ligne de commission
+    const { data: newCommission, error: commissionError } = await supabase
+      .from('commissions')
+      .insert([{
+        referrer_id: referrerId,
+        referred_user_id: userId,
+        amount: 0, // valeur initiale
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select('*')
+      .single();
+
+    if (commissionError) {
+      console.error('Erreur création commission :', commissionError);
+      return;
+    } 
+
+    console.log('✅ Ligne de commission créée:', newCommission);
+
+  } catch (err) {
+    console.error('Erreur inattendue dans handleReferral:', err);
+  }
+}
 
   const registerMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -156,18 +218,18 @@ const Register = () => {
       }
 
       // Préparer les données d'inscription
-      const registrationData = {
-        email: data.email.trim(),
-        password: data.password,
-        full_name: data.full_name.trim(),
-        phone: data.phone || "",
-        address: data.address || "",
-        city: data.city || "",
-        country: data.country || "Mali",
-        referral_code: data.referral_code || "",
-        referred_by: referredByUserId, // Ajout du champ referred_by
-        physical_card_requested: data.physical_card_requested,
-      };
+        const registrationData = {
+          email: data.email.trim(),
+          password: data.password,
+          full_name: data.full_name.trim(),
+          phone: data.phone || "",
+          address: data.address || "",
+          city: data.city || "",
+          country: data.country || "Mali",
+          referral_code: data.referral_code || "",
+          referred_by: referredByUserId, // Ajout du champ referred_by
+          physical_card_requested: data.physical_card_requested,
+        };
       
       console.log('📝 Données d\'inscription complètes:', {
         ...registrationData,
@@ -175,11 +237,7 @@ const Register = () => {
         referred_by: referredByUserId
       });
 
-      // Generate affiliate code only (card_identifier will be generated after membership purchase)
-      const affiliateCode = generateAffiliateCode();
-      const referrerAffCode = data.referral_code && isValidAffiliateCode(data.referral_code)
-        ? data.referral_code
-        : null;
+    
 
       // Use email or phone as auth identifier (email is optional)
       const authEmail = registrationData.email || `${registrationData.phone}@temp.elverra.ml`;
@@ -190,12 +248,11 @@ const Register = () => {
         phone: registrationData.phone,
         referral_code: registrationData.referral_code,
         physical_card_requested: registrationData.physical_card_requested,
-        affiliate_code: affiliateCode,
-        ...(referrerAffCode ? { referrer_affiliate_code: referrerAffCode } : {}),
         // pass location metadata for server trigger to mirror into profiles
         ...(registrationData.country ? { country: registrationData.country } : {} as any),
         ...(registrationData.city ? { city: registrationData.city } : {} as any),
       });
+    
       if (error) {
         throw new Error(error);
       }
@@ -233,20 +290,12 @@ const Register = () => {
         }
       }
       // Attempt to persist profile fields immediately if we have a session
+      console.log("1er start")
       try {
         const { data: userData } = await supabase.auth.getUser();
         const uid = userData.user?.id || supa.user?.id;
         if (uid) {
-          const updateData: any = {
-            full_name: registrationData.full_name,
-            phone: registrationData.phone,
-            country: registrationData.country,
-            city: registrationData.city,
-            address: registrationData.address,
-            affiliate_code: affiliateCode,
-            ...(referrerAffCode ? { referrer_affiliate_code: referrerAffCode } : {}),
-            updated_at: new Date().toISOString(),
-          };
+         
 
           // S'assurer que les champs requis ont des valeurs par défaut si vides
           const profileData = {
@@ -261,22 +310,26 @@ const Register = () => {
             is_admin: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            ...(data.referral_code && { referrer_affiliate_code: data.referral_code }),
+            referrer_affiliate_code: data.referral_code || null,
+            referred_by: referredByUserId || null,
             physical_card_requested: data.physical_card_requested || false,
             has_physical_card: false
           };
+console.log("profiles data",profileData)
 
-          
-          
+          console.log('starttttt to profiles')
           try {
             // Try to update existing profile first
-            const { error: updateError } = await supabase
+            const { data:dataInsert ,error: InsertError } = await supabase
               .from('profiles')
-              .update(profileData)
-              .eq('id', uid);
+              .insert([profileData]);
+              await handleReferral(uid, data.referral_code);
+              
+          console.log('starttttt to profiles 2',dataInsert)
             
             // If update fails (likely because profile doesn't exist), create a new one
-            if (updateError) {
+            if (InsertError) {  
+              console.log("profilles error 1",InsertError)
               // Generate affiliate code for new user
               const affiliateCode = generateAffiliateCode();
               const newReferralCode = generateReferralCode();
