@@ -77,13 +77,36 @@ const AffiliateSection = () => {
     {
       id: 1,
       title: "Introduction au Programme d'Affiliation",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      videoUrl: "https://www.youtube.com/embed/IlhVuGv0zcM",
       description: "Découvrez comment fonctionne notre programme d'affiliation et comment gagner de l'argent avec nous.",
       questions: [
         {
-          question: "Quel est le pourcentage de commission sur les parrainages ?",
-          options: ["5%", "10%", "15%", "20%"],
-          correctAnswer: "10%"
+          question: "Quel est le nom de la carte proposée par Elverra Global ?",
+          options: ["Carte Africaine", "Carte ZENIKA", "Carte Elverra", "Carte de Progrès"],
+          correctAnswer: "Carte Elverra"
+        },
+        {
+          question: "Quels sont les avantages de la carte ZENIKA ?",
+          options: ["Réductions uniquement", "Privilèges spéciaux uniquement", "Réductions et privilèges spéciaux", "Aucun avantage"],
+          correctAnswer: "Réductions et privilèges spéciaux"
+        },
+        {
+          question: "Quel est l'objectif principal d'Elverra Global ?",
+          options: ["Fournir des services financiers", "Fournir des services financiers", "Favoriser l'autonomisation et le progrès", "Offrir des emplois"],
+          correctAnswer: "Favoriser l'autonomisation et le progrès"
+        }
+      ]
+    },
+    {
+      id: 2,
+      title: "Introduction au Programme d'Affiliation",
+      videoUrl: "https://www.youtube.com/embed/cxvlO0NCG9g",
+      description: "Découvrez comment fonctionne notre programme d'affiliation et comment gagner de l'argent avec nous.",
+      questions: [
+        {
+          question: "Quels services sont proposés par Elverra Global ?",
+          options: ["Centre d'emploi, prêts à court terme, boutique en ligne", "Bibliothèque en ligne gratuite, Ô Secours", "Tous les services mentionnés ci-dessus", "Aucun des services mentionnés ci-dessus"],
+          correctAnswer: "Tous les services mentionnés ci-dessus"
         },
         {
           question: "Combien de temps dure la période d'essai ?",
@@ -98,9 +121,9 @@ const AffiliateSection = () => {
       ]
     },
     {
-      id: 1,
+      id: 3,
       title: "Introduction au Programme d'Affiliation",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      videoUrl: "https://www.youtube.com/embed/Pgd4bfipIKk",
       description: "Découvrez comment fonctionne notre programme d'affiliation et comment gagner de l'argent avec nous.",
       questions: [
         {
@@ -120,7 +143,7 @@ const AffiliateSection = () => {
         }
       ]
     },
-    // Ajoutez d'autres leçons ici
+    
   ];
 
   // Charger la progression de l'utilisateur

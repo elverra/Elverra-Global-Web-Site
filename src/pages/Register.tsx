@@ -165,7 +165,7 @@ const Register = () => {
         city: data.city || "",
         country: data.country || "Mali",
         referral_code: data.referral_code || "",
-        referred_by: referredByUserId, // Ajout du champ referred_by
+        referred_by_user_id: referredByUserId, // Ajout du champ referred_by
         physical_card_requested: data.physical_card_requested,
       };
       
@@ -255,17 +255,14 @@ const Register = () => {
             phone: data.phone || '',
             country: data.country || '',
             city: data.city || '',
-            address: data.address || '',
             profile_image_url: profileImageUrl || 'https://dsnzsgszqdjmugjdyvzv.supabase.co/storage/v1/object/public/profile-images/default-avatar.png',
             identity_card_image_url: identityCardUrl || '',
             is_admin: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            ...(data.referral_code && { referrer_affiliate_code: data.referral_code }),
-            physical_card_requested: data.physical_card_requested || false,
-            has_physical_card: false
+            referred_by_user_id: referredByUserId, // Utilisez le bon nom de colonne
+            physical_card_requested: data.physical_card_requested || false
           };
-
           
           
           try {
@@ -299,7 +296,7 @@ const Register = () => {
               const profileToInsert = {
                 ...profileData,
                 affiliate_code: `ELV-${affiliateCode}`,
-                referred_by: referredByUserId, // Utiliser referredByUserId de la fonction parente
+                referred_by_user_id: referredByUserId, // Utiliser referredByUserId de la fonction parente
                 referrer_affiliate_code: data.referral_code || null,
                 referral_code: newReferralCode,
                 physical_card_status: 'not_requested',
