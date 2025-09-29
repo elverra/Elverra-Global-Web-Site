@@ -83,7 +83,7 @@ const AffiliateSection = () => {
         {
           question: "What is the name of the card offered by Elverra Global?",
           options: ["African Card", "ZENIKA Card", "Elverra Card", "Progress Card"],
-          correctAnswer: "Elverra Card"
+          correctAnswer: "ZENIKA Card"
         },
         {
           question: "What are the benefits of the ZENIKA card?",
@@ -111,12 +111,12 @@ const AffiliateSection = () => {
         {
           question: "How long is the trial period?",
           options: ["7 days", "14 days", "30 days", "No trial period"],
-          correctAnswer: "14 days"
+          correctAnswer: "No trial period"
         },
         {
           question: "When are you paid for your referrals?",
-          options: ["Immediately", "At the end of the month", "After 30 days", "After manual approval"],
-          correctAnswer: "At the end of the month"
+          options: ["Immediately", "At the end of the month", "After 24 hours", "After manual approval"],
+          correctAnswer: "After 24 hours"
         }
       ]
     },
