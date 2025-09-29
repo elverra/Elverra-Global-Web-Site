@@ -772,171 +772,171 @@ setReferrals(formattedReferrals);
       </div>
     );
   }
-  // if (userProgress && !userProgress.onboarding_complete) {
-  //   return (
-  //     <>
-  //       <Card>
-  //         <CardHeader>
-  //           <CardTitle className="flex items-center gap-2">
-  //             <Gift className="h-5 w-5" />
-  //             Training Required
-  //           </CardTitle>
-  //         </CardHeader>
-  //         <CardContent className="space-y-4">
-  //           <div className="bg-blue-50 p-4 rounded-lg">
-  //             <h4 className="font-semibold mb-2">Before you start:</h4>
-  //             <p className="text-sm text-gray-700 mb-4">
-  //               To join our affiliate program, you must first complete a short training.
-  //             </p>
-  //             <Button 
-  //               onClick={() => {
-  //                 console.log('Start Training clicked');
-  //                 setShowOnboarding(true);
-  //               }}
-  //               className="w-full"
-  //             >
-  //               Start Training
-  //             </Button>
-  //           </div>
-  //         </CardContent>
-  //       </Card>
+  if (userProgress && !userProgress.onboarding_complete) {
+    return (
+      <>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5" />
+              Training Required
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-semibold mb-2">Before you start:</h4>
+              <p className="text-sm text-gray-700 mb-4">
+                To join our affiliate program, you must first complete a short training.
+              </p>
+              <Button 
+                onClick={() => {
+                  console.log('Start Training clicked');
+                  setShowOnboarding(true);
+                }}
+                className="w-full"
+              >
+                Start Training
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
   
-  //       {/* Onboarding modal */}
-  //       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-  //         <DialogContent className="max-w-4xl">
-  //           <DialogHeader>
-  //             <div className="flex justify-between items-center">
-  //               <DialogTitle>
-  //                 Affiliate Training - Step {onboardingStep + 1} of {lessons.length}
-  //               </DialogTitle>
-  //               <Button 
-  //                 variant="ghost" 
-  //                 size="icon" 
-  //                 onClick={() => setShowOnboarding(false)}
-  //                 className="h-8 w-8"
-  //               >
-  //                 <X className="h-4 w-4" />
-  //               </Button>
-  //             </div>
-  //             <Progress 
-  //               value={((onboardingStep + (showQuiz ? 0.5 : 0)) / (lessons.length + 0.5)) * 100} 
-  //               className="my-4 h-2" 
-  //             />
-  //           </DialogHeader>
+        {/* Onboarding modal */}
+        <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <div className="flex justify-between items-center">
+                <DialogTitle>
+                  Affiliate Training - Step {onboardingStep + 1} of {lessons.length}
+                </DialogTitle>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setShowOnboarding(false)}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <Progress 
+                value={((onboardingStep + (showQuiz ? 0.5 : 0)) / (lessons.length + 0.5)) * 100} 
+                className="my-4 h-2" 
+              />
+            </DialogHeader>
             
-  //           {!showQuiz ? (
-  //             <div className="space-y-6">
-  //               <div className="aspect-video bg-black rounded-lg overflow-hidden">
-  //                 <iframe
-  //                   src={lessons[onboardingStep]?.videoUrl}
-  //                   className="w-full h-full"
-  //                   allowFullScreen
-  //                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-  //                 />
-  //               </div>
+            {!showQuiz ? (
+              <div className="space-y-6">
+                <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                  <iframe
+                    src={lessons[onboardingStep]?.videoUrl}
+                    className="w-full h-full"
+                    allowFullScreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  />
+                </div>
                 
-  //               <div className="space-y-2">
-  //                 <h3 className="text-lg font-semibold">{lessons[onboardingStep]?.title}</h3>
-  //                 <p className="text-sm text-gray-600">{lessons[onboardingStep]?.description}</p>
-  //               </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">{lessons[onboardingStep]?.title}</h3>
+                  <p className="text-sm text-gray-600">{lessons[onboardingStep]?.description}</p>
+                </div>
                 
-  //               <div className="flex justify-between pt-4">
-  //                 <Button 
-  //                   variant="outline" 
-  //                   onClick={() => {
-  //                     if (onboardingStep > 0) {
-  //                       setOnboardingStep(prev => prev - 1);
-  //                       setShowQuiz(false);
-  //                     } else {
-  //                       setShowOnboarding(false);
-  //                     }
-  //                   }}
-  //                   disabled={onboardingStep === 0}
-  //                 >
-  //                   <ChevronLeft className="h-4 w-4 mr-2" />
-  //                   {onboardingStep === 0 ? 'Close' : 'Previous'}
-  //                 </Button>
-  //                 <Button 
-  //                   onClick={() => {
-  //                     console.log('Take Quiz clicked');
-  //                     setShowQuiz(true);
-  //                   }}
-  //                 >
-  //                   Take the Quiz
-  //                   <ChevronRight className="h-4 w-4 ml-2" />
-  //                 </Button>
-  //               </div>
-  //             </div>
-  //           ) : (
-  //             <div className="space-y-6">
-  //               <h3 className="text-lg font-semibold">Quiz: {lessons[onboardingStep]?.title}</h3>
+                <div className="flex justify-between pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (onboardingStep > 0) {
+                        setOnboardingStep(prev => prev - 1);
+                        setShowQuiz(false);
+                      } else {
+                        setShowOnboarding(false);
+                      }
+                    }}
+                    disabled={onboardingStep === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    {onboardingStep === 0 ? 'Close' : 'Previous'}
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      console.log('Take Quiz clicked');
+                      setShowQuiz(true);
+                    }}
+                  >
+                    Take the Quiz
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Quiz: {lessons[onboardingStep]?.title}</h3>
                 
-  //               <div className="space-y-6">
-  //                 {lessons[onboardingStep]?.questions?.map((q, i) => (
-  //                   <div key={i} className="space-y-3">
-  //                     <p className="font-medium">{i + 1}. {q.question}</p>
-  //                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-  //                       {q.options.map((option, j) => (
-  //                         <Button
-  //                           key={j}
-  //                           variant={
-  //                             userAnswers[`${onboardingStep}-${i}`] === option 
-  //                               ? "default" 
-  //                               : "outline"
-  //                           }
-  //                           onClick={() => {
-  //                             console.log('Answer selected:', { step: onboardingStep, question: i, answer: option });
-  //                             setUserAnswers(prev => ({
-  //                               ...prev,
-  //                               [`${onboardingStep}-${i}`]: option
-  //                             }));
-  //                           }}
-  //                           className="justify-start h-auto py-2 text-left whitespace-normal"
-  //                         >
-  //                           <span className="flex-1">{option}</span>
-  //                           {userAnswers[`${onboardingStep}-${i}`] === option && (
-  //                             <Check className="h-4 w-4 ml-2" />
-  //                           )}
-  //                         </Button>
-  //                       ))}
-  //                     </div>
-  //                   </div>
-  //                 ))}
-  //               </div>
+                <div className="space-y-6">
+                  {lessons[onboardingStep]?.questions?.map((q, i) => (
+                    <div key={i} className="space-y-3">
+                      <p className="font-medium">{i + 1}. {q.question}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {q.options.map((option, j) => (
+                          <Button
+                            key={j}
+                            variant={
+                              userAnswers[`${onboardingStep}-${i}`] === option 
+                                ? "default" 
+                                : "outline"
+                            }
+                            onClick={() => {
+                              console.log('Answer selected:', { step: onboardingStep, question: i, answer: option });
+                              setUserAnswers(prev => ({
+                                ...prev,
+                                [`${onboardingStep}-${i}`]: option
+                              }));
+                            }}
+                            className="justify-start h-auto py-2 text-left whitespace-normal"
+                          >
+                            <span className="flex-1">{option}</span>
+                            {userAnswers[`${onboardingStep}-${i}`] === option && (
+                              <Check className="h-4 w-4 ml-2" />
+                            )}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 
-  //               <div className="flex justify-between pt-4">
-  //                 <Button 
-  //                   variant="outline" 
-  //                   onClick={() => {
-  //                     console.log('Back to video clicked');
-  //                     setShowQuiz(false);
-  //                   }}
-  //                 >
-  //                   <ChevronLeft className="h-4 w-4 mr-2" />
-  //                   Back to Video
-  //                 </Button>
-  //                 <Button 
-  //                   onClick={async () => {
-  //                     console.log('Submit answers clicked', { userAnswers });
-  //                     await handleAnswerSubmit();
-  //                   }}
-  //                   disabled={
-  //                     !lessons[onboardingStep]?.questions.every((_, i) => 
-  //                       userAnswers[`${onboardingStep}-${i}`]
-  //                     )
-  //                   }
-  //                 >
-  //                   {onboardingStep === lessons.length - 1 ? "Finish" : "Next"}
-  //                   <ChevronRight className="h-4 w-4 ml-2" />
-  //                 </Button>
-  //               </div>
-  //             </div>
-  //           )}
-  //         </DialogContent>
-  //       </Dialog>
-  //     </>
-  //   );
-  // }
+                <div className="flex justify-between pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      console.log('Back to video clicked');
+                      setShowQuiz(false);
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Back to Video
+                  </Button>
+                  <Button 
+                    onClick={async () => {
+                      console.log('Submit answers clicked', { userAnswers });
+                      await handleAnswerSubmit();
+                    }}
+                    disabled={
+                      !lessons[onboardingStep]?.questions.every((_, i) => 
+                        userAnswers[`${onboardingStep}-${i}`]
+                      )
+                    }
+                  >
+                    {onboardingStep === lessons.length - 1 ? "Finish" : "Next"}
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
   // Check loading state
   if (isLoading) {
     return (
