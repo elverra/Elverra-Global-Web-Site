@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -32,6 +33,7 @@ interface Agent {
   application_notes?: string;
   rejection_reason?: string;
   created_at: string;
+  approved_at?: string;
   joinies: {
     full_name: string;
     email: string;
@@ -49,126 +51,93 @@ const AffiliateApprovalPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'day' | 'month' | 'year'>('all');
   const [filterValue, setFilterValue] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+
   useEffect(() => {
-    if (filterType === 'all' || !filterValue) {
-      setFilteredAgents(agents);
-      return;
+    let filtered = [...agents];
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(agent => agent.approval_status === statusFilter);
     }
-  
-    const date = new Date(filterValue);
-    if (isNaN(date.getTime())) {
-      setFilteredAgents(agents);
-      return;
-    }
-  
-    const filtered = agents.filter(agent => {
-      const agentDate = new Date(agent.created_at);
-      
-      switch (filterType) {
-        case 'day':
-          return (
-            agentDate.getDate() === date.getDate() &&
-            agentDate.getMonth() === date.getMonth() &&
-            agentDate.getFullYear() === date.getFullYear()
-          );
-        case 'month':
-          return (
-            agentDate.getMonth() === date.getMonth() &&
-            agentDate.getFullYear() === date.getFullYear()
-          );
-        case 'year':
-          return agentDate.getFullYear() === date.getFullYear();
-        default:
-          return true;
+
+    // Apply date filter
+    if (filterType !== 'all' && filterValue) {
+      const date = new Date(filterValue);
+      if (!isNaN(date.getTime())) {
+        filtered = filtered.filter(agent => {
+          const agentDate = new Date(agent.created_at);
+          switch (filterType) {
+            case 'day':
+              return (
+                agentDate.getDate() === date.getDate() &&
+                agentDate.getMonth() === date.getMonth() &&
+                agentDate.getFullYear() === date.getFullYear()
+              );
+            case 'month':
+              return (
+                agentDate.getMonth() === date.getMonth() &&
+                agentDate.getFullYear() === date.getFullYear()
+              );
+            case 'year':
+              return agentDate.getFullYear() === date.getFullYear();
+            default:
+              return true;
+          }
+        });
       }
-    });
-  
-    setFilteredAgents(filtered);
-  }, [filterValue, filterType, agents]);
-  useEffect(() => {
-    if (!searchTerm) {
-      setFilteredAgents(agents);
-      return;
     }
 
-    const lowercasedSearch = searchTerm.toLowerCase();
-    const filtered = agents.filter(agent => {
-      const searchDate = new Date(agent.created_at);
-      const dateStr = searchDate.toLocaleDateString();
-      const month = (searchDate.getMonth() + 1).toString();
-      const year = searchDate.getFullYear().toString();
+    // Apply search filter
+    if (searchTerm) {
+      const lowercasedSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(agent => {
+        const searchDate = new Date(agent.created_at);
+        const dateStr = searchDate.toLocaleDateString();
+        const month = (searchDate.getMonth() + 1).toString();
+        const year = searchDate.getFullYear().toString();
 
-      return (
-        agent.joinies.full_name?.toLowerCase().includes(lowercasedSearch) ||
-        agent.joinies.email?.toLowerCase().includes(lowercasedSearch) ||
-        agent.joinies.phone?.includes(searchTerm) ||
-        agent.referral_code?.toLowerCase().includes(lowercasedSearch) ||
-        dateStr.includes(searchTerm) ||
-        month.includes(searchTerm) ||
-        year.includes(searchTerm)
-      );
-    });
+        return (
+          agent.joinies.full_name?.toLowerCase().includes(lowercasedSearch) ||
+          agent.joinies.email?.toLowerCase().includes(lowercasedSearch) ||
+          agent.joinies.phone?.includes(searchTerm) ||
+          agent.referral_code?.toLowerCase().includes(lowercasedSearch) ||
+          dateStr.includes(searchTerm) ||
+          month.includes(searchTerm) ||
+          year.includes(searchTerm)
+        );
+      });
+    }
 
     setFilteredAgents(filtered);
-  }, [searchTerm, agents]);
+  }, [filterValue, filterType, statusFilter, searchTerm, agents]);
+
   useEffect(() => {
     if (initialLoad) {
-      fetchPendingAgents();
+      fetchAgents();
       setInitialLoad(false);
     }
   }, [initialLoad]);
 
-  const handleDateFilter = (date: Date | undefined) => {
-    if (!date) {
-      setFilteredAgents(agents);
-      return;
-    }
-
-    const filtered = agents.filter(agent => {
-      const agentDate = new Date(agent.created_at);
-      
-      switch (filterType) {
-        case 'day':
-          return (
-            agentDate.getDate() === date.getDate() &&
-            agentDate.getMonth() === date.getMonth() &&
-            agentDate.getFullYear() === date.getFullYear()
-          );
-        case 'month':
-          return (
-            agentDate.getMonth() === date.getMonth() &&
-            agentDate.getFullYear() === date.getFullYear()
-          );
-        case 'year':
-          return agentDate.getFullYear() === date.getFullYear();
-        default:
-          return true;
-      }
-    });
-
-    setFilteredAgents(filtered);
-  };
-  const fetchPendingAgents = async () => {
+  const fetchAgents = async () => {
     try {
       setLoading(true);
       
-      // 1. Récupérer les affiliés en attente
+      // Fetch all affiliates, regardless of approval status
       const { data: affiliates, error: affiliatesError } = await supabase
         .from('affiliates')
         .select('*')
-        .eq('approved', false)
         .order('created_at', { ascending: true });
   
       if (affiliatesError) throw affiliatesError;
   
-      // Si pas d'affiliés, on arrête là
       if (!affiliates || affiliates.length === 0) {
         setAgents([]);
         setFilteredAgents([]);
         return;
       }
   
-      // 2. Récupérer les profils correspondants
+      // Fetch corresponding profiles
       const userIds = affiliates.map(a => a.user_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -177,11 +146,12 @@ const AffiliateApprovalPanel = () => {
   
       if (profilesError) throw profilesError;
   
-      // 3. Combiner les données
+      // Combine affiliate and profile data
       const formattedAgents = affiliates.map(affiliate => {
         const profile = profiles.find(p => p.id === affiliate.user_id) || {};
         return {
           ...affiliate,
+          approval_status: affiliate.approved ? 'approved' : affiliate.rejection_reason ? 'rejected' : 'pending',
           joinies: {
             full_name: profile.full_name || 'Inconnu',
             email: profile.email || 'Aucun email',
@@ -201,25 +171,28 @@ const AffiliateApprovalPanel = () => {
       setLoading(false);
     }
   };
+
   const approveAgent = async (agentId: string) => {
     try {
       const { error } = await supabase
         .from('affiliates')
         .update({ 
           approved: true,
-          approved_at: new Date().toISOString()
+          approved_at: new Date().toISOString(),
+          rejection_reason: null
         })
         .eq('id', agentId);
   
       if (error) throw error;
       
       toast.success('Affilié approuvé avec succès');
-      fetchPendingAgents();
+      fetchAgents();
     } catch (error) {
       console.error('Error approving agent:', error);
       toast.error('Échec de l\'approbation de l\'affilié');
     }
   };
+
   const rejectAgent = async (agentId: string, reason: string) => {
     if (!reason.trim()) {
       toast.error('Veuillez indiquer une raison de refus');
@@ -231,7 +204,8 @@ const AffiliateApprovalPanel = () => {
         .from('affiliates')
         .update({ 
           approved: false,
-          rejection_reason: reason
+          rejection_reason: reason,
+          approved_at: null
         })
         .eq('id', agentId);
   
@@ -240,12 +214,13 @@ const AffiliateApprovalPanel = () => {
       toast.success('Affilié refusé avec succès');
       setSelectedAgent(null);
       setNotes('');
-      fetchPendingAgents();
+      fetchAgents();
     } catch (error) {
       console.error('Error rejecting agent:', error);
       toast.error('Échec du refus de l\'affilié');
     }
   };
+
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pending':
@@ -265,7 +240,7 @@ const AffiliateApprovalPanel = () => {
 
   return (
     <div className="space-y-6">
-     <div className="flex flex-col space-y-4">
+      <div className="flex flex-col space-y-4">
         <h2 className="text-2xl font-bold">Gestion des Affiliés</h2>
         
         <div className="flex flex-col md:flex-row gap-4">
@@ -282,6 +257,22 @@ const AffiliateApprovalPanel = () => {
           
           <div className="flex flex-col sm:flex-row gap-2">
             <Select 
+              value={statusFilter} 
+              onValueChange={(value: 'all' | 'pending' | 'approved' | 'rejected') => setStatusFilter(value)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filtrer par statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="approved">Approuvé</SelectItem>
+                <SelectItem value="rejected">Refusé</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select 
               value={filterType} 
               onValueChange={(value: 'all' | 'day' | 'month' | 'year') => {
                 setFilterType(value);
@@ -290,7 +281,7 @@ const AffiliateApprovalPanel = () => {
             >
               <SelectTrigger className="w-[180px]">
                 <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filtrer par" />
+                <SelectValue placeholder="Filtrer par date" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes les dates</SelectItem>
@@ -301,26 +292,26 @@ const AffiliateApprovalPanel = () => {
             </Select>
 
             {filterType !== 'all' && (
-             <Popover>
-             <PopoverTrigger asChild>
-               <Button
-                 variant="outline"
-                 className="w-full justify-start text-left font-normal"
-               >
-                 <CalendarIcon className="mr-2 h-4 w-4" />
-                 {filterValue ? format(new Date(filterValue), 'PPP', { locale: fr }) : "Filtrer par date"}
-               </Button>
-             </PopoverTrigger>
-             <PopoverContent className="w-auto p-0" align="start">
-               <Calendar
-                 mode="single"
-                 selected={filterValue ? new Date(filterValue) : undefined}
-                 onSelect={(date) => setFilterValue(date?.toISOString() || '')}
-                 initialFocus
-                 locale={fr}
-               />
-             </PopoverContent>
-           </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filterValue ? format(new Date(filterValue), 'PPP', { locale: fr }) : "Filtrer par date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filterValue ? new Date(filterValue) : undefined}
+                    onSelect={(date) => setFilterValue(date?.toISOString() || '')}
+                    initialFocus
+                    locale={fr}
+                  />
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         </div>
@@ -328,17 +319,25 @@ const AffiliateApprovalPanel = () => {
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle>Demandes d'affiliation en attente</CardTitle>
-            <Badge className="bg-yellow-500">
-              {filteredAgents.length} demande{filteredAgents.length > 1 ? 's' : ''} en attente
-            </Badge>
+            <CardTitle>Toutes les demandes d'affiliation</CardTitle>
+            <div className="flex gap-2">
+              <Badge className="bg-yellow-500">
+                {filteredAgents.filter(a => a.approval_status === 'pending').length} en attente
+              </Badge>
+              <Badge className="bg-green-500">
+                {filteredAgents.filter(a => a.approval_status === 'approved').length} approuvé(s)
+              </Badge>
+              <Badge className="bg-red-500">
+                {filteredAgents.filter(a => a.approval_status === 'rejected').length} refusé(s)
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {filteredAgents.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">
-                {searchTerm ? 'Aucun résultat trouvé' : 'Aucune demande en attente'}
+                {searchTerm || statusFilter !== 'all' || filterValue ? 'Aucun résultat trouvé' : 'Aucune demande d\'affiliation'}
               </p>
             </div>
           ) : (
@@ -368,6 +367,9 @@ const AffiliateApprovalPanel = () => {
                             <CalendarIcon className="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
                             <span>
                               Inscrit le {new Date(agent.created_at).toLocaleDateString()}
+                              {agent.approved_at && agent.approval_status === 'approved' && (
+                                <span> (Approuvé le {new Date(agent.approved_at).toLocaleDateString()})</span>
+                              )}
                             </span>
                           </div>
                         </div>
@@ -381,27 +383,34 @@ const AffiliateApprovalPanel = () => {
                               <strong>Notes:</strong> {agent.application_notes}
                             </p>
                           )}
+                          {agent.rejection_reason && agent.approval_status === 'rejected' && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              <strong>Raison du refus:</strong> {agent.rejection_reason}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row md:flex-col gap-2 w-full md:w-auto">
-                        <Button
-                          size="sm"
-                          onClick={() => approveAgent(agent.id)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Check className="h-4 w-4 mr-1" />
-                          Approuver
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => setSelectedAgent(agent)}
-                        >
-                          <X className="h-4 w-4 mr-1" />
-                          Refuser
-                        </Button>
-                      </div>
+                      {agent.approval_status === 'pending' && (
+                        <div className="flex flex-col sm:flex-row md:flex-col gap-2 w-full md:w-auto">
+                          <Button
+                            size="sm"
+                            onClick={() => approveAgent(agent.id)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Approuver
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setSelectedAgent(agent)}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Refuser
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     {selectedAgent?.id === agent.id && (
