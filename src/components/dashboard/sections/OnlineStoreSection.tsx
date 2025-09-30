@@ -426,12 +426,15 @@ const [editIsActive, setEditIsActive] = useState(true);
                   // Keep payload minimal to maximize compatibility across schema variations
                   const basePayload: any = {
                     shop_id: myShop.id,
+                    user_id: user?.id, // Add user_id from auth context
                     price: Number(newProdPrice),
                     description: newProdDescription.trim() || null,
                     category: newProdCategory.trim() || null,
-                    stock: newProdStock ? Number(newProdStock) : null,
+                    stock: newProdStock ? Number(newProdStock) : 1, // Default to 1 if not provided
                     contact_phone: newProdContactPhone.trim() || null,
                     contact_whatsapp: newProdContactWhatsapp.trim() || null,
+                    status: 'active', // Add required status field
+                    specifications: {} // Add empty specifications object
                   };
                   if (imagesArr.length) basePayload.images = imagesArr;
                   // Track success and last error for retry logic across schema variations
@@ -493,7 +496,15 @@ const [editIsActive, setEditIsActive] = useState(true);
                       ((err?.code === '42703' || err?.code === 'PGRST204') && /(category|is_active|stock|contact_phone|contact_whatsapp|description)/i.test(err?.message || ''))
                     )
                   ) {
-                    const minimal: any = { shop_id: myShop.id, price: Number(newProdPrice) };
+                    const minimal: any = { 
+                      shop_id: myShop.id, 
+                      user_id: user?.id, // Include user_id in minimal payload
+                      price: Number(newProdPrice),
+                      title: newProdName.trim(),
+                      status: 'active',
+                      stock: 1,
+                      specifications: {}
+                    };
                     const { error: e4 } = await supabase
                       .from('products')
                       .insert([{ ...minimal, title: newProdName.trim() }]);
