@@ -517,30 +517,30 @@ const AffiliateSection = () => {
       return;
     }
 
-    // Check if training is completed
-    if (userProgress && !userProgress.onboarding_complete) {
-      console.log("❌ Onboarding not completed");
-      toast({
-        title: "Training Required",
-        description: "You must complete the training before joining the affiliate program.",
-        variant: "default",
-      });
-      setShowOnboarding(true);
-      return;
-    }
+    // // Check if training is completed
+    // if (userProgress && !userProgress.onboarding_complete) {
+    //   console.log("❌ Onboarding not completed");
+    //   toast({
+    //     title: "Training Required",
+    //     description: "You must complete the training before joining the affiliate program.",
+    //     variant: "default",
+    //   });
+    //   setShowOnboarding(true);
+    //   return;
+    // }
 
-    // Check if quiz is passed
-    if (userProgress && !userProgress.quiz_passed) {
-      console.log("❌ Quiz not passed");
-      toast({
-        title: "Quiz Required",
-        description: "You must pass the quiz to join the affiliate program.",
-        variant: "destructive",
-      });
-      setShowOnboarding(true);
-      setShowQuiz(true);
-      return;
-    }
+    // // Check if quiz is passed
+    // if (userProgress && !userProgress.quiz_passed) {
+    //   console.log("❌ Quiz not passed");
+    //   toast({
+    //     title: "Quiz Required",
+    //     description: "You must pass the quiz to join the affiliate program.",
+    //     variant: "destructive",
+    //   });
+    //   setShowOnboarding(true);
+    //   setShowQuiz(true);
+    //   return;
+    // }
 
     console.log("2. All checks passed, starting enrollment...");
     setIsEnrolling(true);
