@@ -7,19 +7,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, ShoppingCart, MapPin, Phone, Mail, Package } from "lucide-react";
 import Layout from '@/components/layout/Layout';
+import { toast } from 'sonner';
+
+interface Profile {
+  id: string;
+  full_name: string;
+  avatar_url?: string | null;
+  profile_image_url?: string | null;
+  [key: string]: any; // Pour gérer d'autres propriétés potentielles
+}
 
 interface Product {
   id: string;
   name: string;
   description: string;
-  price: number;
+  price: string;
   category: string;
   images: string[];
-  contact: string;
-  sellerName: string;
-  location: string;
-  isActive: boolean;
-  createdAt: string;
+  contact_phone: string;
+  contact_whatsapp: string;
+  location: string | null;
+  is_active: boolean;
+  created_at: string;
+  seller_id: string | null;
+  profiles: Profile | null;
 }
 
 type Category = string;
@@ -53,59 +64,111 @@ export default function PublicShop() {
       setLoading(false);
     }
   };
-
   const fetchProducts = async () => {
     try {
-      let filteredProducts: Product[] = [] as any;
+      let filteredProducts: Product[] = [];
       if (selectedShop !== 'all') {
         const { data: shop } = await supabase
           .from('shops')
           .select('id, slug')
           .eq('slug', selectedShop)
           .maybeSingle();
+        
         if (shop?.id) {
-          const { data } = await supabase
-            .from('products')
-            .select('id, name, description, price, category, images, contact, seller_name, location, is_active, created_at')
-            .eq('shop_id', shop.id)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
-          filteredProducts = (data as any) || [];
-        }
-      } else {
-        const { data } = await supabase
+          const { data, error } = await supabase
           .from('products')
-          .select('id, name, description, price, category, images, contact, seller_name, location, is_active, created_at')
+          .select(`
+            id,
+            name:title,
+            description,
+            price,
+            category,
+            images,
+            contact_phone,
+            contact_whatsapp,
+            location,
+            is_active,
+            created_at,
+            seller_id,
+            profiles!seller_id (
+              id,
+              full_name,
+              profile_image_url
+            )
+          `)
           .eq('is_active', true)
           .order('created_at', { ascending: false });
-        filteredProducts = (data as any) || [];
+  
+          if (error) throw error;
+          console.log('Données brutes des produits:', data);
+          filteredProducts = (data || []).map(product => {
+            const profile = product.profiles?.[0] || null;
+            console.log('Profil du vendeur:', profile);
+            return {
+              ...product,
+              profiles: profile,
+              seller: profile
+            };
+          });
+        }
+      } else {
+        const { data, error } = await supabase
+  .from('products')
+  .select(`
+    id,
+    name:title,
+    description,
+    price,
+    category,
+    images,
+    contact_phone,
+    contact_whatsapp,
+    location,
+    is_active,
+    created_at,
+    seller_id,
+    profiles!seller_id (
+      id,
+      full_name,
+      profile_image_url
+    )
+  `)
+  .eq('is_active', true)
+  .order('created_at', { ascending: false });
+  
+        if (error) throw error;
+        filteredProducts = (data || []).map(product => ({
+          ...product,
+          profiles: product.profiles?.[0] || null,
+          seller: product.profiles?.[0] || null // Keep both for backward compatibility if needed
+        }));
       }
         
-        // Apply filters
-        if (selectedCategory !== 'all') {
-          filteredProducts = filteredProducts.filter((p: any) => p.category === selectedCategory);
-        }
-        
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          filteredProducts = filteredProducts.filter((p: any) => 
-            p.name.toLowerCase().includes(query) ||
-            p.description.toLowerCase().includes(query)
-          );
-        }
-        
-        // Apply pagination
-        const startIndex = (currentPage - 1) * 20;
-        const endIndex = startIndex + 20;
-        const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
-        
-        setProducts(paginatedProducts as any);
-        setHasMore(endIndex < filteredProducts.length);
+      // Apply filters
+      if (selectedCategory !== 'all') {
+        filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
+      }
+      
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filteredProducts = filteredProducts.filter(p => 
+          p.name.toLowerCase().includes(query) ||
+          p.description?.toLowerCase().includes(query)
+        );
+      }
+      
+      // Apply pagination
+      const startIndex = (currentPage - 1) * 20;
+      const endIndex = startIndex + 20;
+      const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+      
+      setProducts(paginatedProducts);
+      setHasMore(endIndex < filteredProducts.length);
     } catch (error) {
       console.error('Error fetching products:', error);
+      toast.error('Failed to load products');
     }
   };
-
   const fetchCategories = async () => {
     try {
       const { data } = await supabase
@@ -268,7 +331,7 @@ export default function PublicShop() {
         {products.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {products.map((product) => {
-              const contactInfo = getContactInfo(product.contact);
+              const contactInfo = getContactInfo(product.contact_phone || '');
               const ContactIcon = contactInfo.icon;
               
               return (
@@ -296,21 +359,31 @@ export default function PublicShop() {
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-bold text-primary">
-                          {formatPrice(product.price)}
+                        {formatPrice(Number(product.price))}
                         </span>
                         <Badge>{product.category}</Badge>
                       </div>
                       
-                      {product.sellerName && (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <span>Sold by: {product.sellerName}</span>
-                        </div>
-                      )}
-                      
-                      {product.location && (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <MapPin className="w-3 h-3 mr-1" />
-                          <span>{product.location}</span>
+                      {product.profiles?.full_name && (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                            {(product.profiles.profile_image_url || product.profiles.avatar_url) ? (
+                              <img 
+                                src={(product.profiles.profile_image_url || product.profiles.avatar_url) as string} 
+                                alt={product.profiles.full_name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 text-xs">
+                                {product.profiles.full_name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <span>Sold by: {product.profiles.full_name}</span>
                         </div>
                       )}
                     </div>
@@ -318,10 +391,10 @@ export default function PublicShop() {
                     <div className="border-t pt-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">Contact Seller:</span>
-                        <div className="flex items-center gap-2">
+
                           <ContactIcon className="w-4 h-4 text-gray-500" />
                           <span className="text-sm text-gray-600">{contactInfo.value}</span>
-                        </div>
+                        
                       </div>
                       
                       <Button 
@@ -339,6 +412,7 @@ export default function PublicShop() {
                         Contact Seller
                       </Button>
                     </div>
+                  
                   </CardContent>
                 </Card>
               );
@@ -371,7 +445,8 @@ export default function PublicShop() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+  
     </Layout>
   );
 }
