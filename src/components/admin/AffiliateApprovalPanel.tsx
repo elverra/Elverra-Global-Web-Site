@@ -178,8 +178,7 @@ const AffiliateApprovalPanel = () => {
         .from('affiliates')
         .update({ 
           approved: true,
-          approved_at: new Date().toISOString(),
-          rejection_reason: null
+          approved_at: new Date().toISOString()
         })
         .eq('id', agentId);
   
