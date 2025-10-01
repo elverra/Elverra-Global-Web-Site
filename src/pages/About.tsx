@@ -61,11 +61,11 @@ const About = () => {
               <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl mb-8">
                 <CardContent className="p-8 md:p-12">
                   <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">
-                    Welcome to Elverra Global SA
+                    Welcome to Elverra Global ML SAS
                   </h2>
                   <div className="prose prose-lg max-w-none text-gray-700 text-center leading-relaxed">
                     <p className="text-xl mb-6">
-                      At <strong>Elverra Global SA</strong>, we're driven by a
+                      At <strong>Elverra Global ML SAS</strong>, we're driven by a
                       singular vision: to leave an indelible mark across the
                       vibrant markets of Africa, Asia, and the Middle East. Our
                       mission is to provide bespoke services that not only meet

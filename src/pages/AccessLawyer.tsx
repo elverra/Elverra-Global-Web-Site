@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,13 +27,20 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
 
 const AccessLawyer = () => {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Form state with default empty values
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    message: '',
+    email: user?.email || '',
     phone: '',
-    caseType: '',
-    message: ''
+    caseType: ''
   });
+
+  // Initialize phone number with profile value if available
+  const [userPhone, setUserPhone] = useState(profile?.phone || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestType, setRequestType] = useState<'form' | 'voice'>('form');
   const [isRecording, setIsRecording] = useState(false);
@@ -40,6 +49,48 @@ const AccessLawyer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        setProfile(profileData);
+
+        // Update form with user data
+        setFormData(prev => ({
+          ...prev,
+          email: user.email || '',
+          phone: profileData?.phone || ''
+        }));
+
+        // Update phone number for WhatsApp
+        if (profileData?.phone) {
+          setUserPhone(profileData.phone);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        toast.error('Error loading your profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   // Functions for voice recording
   const startRecording = async () => {
@@ -90,47 +141,41 @@ const AccessLawyer = () => {
     }
   };
 
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     try {
-      // Validation selon le type de demande
+      // Validation based on request type
       if (requestType === 'voice') {
         if (!audioBlob) {
-          toast.error('Veuillez enregistrer un message vocal');
+          toast.error('Please record a voice message');
           setIsSubmitting(false);
           return;
         }
-        if (!formData.phone.trim()) {
-          toast.error('Veuillez saisir votre numéro de téléphone');
+        if (!userPhone) {
+          toast.error('Phone number not found. Please ensure your profile contains a valid phone number.');
           setIsSubmitting(false);
           return;
         }
       }
       
-      if (requestType === 'form') {
-        if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.caseType.trim()) {
-          toast.error('Veuillez remplir tous les champs obligatoires');
-          setIsSubmitting(false);
-          return;
-        }
-        if (!formData.message.trim()) {
-          toast.error('Veuillez saisir votre message');
-          setIsSubmitting(false);
-          return;
-        }
+      if (requestType === 'form' && !formData.message.trim()) {
+        toast.error('Please enter your message');
+        setIsSubmitting(false);
+        return;
       }
 
       let uploadedAudioUrl = '';
       
-      // Upload du fichier audio vers Supabase Storage
+      // Upload audio file to Supabase Storage
       if (requestType === 'voice' && audioBlob) {
         try {
           const fileName = `lawyer-request-${Date.now()}.wav`;
           const filePath = `audio/${fileName}`;
           
-          // Upload vers le bucket 'lawyer-audio'
+          // Upload to 'lawyer-audio' bucket
           const { error: uploadError } = await supabase.storage
             .from('lawyer-audio')
             .upload(filePath, audioBlob, {
@@ -140,35 +185,35 @@ const AccessLawyer = () => {
 
           if (uploadError) {
             console.error('Upload error:', uploadError);
-            throw new Error('Erreur lors de l\'upload du fichier audio');
+            throw new Error('Error uploading audio file');
           }
 
-          // Obtenir l'URL publique du fichier
+          // Get public URL of the file
           const { data: urlData } = supabase.storage
             .from('lawyer-audio')
             .getPublicUrl(filePath);
 
           uploadedAudioUrl = urlData.publicUrl;
-          console.log('Fichier audio uploadé:', uploadedAudioUrl);
+          console.log('Audio file uploaded:', uploadedAudioUrl);
           
         } catch (error) {
-          console.error('Erreur upload audio:', error);
-          toast.error('Erreur lors de l\'upload du fichier audio');
+          console.error('Audio upload error:', error);
+          toast.error('Error uploading audio file');
           setIsSubmitting(false);
           return;
         }
       }
 
-      // Enregistrement direct dans Supabase
+      // Save request to Supabase
       const { data: lawyerRequest, error: dbError } = await supabase
         .from('lawyer_requests')
         .insert([
           {
-            name: requestType === 'form' ? formData.name : null,
-            email: requestType === 'form' ? formData.email : null,
-            phone: formData.phone,
+            name: null, // Name field removed from form
+            email: null, // Email is optional
+            phone: userPhone, // Use profile phone
             case_type: requestType === 'form' ? formData.caseType : null,
-            message: requestType === 'form' ? formData.message : null,
+            message: requestType === 'form' ? formData.message : 'Voice message',
             audio_url: uploadedAudioUrl || null,
             request_type: requestType,
             status: 'pending'
@@ -179,66 +224,81 @@ const AccessLawyer = () => {
 
       if (dbError) {
         console.error('Database error:', dbError);
-        throw new Error('Erreur lors de l\'enregistrement');
+        toast.error('Error saving your request');
+        throw new Error('Error saving request');
       }
 
-      // Envoi des notifications
+      // Send notifications
       const emailContent = requestType === 'voice' ? 
-        `🎤 NOUVELLE DEMANDE VOCALE D'ASSISTANCE JURIDIQUE\n\n📱 Téléphone: ${formData.phone}\n🎵 Fichier audio: ${uploadedAudioUrl}\n\n⚠️ DEMANDE VOCALE - Écoutez le message audio pour connaître les détails\n\nID: ${lawyerRequest.id}\nDate: ${new Date().toLocaleString('fr-FR')}` :
-        `📝 NOUVELLE DEMANDE ÉCRITE D'ASSISTANCE JURIDIQUE\n\n👤 Nom: ${formData.name}\n📧 Email: ${formData.email}\n📱 Téléphone: ${formData.phone}\n⚖️ Type d'affaire: ${formData.caseType}\n\n💬 Message:\n${formData.message}\n\nID: ${lawyerRequest.id}\nDate: ${new Date().toLocaleString('fr-FR')}`;
+        `🎤 NEW VOICE LEGAL ASSISTANCE REQUEST\n\n📱 Phone: ${userPhone}\n🎵 Audio file: ${uploadedAudioUrl || 'Not available'}\n\n⚠️ VOICE REQUEST - Listen to the audio message for details\n\nID: ${lawyerRequest.id}\nDate: ${new Date().toLocaleString('en-US')}` :
+        `📝 NEW WRITTEN LEGAL ASSISTANCE REQUEST\n\n📱 Phone: ${userPhone}\n\n💬 Message:\n${formData.message}\n\nID: ${lawyerRequest.id}\nDate: ${new Date().toLocaleString('en-US')}`;
 
-      // Simulation d'envoi d'emails
+      // Send emails
       const emails = ['oladokunefi123@gmail.com', 'ifiboysbeat1@gmail.com'];
-      const whatsappNumbers = ['+22373402073', '+22376104155'];
-
-      console.log('📧 Emails à envoyer à:', emails);
-      console.log('📧 Contenu:', emailContent);
       
-      console.log('📱 WhatsApp à envoyer à:', whatsappNumbers);
-      console.log('📱 Message WhatsApp:', emailContent);
-
-      // Appel backend pour envoi WhatsApp réel (mode vocal uniquement)
-      if (requestType === 'voice' && uploadedAudioUrl) {
-        try {
-          const resp = await fetch('http://localhost:3001/api/notifications/whatsapp', {
+      try {
+        const emailPromises = emails.map(email => 
+          fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              requestId: lawyerRequest.id,
-              audioUrl: uploadedAudioUrl,
-              phones: whatsappNumbers,
+              to: email,
+              subject: `New legal assistance request #${lawyerRequest.id}`,
+              text: emailContent,
+              html: emailContent.replace(/\n/g, '<br/>')
             })
-          });
-          const json = await resp.json();
-          if (!resp.ok) {
-            console.error('WhatsApp backend error:', json);
-            toast.error("L'envoi WhatsApp a échoué");
-          } else {
-            console.log('WhatsApp backend response:', json);
-          }
-        } catch (err) {
-          console.error('WhatsApp backend call failed:', err);
-          toast.error("Erreur lors de l'envoi WhatsApp");
+          })
+        );
+        
+        await Promise.all(emailPromises);
+        console.log('📧 Emails sent successfully');
+        
+      } catch (emailError) {
+        console.error('Error sending emails:', emailError);
+        // Continue even if email sending fails
+      }
+      
+      // Try sending WhatsApp notifications if voice request
+      if (userPhone && requestType === 'voice' && uploadedAudioUrl) {
+        try {
+          const whatsappNumbers = ['+22373402073', '+22376104155'];
+          console.log('📱 Attempting to send WhatsApp to:', whatsappNumbers);
+          
+          const whatsappPromises = whatsappNumbers.map(number => 
+            fetch('/api/send-whatsapp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: number,
+                message: `New voice legal assistance request #${lawyerRequest.id}`,
+                audioUrl: uploadedAudioUrl
+              })
+            })
+          );
+          
+          await Promise.all(whatsappPromises);
+          console.log('📱 WhatsApp notifications sent');
+          
+        } catch (whatsappError) {
+          console.error('WhatsApp error:', whatsappError);
+          toast.warning('WhatsApp notifications could not be sent, but your request was successfully recorded.');
         }
       }
 
-      toast.success('Votre demande a été envoyée avec succès! Un expert juridique vous contactera bientôt.');
-      
-      // Reset du formulaire
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        caseType: '',
+      // Reset form
+      setFormData(prev => ({
+        ...prev,
         message: ''
-      });
+      }));
       setAudioBlob(null);
       setAudioUrl('');
-      setRequestType('form');
+      
+      // Show success message
+      toast.success('Your request has been sent successfully!');
       
     } catch (error) {
-      console.error('Error submitting request:', error);
-      toast.error('Erreur lors de l\'envoi de la demande');
+      console.error('Error submitting form:', error);
+      toast.error('An error occurred while submitting your request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -290,6 +350,16 @@ const AccessLawyer = () => {
     }
   ];
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
@@ -320,236 +390,190 @@ const AccessLawyer = () => {
 
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
             {/* Contact Form */}
             <div className="lg:col-span-2">
-  <Card>
-    <CardHeader>
-      <CardTitle className="text-2xl">Legal Consultation Request</CardTitle>
-      <CardDescription>
-        Choose your communication method: written form or voice message
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      {/* Request type selector */}
-      <div className="mb-6">
-        <Label className="text-base font-medium">Communication Method</Label>
-        <div className="flex gap-4 mt-2">
-          <Button
-            type="button"
-            variant={requestType === 'form' ? 'default' : 'outline'}
-            onClick={() => setRequestType('form')}
-            className="flex items-center gap-2"
-          >
-            <FileText className="h-4 w-4" />
-            Written Form
-          </Button>
-          <Button
-            type="button"
-            variant={requestType === 'voice' ? 'default' : 'outline'}
-            onClick={() => setRequestType('voice')}
-            className="flex items-center gap-2"
-          >
-            <Mic className="h-4 w-4" />
-            Voice Message
-          </Button>
-        </div>
-      </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl">Legal Consultation Request</CardTitle>
+                  <CardDescription>
+                    Choose your communication method: written form or voice message
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Request type selector */}
+                  <div className="mb-6">
+                    <Label className="text-base font-medium">Communication Method</Label>
+                    <div className="flex gap-4 mt-2">
+                      <Button
+                        type="button"
+                        variant={requestType === 'form' ? 'default' : 'outline'}
+                        onClick={() => setRequestType('form')}
+                        className="flex items-center gap-2"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Written Form
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={requestType === 'voice' ? 'default' : 'outline'}
+                        onClick={() => setRequestType('voice')}
+                        className="flex items-center gap-2"
+                      >
+                        <Mic className="h-4 w-4" />
+                        Voice Message
+                      </Button>
+                    </div>
+                  </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Fields depending on request type */}
-        {requestType === 'form' ? (
-          // Form mode: all fields required
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                  required
-                  placeholder="Your full name"
-                  data-testid="input-name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                  required
-                  placeholder="your.email@example.com"
-                  data-testid="input-email"
-                />
-              </div>
-            </div>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* User Information */}
+                    <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                      <div>
+                        <Label>Full Name *</Label>
+                        <Input
+                          value={profile?.full_name || "Not provided"}
+                          disabled
+                          className="bg-white"
+                          data-testid="input-fullname"
+                        />
+                      </div>
+                      <div>
+                        <Label>Email</Label>
+                        <Input
+                          value={formData.email || "Not provided"}
+                          disabled
+                          className="bg-white"
+                          data-testid="input-email"
+                        />
+                      </div>
+                      <div>
+                        <Label>Phone Number *</Label>
+                        <Input
+                          value={formData.phone || "Not provided"}
+                          disabled
+                          className="bg-white"
+                          data-testid="input-phone"
+                        />
+                        {!formData.phone && (
+                          <p className="text-sm text-red-500 mt-1">
+                            Please add a phone number to your profile to use this feature
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="phone">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                  }
-                  required
-                  placeholder="+223 XX XX XX XX"
-                  data-testid="input-phone"
-                />
-              </div>
-              <div>
-                <Label htmlFor="caseType">Case Type *</Label>
-                <Input
-                  id="caseType"
-                  value={formData.caseType}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, caseType: e.target.value }))
-                  }
-                  required
-                  placeholder="e.g., Business Law, Family Law"
-                  data-testid="input-case-type"
-                />
-              </div>
-            </div>
-          </>
-        ) : (
-          // Voice mode: only phone number
-          <div className="max-w-md">
-            <Label htmlFor="phone-voice">Your Phone Number *</Label>
-            <Input
-              id="phone-voice"
-              value={formData.phone}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, phone: e.target.value }))
-              }
-              required
-              placeholder="+223 XX XX XX XX"
-              className="text-lg p-4"
-              data-testid="input-phone-voice"
-            />
-            <p className="text-sm text-gray-600 mt-2">
-              We will contact you on this number after reviewing your voice
-              message
-            </p>
-          </div>
-        )}
-
-        {/* Message Section */}
-        {requestType === 'form' ? (
-          <div>
-            <Label htmlFor="message">Describe your legal issue *</Label>
-            <Textarea
-              id="message"
-              value={formData.message}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, message: e.target.value }))
-              }
-              required
-              placeholder="Please provide details about your legal matter..."
-              rows={5}
-              data-testid="textarea-message"
-            />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Label>Voice Recording of Your Request *</Label>
-
-            {/* Recording Controls */}
-            <div className="flex items-center gap-4">
-              {!isRecording ? (
-                <Button
-                  type="button"
-                  onClick={startRecording}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
-                >
-                  <Mic className="h-4 w-4" />
-                  Start Recording
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={stopRecording}
-                  className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700"
-                >
-                  <Square className="h-4 w-4" />
-                  Stop Recording
-                </Button>
-              )}
-
-              {isRecording && (
-                <div className="flex items-center gap-2 text-red-600">
-                  <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-                  <span>Recording in progress...</span>
-                </div>
-              )}
-            </div>
-
-            {/* Audio Player */}
-            {audioUrl && (
-              <div className="space-y-2">
-                <Label>Your Recording:</Label>
-                <div className="flex items-center gap-4">
-                  <audio
-                    ref={audioRef}
-                    src={audioUrl}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={() => setIsPlaying(false)}
-                    className="hidden"
-                  />
-
-                  {!isPlaying ? (
+                    {/* Form content based on request type */}
+                    {requestType === 'form' ? (
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Case Type *</Label>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={formData.caseType || ""}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, caseType: e.target.value }))
+                            }
+                            required
+                            data-testid="select-case-type"
+                          >
+                            <option value="">Select a case type</option>
+                            <option value="family">Family Law</option>
+                            <option value="criminal">Criminal Law</option>
+                            <option value="corporate">Corporate Law</option>
+                            <option value="immigration">Immigration</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label htmlFor="message">Describe your situation *</Label>
+                          <Textarea
+                            id="message"
+                            value={formData.message}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, message: e.target.value }))
+                            }
+                            required
+                            placeholder="Describe your situation in detail..."
+                            rows={5}
+                            className="min-h-[150px]"
+                            data-testid="textarea-message"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600 mb-4">
+                            Record a voice message detailing your request. Our team will listen and contact you.
+                          </p>
+                          <div className="flex items-center gap-4">
+                            {!isRecording ? (
+                              <Button
+                                type="button"
+                                onClick={startRecording}
+                                className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
+                                disabled={!formData.phone}
+                              >
+                                <Mic className="h-4 w-4" />
+                                {audioUrl ? 'Re-record' : 'Start Recording'}
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                onClick={stopRecording}
+                                variant="destructive"
+                                className="flex items-center gap-2"
+                              >
+                                <Square className="h-4 w-4" />
+                                Stop Recording
+                              </Button>
+                            )}
+                            {audioUrl && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  onClick={isPlaying ? pauseAudio : playAudio}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  {isPlaying ? (
+                                    <Pause className="h-4 w-4" />
+                                  ) : (
+                                    <Play className="h-4 w-4" />
+                                  )}
+                                  <span className="ml-2">
+                                    {isPlaying ? 'Pause' : 'Listen'}
+                                  </span>
+                                </Button>
+                                <audio
+                                  ref={audioRef}
+                                  src={audioUrl}
+                                  onEnded={() => setIsPlaying(false)}
+                                  className="hidden"
+                                />
+                              </div>
+                            )}
+                          </div>
+                          {audioUrl && (
+                            <p className="text-sm text-green-600 mt-2">
+                              Voice message recorded successfully
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <Button
-                      type="button"
-                      onClick={playAudio}
-                      variant="outline"
-                      className="flex items-center gap-2"
+                      type="submit"
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      disabled={isSubmitting || (requestType === 'voice' && !audioUrl)}
+                      data-testid="button-submit-consultation"
                     >
-                      <Play className="h-4 w-4" />
-                      Play
+                      {isSubmitting ? 'Submitting...' : 'Send Request'}
                     </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={pauseAudio}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <Pause className="h-4 w-4" />
-                      Pause
-                    </Button>
-                  )}
-
-                  <span className="text-sm text-gray-600">
-                    Recording ready to be sent
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <Button
-          type="submit"
-          className="w-full bg-purple-600 hover:bg-purple-700"
-          disabled={isSubmitting}
-          data-testid="button-submit-consultation"
-        >
-          {isSubmitting ? 'Submitting Request...' : 'Request Consultation'}
-        </Button>
-      </form>
-    </CardContent>
-  </Card>
-</div>
-
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Contact Information */}
             <div className="space-y-6">
