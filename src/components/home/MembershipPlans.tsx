@@ -34,7 +34,7 @@ const MembershipPlans = () => {
       name: "Kiddies Card",
       price: "5,000",
       monthly: "500",
-      discount: "100%",
+      discount: "50%",
       color: "bg-pink-100",
       textColor: "text-pink-900",
       buttonVariant: "outline",

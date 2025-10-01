@@ -74,14 +74,7 @@ const ProjectRequests = () => {
                   Support community projects and make a difference across our client network
                 </p>
               </div>
-              <Button 
-                className="flex items-center space-x-2"
-                onClick={() => window.open('/project-submission', '_blank')}
-                data-testid="button-submit-project"
-              >
-                <PlusCircle className="h-4 w-4" />
-                <span>Submit Project</span>
-              </Button>
+            
             </div>
 
             {/* Statistics */}

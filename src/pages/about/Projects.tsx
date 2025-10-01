@@ -268,7 +268,7 @@ const Projects = () => {
                       variant="outline"
                       className="border-white text-black hover:bg-white hover:text-purple-600"
                     >
-                      <Link to="/selectCountry">Join Our Network</Link>
+                      <Link to="/dashboard">Join Our Network</Link>
                     </Button>
                   </div>
                 </CardContent>
