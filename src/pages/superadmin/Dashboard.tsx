@@ -146,7 +146,7 @@ const SuperAdminDashboard = () => {
       title: "Ô Secours Management",
       description: "Manage rescue requests, subscriptions, and tokens",
       icon: Shield,
-      route: "/admin/secours",
+      route: "/superadmin/secours",
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200"
     },
     

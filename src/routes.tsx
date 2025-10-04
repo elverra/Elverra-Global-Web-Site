@@ -379,6 +379,14 @@ const routes = [
     ),
   },
   {
+    path: '/superadmin/secours',
+    element: (
+      <ProtectedRoute requireAuth={true} allowedRoles={['SUPERADMIN']}>
+        <SecoursAdmin />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: '/admin/secours',
     element: (
       <ProtectedRoute requireAuth={true} allowedRoles={['SUPPORT']}>

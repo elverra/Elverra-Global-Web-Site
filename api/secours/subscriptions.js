@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       .from('secours_subscriptions')
       .select('*')
       .eq('user_id', userId);
-
+    
     if (error) {
       console.error('Supabase error:', error);
       return res.status(500).json({ success: false, message: 'Database error' });
