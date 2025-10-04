@@ -126,7 +126,7 @@ export const MAX_MONTHLY_PURCHASE_PER_SERVICE = {
 export type ServiceType = keyof typeof TOKEN_TYPES;
 
 // Payment methods
-export type PaymentMethod = 'orange_money' | 'sama_money' | 'cinetpay';
+export type PaymentMethod = 'orange_money' | 'sama_money' | 'cinetpay' | 'code_marchant';
 
 // Transaction status
 export type TransactionStatus = 'pending' | 'completed' | 'failed';

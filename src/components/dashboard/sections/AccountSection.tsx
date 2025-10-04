@@ -228,8 +228,8 @@ const AccountSection = () => {
 
     try {
       const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `profile-images/${fileName}`;
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-images')

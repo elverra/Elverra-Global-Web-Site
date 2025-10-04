@@ -1,180 +1,246 @@
-import { useState, useEffect, useCallback } from 'react';
-import { TokenBalance } from '@/shared/types/secours';
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
-  AlertCircle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import TokenPurchase from "@/components/tokens/TokenPurchase";
+import { useMembership } from "@/hooks/useMembership";
+import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Loader2,
   CheckCircle,
   Clock,
-  Loader2,
+  AlertCircle,
   PlusCircle,
   Zap,
   HelpCircle,
   ShieldCheck,
   Star,
   Calendar,
-  AlertTriangle,
-  Shield,
   Phone,
-  Car,
-  GraduationCap,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/useAuth";
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import TokenPurchase from '@/components/tokens/TokenPurchase';
-import { useMembership } from '@/hooks/useMembership';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+} from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 // Types
-type TokenType = {
+type Service = {
   id: string;
   name: string;
-  description: string;
-  price: number;
-  icon: string;
-  color: string;
+  description: string | null;
+  price?: number; // Ajoute ce champ si tu veux gérer le prix côté table
+  icon?: string;
+  color?: string;
 };
 
-// Removed the TokenBalance type definition
+type TokenBalance = {
+  tokenId: string;
+  balance: number;
+  usedThisMonth: number;
+  monthlyLimit: number;
+  remainingBalance: number;
+  service: Service;
+};
 
 type Transaction = {
+  service: String;
   id: string;
   date: string;
-  type: 'purchase' | 'usage';
+  type: "purchase" | "debit" | "credit" | "usage";
   tokenId: string;
   amount: number;
   totalPrice: number;
-  status: 'completed' | 'pending' | 'failed' | 'cancelled' | 'in-progress';
+  status: "confirmed" | "pending" | "failed";
 };
 
-export type ServiceRequest = {
+type ServiceRequest = {
   id: string;
   service: string;
   description: string;
   amount: number;
   provider: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  status: "pending" | "in_progress" | "completed" | "cancelled";
   requestDate: string;
   estimatedCompletion?: string;
+  type : string
 };
-
-// Constants
-const TOKEN_TYPES: TokenType[] = [
-  {
-    id: 'auto',
-    name: 'Auto',
-    description: 'Assistance véhicule',
-    price: 750,
-    icon: '🚗',
-    color: '#dbeafe',
-  },
-  {
-    id: 'cata_catanis',
-    name: 'Cata Catanis',
-    description: 'Catastrophes naturelles',
-    price: 500,
-    icon: '🌪️',
-    color: '#fee2e2',
-  },
-  {
-    id: 'school_fees',
-    name: 'Frais Scolaires',
-    description: 'Paiement des frais scolaires',
-    price: 500,
-    icon: '🎓',
-    color: '#d1fae5',
-  },
-  {
-    id: 'motors',
-    name: 'Motos',
-    description: 'Assistance moto',
-    price: 250,
-    icon: '🏍️',
-    color: '#fef9c3',
-  },
-  {
-    id: 'telephone',
-    name: 'Téléphone',
-    description: 'Assistance téléphonique',
-    price: 250,
-    icon: '📱',
-    color: '#f3e8ff',
-  },
-  {
-    id: 'first_aid',
-    name: 'Premiers secours',
-    description: 'Assistance premiers secours',
-    price: 500,
-    icon: '🩺',
-    color: '#f3e8ff',
-  },
-];
 
 export const MIN_PURCHASE_PER_SERVICE = 10;
 export const MAX_MONTHLY_PURCHASE_PER_SERVICE = 60;
 
 const OSecoursSection = () => {
+  const [services, setServices] = useState<Service[]>([]);
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
-  const [activeTab, setActiveTab] = useState('services');
-  const [selectedToken, setSelectedToken] = useState<string>(TOKEN_TYPES[0]?.id || '');
-  const [purchaseAmount, setPurchaseAmount] = useState(MIN_PURCHASE_PER_SERVICE.toString());
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [activeTab, setActiveTab] = useState("services");
+  const [selectedToken, setSelectedToken] = useState<string>("");
+  const [purchaseAmount, setPurchaseAmount] = useState(
+    MIN_PURCHASE_PER_SERVICE.toString()
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
-  const [requestServiceId, setRequestServiceId] = useState<string>('');
-  const [requestTokens, setRequestTokens] = useState<string>('1');
-  const [requestDescription, setRequestDescription] = useState<string>('');
+  const [requestServiceId, setRequestServiceId] = useState<string>("");
+  const [requestTokens, setRequestTokens] = useState<string>("1");
+  const [requestDescription, setRequestDescription] = useState<string>("");
+const [fileType, setFileType] = useState<"image" | "pdf">("image");
   const [requestFile, setRequestFile] = useState<File | null>(null);
   const [submittingRequest, setSubmittingRequest] = useState(false);
-
   const [helpOpen, setHelpOpen] = useState(false);
+
   const { user } = useAuth();
   const { membership } = useMembership();
   const { t } = useLanguage();
-  // No navigation needed in this section for now
 
-  // Backend API base URL
-  const getBackendUrl = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      // In development, use localhost backend
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:3001';
+  // Récupérer les services, balances, transactions, demandes
+  const fetchData = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // 1. Services
+      const { data: servicesData, error: servicesError } = await supabase
+        .from("osecours_services")
+        .select("*");
+      if (servicesError) throw servicesError;
+      setServices(servicesData || []);
+      console.log("setServices", servicesData);
+
+      // 2. Balances
+      const { data: balancesData, error: balancesError } = await supabase
+        .from("osecours_token_balances")
+        .select("*, service:osecours_services(*)")
+        .eq("user_id", user.id);
+      if (balancesError) throw balancesError;
+      console.log("Balances", balancesData);
+
+      // 3. Transactions
+      const { data: txData, error: txError } = await supabase
+        .from("osecours_transactions")
+        .select("*, service:osecours_services(*)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (txError) throw txError;
+      console.log("Transactions", txData);
+
+      // 4. Requests
+      const { data: reqData, error: reqError } = await supabase
+        .from("osecours_requests")
+        .select("*, service:osecours_services(*)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (reqError) throw reqError;
+      console.log("Requests", reqData);
+
+      // Calculer l'utilisation mensuelle
+      const startOfMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1
+      ).getTime();
+      const usedByType: Record<string, number> = {};
+      (txData || []).forEach((tx) => {
+        const tstamp = new Date(tx.created_at).getTime();
+        if (
+          tstamp >= startOfMonth &&
+          tx.type === "purchase" &&
+          tx.status === "confirmed"
+        ) {
+          usedByType[tx.service_id] =
+            (usedByType[tx.service_id] || 0) + (tx.amount || 0);
+        }
+      }); // ANALYSE BIEN CETTE PARTIE POUR COMPRENDRE
+console.log("usedByType", usedByType);
+      setTokenBalances(
+        (balancesData || []).map((b) => ({
+          tokenId: b.service_id,
+          balance: b.balance,
+          usedThisMonth: usedByType[b.service_id] || 0,
+          monthlyLimit: MAX_MONTHLY_PURCHASE_PER_SERVICE,
+          remainingBalance: b.balance - (usedByType[b.service_id] || 0),
+          service: b.service,
+        }))
+      );
+      console.log("setTokenBalances", tokenBalances);
+
+      setTransactions(
+        (txData || []).map((tx) => ({
+          id: tx.id,
+          date: tx.created_at,
+          type: tx.type,
+          tokenId: tx.service_id,
+          amount: tx.amount,
+          totalPrice: 0, // À calculer si tu veux afficher le prix
+          status: tx.status,
+           service : tx.service?.name || "service Token"
+        }))
+      );
+
+      setServiceRequests(
+        (reqData || []).map((r) => ({
+          id: r.id,
+          service: r.service?.name || "",
+          description: r.description,
+          amount: r.amount  , // À adapter si tu stockes le montant
+          provider: "El verra Global",
+          status: r.status,
+          requestDate: r.created_at,
+          type : r.kind
+          // estimatedCompletion: undefined,
+        }))
+      );
+
+      // Sélectionner le premier token par défaut
+      if ((balancesData || []).length > 0 && !selectedToken) {
+        setSelectedToken(balancesData[1].service_id);
       }
-      // In production, use Vercel backend API routes
-      return window.location.origin;
+    } catch (err: any) {
+      setError(t("error_fetch_data"));
+      toast.error(t("error_fetch_data"));
+    } finally {
+      setLoading(false);
     }
-    return 'http://localhost:3001';
-  }, []);
+  }, [user?.id, t, selectedToken]);
 
-  const withBase = useCallback((path: string) => {
-    const baseUrl = getBackendUrl();
-    return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
-  }, [getBackendUrl]);
-  // Debug: verify backend URL resolution
-  console.log('[DEBUG] Backend URL =', getBackendUrl());
+  useEffect(() => {
+    if (user?.id) fetchData();
+  }, [user?.id, fetchData]);
 
-  // Temporarily allow all users to access Ô Secours without requiring a specific card tier
-  const isEligible = true;
-  const selectedTokenData = TOKEN_TYPES.find(t => t.id === selectedToken);
-  const totalPrice = selectedTokenData ? parseInt(purchaseAmount || '0') * selectedTokenData.price : 0;
-
-  const getTokenUsage = useCallback((tokenId: string): number => {
-    const balance = tokenBalances.find(b => b.tokenId === tokenId);
-    return balance ? balance.usedThisMonth : 0;
-  }, [tokenBalances]);
+  // Helpers
+  const getTokenUsage = useCallback(
+    (tokenId: string): number => {
+      const balance = tokenBalances.find((b) => b.tokenId === tokenId);
+      return balance ? balance.usedThisMonth : 0;
+    },
+    [tokenBalances]
+  );
 
   const getRemainingTokens = useCallback(
     (tokenId: string) => {
@@ -184,40 +250,41 @@ const OSecoursSection = () => {
     [getTokenUsage]
   );
 
-  const getTokenBalance = useCallback((tokenId: string): number => {
-    const balance = tokenBalances.find(b => b.tokenId === tokenId);
-    return balance ? balance.balance : 0;
-  }, [tokenBalances]);
+  const getTokenBalance = useCallback(
+    (tokenId: string): number => {
+      const balance = tokenBalances.find((b) => b.tokenId === tokenId);
+      return balance ? balance.balance : 0;
+    },
+    [tokenBalances]
+  );
 
   const getStatusBadge = useCallback(
     (status: string) => {
       switch (status) {
-        case 'completed':
+        case "completed":
           return (
             <Badge className="bg-green-100 text-green-800">
               <CheckCircle className="h-3 w-3 mr-1" />
-              {t('completed')}
+              {t("completed")}
             </Badge>
           );
-        case 'in-progress':
+        case "in_progress":
           return (
             <Badge className="bg-blue-100 text-blue-800">
               <Clock className="h-3 w-3 mr-1" />
-              {t('in_progress')}
+              {t("in_progress")}
             </Badge>
           );
-        case 'pending':
+        case "pending":
           return (
             <Badge className="bg-yellow-100 text-yellow-800">
               <AlertCircle className="h-3 w-3 mr-1" />
-              {t('pending')}
+              {t("pending")}
             </Badge>
           );
-        case 'cancelled':
+        case "cancelled":
           return (
-            <Badge className="bg-red-100 text-red-800">
-              {t('cancelled')}
-            </Badge>
+            <Badge className="bg-red-100 text-red-800">{t("cancelled")}</Badge>
           );
         default:
           return <Badge variant="outline">{status}</Badge>;
@@ -226,221 +293,107 @@ const OSecoursSection = () => {
     [t]
   );
 
-  const fetchData = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      setLoading(true);
-      setError(null);
+  // Demande de service
+  const requestService = useCallback(async (serviceId: string) => {
+    setRequestServiceId(serviceId);
+    setRequestTokens("1");
+    setRequestDescription("");
+    setRequestFile(null);
+    setRequestDialogOpen(true);
+  }, []);
 
-      // 1) Subscriptions (balances)
-      const subsUrl = withBase(`/api/secours/subscriptions?userId=${encodeURIComponent(user.id)}`);
-      console.log('[DEBUG] Fetch subscriptions URL:', subsUrl);
-      const subsRes = await fetch(subsUrl);
-      if (!subsRes.ok) throw new Error(await subsRes.text());
-      const subsJson = await subsRes.json();
-      const subs: Array<{ id: string; user_id: string; service_type: string; token_balance: number; }> = subsJson?.data || [];
-
-      // 2) Transactions for usage calculations
-      const txUrl = withBase(`/api/secours/transactions?userId=${encodeURIComponent(user.id)}`);
-      console.log('[DEBUG] Fetch transactions URL:', txUrl);
-      const txRes = await fetch(txUrl);
-      const txJson = txRes.ok ? await txRes.json() : { data: [] };
-      const txs: Array<{ id: string; subscription_id: string; transaction_type: string; token_amount: number; created_at: string; secours_subscriptions?: { service_type?: string } }> = txJson?.data || [];
-      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
-      const usedByType: Record<string, number> = {};
-      txs.forEach(tx => {
-        const tstamp = new Date(tx.created_at).getTime();
-        const type = tx.secours_subscriptions?.service_type || '';
-        if (tstamp >= startOfMonth && tx.transaction_type === 'rescue_claim' && type) {
-          usedByType[type] = (usedByType[type] || 0) + (tx.token_amount || 0);
-        }
-      });
-
-      const balances: TokenBalance[] = subs.map(s => {
-        const tokenId = s.service_type;
-        const used = usedByType[tokenId] || 0;
-        const monthlyLimit = (MAX_MONTHLY_PURCHASE_PER_SERVICE as any)[tokenId] || 100;
-        return {
-          tokenId,
-          balance: s.token_balance || 0,
-          usedThisMonth: used,
-          monthlyLimit,
-          remainingBalance: (s.token_balance || 0) - used,
-        };
-      });
-
-      // 3) Requests
-      const reqUrl = withBase(`/api/secours/requests?userId=${encodeURIComponent(user.id)}`);
-      console.log('[DEBUG] Fetch requests URL:', reqUrl);
-      const reqRes = await fetch(reqUrl);
-      const reqJson = reqRes.ok ? await reqRes.json() : { data: [] };
-      const reqs: Array<{ id: string; service_type: string; request_description: string; rescue_value_fcfa: number; status: string; request_date: string; }> = reqJson?.data || [];
-      const svcRequests: ServiceRequest[] = reqs.map(r => ({
-        id: r.id,
-        service: r.service_type,
-        description: r.request_description,
-        amount: r.rescue_value_fcfa || 0,
-        provider: 'Elverra Global',
-        status: (r.status as any) || 'pending',
-        requestDate: r.request_date,
-        estimatedCompletion: undefined,
-      }));
-
-      setTokenBalances(balances);
-      setTransactions((txs || []).map(tx => ({
-        id: tx.id,
-        date: tx.created_at,
-        type: (tx.transaction_type === 'purchase' ? 'purchase' : 'usage') as any,
-        tokenId: tx.secours_subscriptions?.service_type || 'auto',
-        amount: tx.token_amount || 0,
-        totalPrice: 0,
-        status: 'completed',
-      })) as Transaction[]);
-      setServiceRequests(svcRequests);
-
-      if (TOKEN_TYPES.length > 0 && !selectedToken) {
-        setSelectedToken(TOKEN_TYPES[0].id);
-      }
-    } catch (err) {
-      console.error('Error fetching data:', err);
-      setError(t('error_fetch_data'));
-      toast.error(t('error_fetch_data'));
-    } finally {
-      setLoading(false);
+  // Soumission demande de service
+const submitServiceRequest = async () => {
+  try {
+    if (!user?.id) {
+      toast.error(t("error_unauthorized"));
+      return;
     }
-  }, [user?.id, selectedToken, t]);
-
-  useEffect(() => {
-    if (isEligible && user?.id) {
-      fetchData();
+    const tokensNum = Math.max(1, parseInt(requestTokens || "1", 10));
+    const balance =
+      tokenBalances.find((b) => b.tokenId === requestServiceId)?.balance || 0;
+    if (tokensNum > balance) {
+      toast.error(t("error_insufficient_balance"));
+      return;
     }
-  }, [isEligible, user?.id, fetchData]);
+    setSubmittingRequest(true);
 
- 
-  const requestService = useCallback(
-    async (serviceId: string) => {
-      if (!isEligible || !user?.id) {
-        toast.error(t('error_unauthorized'));
-        return;
-      }
-
-      const service = TOKEN_TYPES.find(s => s.id === serviceId);
-      if (!service) {
-        toast.error(t('error_service_not_found'));
-        return;
-      }
-
-      // Open dialog to collect request details
-      setRequestServiceId(serviceId);
-      setRequestTokens('1');
-      setRequestDescription('');
-      setRequestFile(null);
-      setRequestDialogOpen(true);
-    },
-    [
-      isEligible,
-      user?.id,
-      t,
-      tokenBalances,
-      TOKEN_TYPES,
-      setSelectedToken,
-      setActiveTab,
-      setServiceRequests,
-      setTokenBalances
-    ]
-  );
-
-  const submitServiceRequest = async () => {
-    try {
-      if (!user?.id) {
-        toast.error(t('error_unauthorized'));
-        return;
-      }
-      const service = TOKEN_TYPES.find(s => s.id === requestServiceId);
-      if (!service) {
-        toast.error(t('error_service_not_found'));
-        return;
-      }
-      const tokensNum = Math.max(1, parseInt(requestTokens || '1', 10));
-      const balance = tokenBalances.find(b => b.tokenId === requestServiceId)?.balance || 0;
-      if (tokensNum > balance) {
-        toast.error(t('error_insufficient_balance'));
-        return;
-      }
-      setSubmittingRequest(true);
-
-      // Optional: upload justification to storage later; for now send metadata only
-      const payload = {
-        service_id: requestServiceId,
-        tokens_requested: tokensNum,
-        description: requestDescription || `Service request for ${service.name}`,
-      };
-
-      const res = await fetch(withBase('/api/secours/requests'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, userId: user.id }),
-      });
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || 'Failed to create request');
-      }
-      const data = await res.json();
-
-      // Update UI state
-      setServiceRequests(prev => [{
-        id: data?.data?.id || data?.id || ('req-' + Date.now()),
-        service: service.name,
-        description: payload.description,
-        amount: tokensNum,
-        provider: 'Elverra Global',
-        status: 'pending',
-        requestDate: new Date().toISOString(),
-        estimatedCompletion: undefined,
-      }, ...prev]);
-
-      // Deduct tokens from local balance and add to usedThisMonth
-      setTokenBalances(prev => {
-        const updated = [...prev];
-        const idx = updated.findIndex(b => b.tokenId === requestServiceId);
-        if (idx >= 0) {
-          const newBalance = updated[idx].balance - tokensNum;
-          const newUsed = (updated[idx].usedThisMonth || 0) + tokensNum;
-          updated[idx] = {
-            ...updated[idx],
-            balance: newBalance,
-            usedThisMonth: newUsed,
-            remainingBalance: newBalance - newUsed,
-          };
-        }
-        return updated;
-      });
-
-      toast.success(t('service_request_success_message', { service: service.name }));
-      setRequestDialogOpen(false);
-    } catch (e: any) {
-      console.error('submitServiceRequest error', e);
-      toast.error(e?.message || t('error_service_request'));
-    } finally {
-      setSubmittingRequest(false);
+    let fileUrl: string | null = null;
+    if (requestFile) {
+      const ext = requestFile.name.split('.').pop();
+      const path = `justify-${user.id}/${Date.now()}.${ext}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('osecours_justifications')
+        .upload(path, requestFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+      fileUrl = uploadData?.path
+        ? supabase.storage.from('osecours_justifications').getPublicUrl(uploadData.path).data.publicUrl
+        : null;
     }
-  };
+
+    // 1. Créer la demande de service avec l'URL du fichier
+    const { data: requestData, error: insertError } = await supabase
+      .from("osecours_requests")
+      .insert([
+        {
+          user_id: user.id,
+          service_id: requestServiceId,
+          description: requestDescription,
+          status: "pending",
+          amount: tokensNum,
+          justification_url: fileUrl, // <-- ENVOIE L'URL, PAS LE FICHIER
+        },
+      ])
+      .select()
+      .single();
+      console.log("requestData",requestData)
+    if (insertError) throw insertError;
+
+    // 2. Enregistrer la transaction liée à la demande
+    const { error: txError } = await supabase
+      .from("osecours_transactions")
+      .insert([
+        {
+          user_id: user.id,
+          service_id: requestServiceId,
+          type: "debit",
+          amount: tokensNum,
+          status: "pending",
+        },
+      ]);
+    if (txError) throw txError;
+
+    toast.success(t("service_request_success_message"));
+    setRequestDialogOpen(false);
+    fetchData();
+  } catch (e: any) {
+    toast.error(e?.message || t("error_service_request"));
+  } finally {
+    setSubmittingRequest(false);
+  }
+};
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  // Month calculating rate for client buy
-
   const calculateMonthlyUsage = (tokenId: string) => {
-    const balance = tokenBalances.find(b => b.tokenId === tokenId);
-    if (!balance) return { used: 0, total: MAX_MONTHLY_PURCHASE_PER_SERVICE, percentage: 0 };
+    const balance = tokenBalances.find((b) => b.tokenId === tokenId);
+    if (!balance)
+      return {
+        used: 0,
+        total: MAX_MONTHLY_PURCHASE_PER_SERVICE,
+        percentage: 0,
+      };
     const used = balance.usedThisMonth || 0;
     const total = balance.monthlyLimit || MAX_MONTHLY_PURCHASE_PER_SERVICE;
     return {
@@ -450,16 +403,37 @@ const OSecoursSection = () => {
     };
   };
 
-  // Eligibility gate temporarily disabled; show full section for all users
+  // Ajoute ce helper pour calculer le total acheté ce mois-ci pour un service
+  const getMonthlyPurchased = useCallback(
+    (tokenId: string): number => {
+      // On ne prend que les transactions d'achat confirmées de ce mois
+      const startOfMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1
+      ).getTime();
+      return transactions
+        .filter(
+          (tx) =>
+            tx.tokenId === tokenId &&
+            tx.type === "purchase" &&
+            tx.status === "confirmed" &&
+            new Date(tx.date).getTime() >= startOfMonth
+        )
+        .reduce((sum, tx) => sum + tx.amount, 0);
+    },
+    [transactions]
+  );
 
+  // Affichage
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">{t('osecours_services')}</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          {t("osecours_services")}
+        </h2>
         <div className="flex items-center space-x-2">
-          <Badge className={isEligible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-            {isEligible ? t('active') : t('inactive')}
-          </Badge>
+          <Badge className="bg-green-100 text-green-800">{t("active")}</Badge>
           <Button
             variant="outline"
             size="sm"
@@ -467,16 +441,15 @@ const OSecoursSection = () => {
             onClick={() => setHelpOpen(true)}
           >
             <HelpCircle className="h-4 w-4 mr-1" />
-            {t('help')}
+            {t("help")}
           </Button>
         </div>
       </div>
 
-
       <Card>
         <CardHeader>
-          <CardTitle>{t('your_subscription')}</CardTitle>
-          <CardDescription>{t('subscription_description')}</CardDescription>
+          <CardTitle>{t("your_subscription")}</CardTitle>
+          <CardDescription>{t("subscription_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -485,8 +458,10 @@ const OSecoursSection = () => {
                 <ShieldCheck className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">{t('status')}</p>
-                <p className="text-lg font-semibold">{isEligible ? t('active') : t('inactive')}</p>
+                <p className="text-sm font-medium text-gray-500">
+                  {t("status")}
+                </p>
+                <p className="text-lg font-semibold">{t("active")}</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -494,8 +469,10 @@ const OSecoursSection = () => {
                 <Zap className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">{t('available_services')}</p>
-                <p className="text-lg font-semibold">{TOKEN_TYPES.length}/{TOKEN_TYPES.length}</p>
+                <p className="text-sm font-medium text-gray-500">
+                  {t("available_services")}
+                </p>
+                <p className="text-lg font-semibold">{services.length}</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -503,8 +480,10 @@ const OSecoursSection = () => {
                 <Clock className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">{t('avg_response_time')}</p>
-                <p className="text-lg font-semibold">{t('15_min')}</p>
+                <p className="text-sm font-medium text-gray-500">
+                  {t("avg_response_time")}
+                </p>
+                <p className="text-lg font-semibold">{t("15_min")}</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -512,11 +491,15 @@ const OSecoursSection = () => {
                 <Star className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">{t('satisfaction')}</p>
+                <p className="text-sm font-medium text-gray-500">
+                  {t("satisfaction")}
+                </p>
                 <div className="flex items-center">
                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                   <span className="ml-1 font-semibold">4.8</span>
-                  <span className="text-xs text-gray-500 ml-1">{t('128_reviews')}</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    {t("128_reviews")}
+                  </span>
                 </div>
               </div>
             </div>
@@ -524,11 +507,13 @@ const OSecoursSection = () => {
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-800">
               <Calendar className="h-4 w-4 inline mr-1" />
-              {t('renewal_date', {
-                date: new Date(membership?.expiry_date || Date.now()).toLocaleDateString('fr-FR', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
+              {t("renewal_date", {
+                date: new Date(
+                  membership?.expiry_date || Date.now()
+                ).toLocaleDateString("fr-FR", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
                 }),
               })}
             </p>
@@ -539,42 +524,57 @@ const OSecoursSection = () => {
       <div className="space-y-4">
         <div className="mt-4">
           <div className="flex justify-between text-sm mb-2">
-            <span>{t('monthly_usage')}</span>
+            <span>{t("monthly_usage")}</span>
             <span>{calculateMonthlyUsage(selectedToken).percentage}%</span>
           </div>
-          <Progress value={calculateMonthlyUsage(selectedToken).percentage} className="h-2" />
+          <Progress
+            value={calculateMonthlyUsage(selectedToken).percentage}
+            className="h-2"
+          />
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full mt-6"
+      >
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="services">{t('services')}</TabsTrigger>
-          <TabsTrigger value="requests">{t('my_requests')}</TabsTrigger>
-          <TabsTrigger value="history">{t('history')}</TabsTrigger>
-          <TabsTrigger value="tokens">{t('my_tokens')}</TabsTrigger>
-          <TabsTrigger value="purchase">{t('purchase')}</TabsTrigger>
+          <TabsTrigger value="services">{t("services")}</TabsTrigger>
+          <TabsTrigger value="requests">{t("my_requests")}</TabsTrigger>
+          <TabsTrigger value="history">{t("history")}</TabsTrigger>
+          <TabsTrigger value="tokens">{t("my_tokens")}</TabsTrigger>
+          <TabsTrigger value="purchase">{t("buy_tokens")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="services" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {TOKEN_TYPES.map(service => (
-              <Card key={service.id} className="hover:shadow-lg transition-shadow">
+            {services.map((service) => (
+              <Card
+                key={service.id}
+                className="hover:shadow-lg transition-shadow"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl">{service.icon}</span>
+                    <span className="text-2xl">{service.icon || "🛡️"}</span>
                     <Badge variant="default">{service.name}</Badge>
                   </div>
                   <h4 className="font-semibold text-lg mb-2">{service.name}</h4>
-                  <p className="text-gray-600 text-sm mb-4">{service.description}</p>
+                  <p className="text-gray-600 text-sm mb-4">
+                    {service.description}
+                  </p>
                   <div className="space-y-2 text-sm text-gray-700 mb-4">
                     <p>
-                      <strong>{t('price_per_token')}:</strong> CFA {service.price.toLocaleString()}
+                      <strong>{t("price_per_token")}:</strong> CFA{" "}
+                      {service.price?.toLocaleString() || "N/A"}
                     </p>
                     <p>
-                      <strong>{t('current_balance')}:</strong> {getTokenBalance(service.id)}
+                      <strong>{t("current_balance")}:</strong>{" "}
+                      {getTokenBalance(service.id)}
                     </p>
                     <p>
-                      <strong>{t('usage_this_month')}:</strong> {getTokenUsage(service.id)}
+                      <strong>{t("usage_this_month")}:</strong>{" "}
+                      {getTokenUsage(service.id)}
                     </p>
                   </div>
                   <Button
@@ -583,7 +583,7 @@ const OSecoursSection = () => {
                     disabled={getTokenBalance(service.id) < 1}
                     aria-label={`Request ${service.name} service`}
                   >
-                    {t('request_service')}
+                    {t("request_service")}
                   </Button>
                 </CardContent>
               </Card>
@@ -594,55 +594,81 @@ const OSecoursSection = () => {
         <TabsContent value="requests" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t('current_requests')}</CardTitle>
+              <CardTitle>{t("current_requests")}</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
-              ) : serviceRequests.filter(req => req.status === 'in-progress' || req.status === 'pending').length > 0 ? (
+              ) : serviceRequests.filter(
+                  (req) =>
+                    req.status === "in_progress" || req.status === "pending"
+                ).length > 0 ? (
                 <div className="space-y-4">
                   {serviceRequests
-                    .filter(req => req.status === 'in-progress' || req.status === 'pending')
-                    .map(request => (
+                    .filter(
+                      (req) =>
+                        req.status === "in_progress" || req.status === "pending"
+                    )
+                    .map((request) => (
                       <div key={request.id} className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-semibold">{request.service}</h4>
                           {getStatusBadge(request.status)}
                         </div>
-                        <p className="text-gray-600 text-sm mb-2">{request.description}</p>
+                        <p className="text-gray-600 text-sm mb-2">
+                          {request.description}
+                        </p>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <span className="text-gray-500">{t('request_id')}:</span>
-                            <span className="font-medium ml-2">{request.id}</span>
+                            <span className="text-gray-500">
+                              {t("request_id")}:
+                            </span>
+                            <span className="font-medium ml-2">
+                              {request.id}
+                            </span>
                           </div>
                           <div>
-                            <span className="text-gray-500">{t('amount')}:</span>
-                            <span className="font-medium ml-2">CFA {request.amount.toLocaleString()}</span>
+                            <span className="text-gray-500">
+                              {t("amount")}:
+                            </span>
+                            <span className="font-medium ml-2">
+                              CFA {request.amount.toLocaleString()}
+                            </span>
                           </div>
                           <div>
-                            <span className="text-gray-500">{t('provider')}:</span>
-                            <span className="font-medium ml-2">{request.provider}</span>
+                            <span className="text-gray-500">
+                              {t("provider")}:
+                            </span>
+                            <span className="font-medium ml-2">
+                              {request.provider}
+                            </span>
                           </div>
                           <div>
-                            <span className="text-gray-500">{t('estimated_completion')}:</span>
-                            <span className="font-medium ml-2">{request.estimatedCompletion || 'TBD'}</span>
+                            <span className="text-gray-500">
+                              {t("estimated_completion")}:
+                            </span>
+                            <span className="font-medium ml-2">
+                              "24h"
+                            </span>
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <Button size="sm" variant="outline" aria-label={`Track request ${request.id}`}>
-                            {t('track_request')}
+                          <Button size="sm" variant="outline">
+                            {t("track_request")}
                           </Button>
-                          <Button size="sm" variant="outline" aria-label={`Contact provider for request ${request.id}`}>
-                            {t('contact_provider')}
+                          <Button size="sm" variant="outline">
+                            {t("contact_provider")}
                           </Button>
                         </div>
                       </div>
                     ))}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">{t('no_active_requests')}</p>
+                <p className="text-center text-gray-500 py-8">
+                  {t("no_active_requests")}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -651,42 +677,70 @@ const OSecoursSection = () => {
         <TabsContent value="history" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t('service_history')}</CardTitle>
+              <CardTitle>{t("service_history")}</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
-              ) : serviceRequests.length > 0 ? (
+              ) : transactions.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-3 px-4 font-semibold">{t('request_id')}</th>
-                        <th className="text-left py-3 px-4 font-semibold">{t('service')}</th>
-                        <th className="text-left py-3 px-4 font-semibold">{t('date')}</th>
-                        <th className="text-left py-3 px-4 font-semibold">{t('amount')}</th>
-                        <th className="text-left py-3 px-4 font-semibold">{t('provider')}</th>
-                        <th className="text-left py-3 px-4 font-semibold">{t('status')}</th>
+                        <th className="text-left py-3 px-4 font-semibold">
+                          {t("request_id")}
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold">
+                          {t("service")}
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold">
+                          {t("date")}
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold">
+                          {t("amount")}
+                        </th>
+                       
+                        <th className="text-left py-3 px-4 font-semibold">
+                          {t("status")}
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold">
+{t("actions")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {serviceRequests.map(request => (
-                        <tr key={request.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4 font-medium">{request.id}</td>
+                      {transactions.map((request) => (
+                        <tr
+                          key={request.id}
+                          className="border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          <td className="py-4 px-4 font-medium">
+                            {request.id}
+                          </td>
                           <td className="py-4 px-4">{request.service}</td>
-                          <td className="py-4 px-4">{formatDate(request.requestDate)}</td>
-                          <td className="py-4 px-4 font-semibold">CFA {request.amount.toLocaleString()}</td>
-                          <td className="py-4 px-4">{request.provider}</td>
-                          <td className="py-4 px-4">{getStatusBadge(request.status)}</td>
+                          <td className="py-4 px-4">
+                            {formatDate(request.date)}
+                          </td>
+                          <td className="py-4 px-4 font-semibold">
+                         {request.amount.toLocaleString()} Token 
+                          </td>
+                          <td className="py-4 px-4">
+                            {getStatusBadge(request.status)}
+                          </td>
+                           <td className="py-4 px-4">
+                            {getStatusBadge(request.type)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">{t('no_service_history')}</p>
+                <p className="text-center text-gray-500 py-8">
+                  {t("no_service_history")}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -695,8 +749,8 @@ const OSecoursSection = () => {
         <TabsContent value="tokens" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>{t('your_token_balances')}</CardTitle>
-              <CardDescription>{t('manage_tokens')}</CardDescription>
+              <CardTitle>{t("your_token_balances")}</CardTitle>
+              <CardDescription>{t("manage_tokens")}</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -705,35 +759,53 @@ const OSecoursSection = () => {
                 </div>
               ) : tokenBalances.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {tokenBalances.map(balance => {
-                    const token = TOKEN_TYPES.find(t => t.id === balance.tokenId);
+                  {tokenBalances.map((balance) => {
+                    const token = services.find(
+                      (t) => t.id === balance.tokenId
+                    );
                     if (!token) return null;
                     const usage = getTokenUsage(balance.tokenId);
                     const remaining = getRemainingTokens(balance.tokenId);
                     return (
                       <Card key={balance.tokenId} className="overflow-hidden">
-                        <div className="h-2" style={{ backgroundColor: token.color }} />
+                        <div
+                          className="h-2"
+                          style={{ backgroundColor: token.color || "#eee" }}
+                        />
                         <CardContent className="pt-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <div className="text-2xl">{token.icon}</div>
+                              <div className="text-2xl">
+                                {token.icon || "🛡️"}
+                              </div>
                               <h3 className="font-semibold">{token.name}</h3>
                             </div>
-                            <div className="text-2xl font-bold">{balance.balance}</div>
+                            <div className="text-2xl font-bold">
+                              {balance.balance}
+                            </div>
                           </div>
                           <div className="mt-4 space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">{t('usage_this_month')}</span>
+                              <span className="text-muted-foreground">
+                                {t("usage_this_month")}
+                              </span>
                               <span>
-                                {usage} / {balance.monthlyLimit || MAX_MONTHLY_PURCHASE_PER_SERVICE}
+                                {usage} /{" "}
+                                {balance.monthlyLimit ||
+                                  MAX_MONTHLY_PURCHASE_PER_SERVICE}
                               </span>
                             </div>
                             <Progress
-                              value={(usage / (balance.monthlyLimit || MAX_MONTHLY_PURCHASE_PER_SERVICE)) * 100}
+                              value={
+                                (usage /
+                                  (balance.monthlyLimit ||
+                                    MAX_MONTHLY_PURCHASE_PER_SERVICE)) *
+                                100
+                              }
                               className="h-2"
                             />
                             <div className="text-sm text-muted-foreground">
-                              {t('remaining_tokens', { count: remaining })}
+                              {t("remaining_tokens", { count: remaining })}
                             </div>
                           </div>
                           <Button
@@ -742,12 +814,12 @@ const OSecoursSection = () => {
                             className="w-full mt-4"
                             onClick={() => {
                               setSelectedToken(balance.tokenId);
-                              setActiveTab('purchase');
+                              setActiveTab("purchase");
                             }}
                             aria-label={`Buy more ${token.name} tokens`}
                           >
                             <PlusCircle className="h-4 w-4 mr-2" />
-                            {t('buy_more')}
+                            {t("buy_more")}
                           </Button>
                         </CardContent>
                       </Card>
@@ -755,14 +827,16 @@ const OSecoursSection = () => {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">{t('no_tokens')}</div>
+                <div className="text-center py-8 text-muted-foreground">
+                  {t("no_tokens")}
+                </div>
               )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>{t('transaction_history')}</CardTitle>
-              <CardDescription>{t('track_transactions')}</CardDescription>
+              <CardTitle>{t("transaction_history")}</CardTitle>
+              <CardDescription>{t("track_transactions")}</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -771,21 +845,31 @@ const OSecoursSection = () => {
                 </div>
               ) : transactions.length > 0 ? (
                 <div className="space-y-4">
-                  {transactions.slice(0, 5).map(tx => {
-                    const token = TOKEN_TYPES.find(t => t.id === tx.tokenId);
+                  {transactions.slice(0, 5).map((tx) => {
+                    const token = services.find((t) => t.id === tx.tokenId);
                     return (
-                      <div key={tx.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div
+                        key={tx.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
                         <div className="flex items-center space-x-3">
-                          <div className="p-2 rounded-full bg-muted">{token?.icon || '💳'}</div>
+                          <div className="p-2 rounded-full bg-muted">
+                            {token?.icon || "💳"}
+                          </div>
                           <div>
                             <p className="font-medium">
-                              {tx.amount} {token?.name || 'Token'}
+                              {tx.amount} {token?.name || "Token"}
                             </p>
-                            <p className="text-sm text-muted-foreground">{formatDate(tx.date)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDate(tx.date)}
+                            </p>
+                            
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">CFA {tx.totalPrice.toLocaleString()}</p>
+                          <p className="font-semibold">
+                            CFA {tx.totalPrice.toLocaleString()}
+                          </p>
                           {getStatusBadge(tx.status)}
                         </div>
                       </div>
@@ -793,7 +877,9 @@ const OSecoursSection = () => {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">{t('no_transactions')}</div>
+                <div className="text-center py-8 text-muted-foreground">
+                  {t("no_transactions")}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -802,21 +888,27 @@ const OSecoursSection = () => {
         <TabsContent value="purchase" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>{t('buy_tokens')}</CardTitle>
-              <CardDescription>{t('buy_tokens_description')}</CardDescription>
+              <CardTitle>{t("buy_tokens")}</CardTitle>
+              <CardDescription>{t("buy_tokens_description")}</CardDescription>
             </CardHeader>
             <CardContent>
               {error && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>{t('error')}</AlertTitle>
+                  <AlertTitle>{t("error")}</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              {/* Embedded TokenPurchase component handles payment method selection and flow */}
               <TokenPurchase
                 onPurchaseSuccess={fetchData}
-                userBalances={tokenBalances.map(b => ({ serviceType: b.tokenId as any, usedThisMonth: b.usedThisMonth || 0 }))}
+                userBalances={tokenBalances.map((b) => ({
+                  serviceType: b.tokenId as any,
+                  usedThisMonth: b.usedThisMonth || 0,
+                }))}
+                selectedToken={selectedToken}
+                // monthlyPurchased={getMonthlyPurchased(selectedToken)}
+                // minPurchase={MIN_PURCHASE_PER_SERVICE}
+                // maxMonthlyPurchase={MAX_MONTHLY_PURCHASE_PER_SERVICE}
               />
             </CardContent>
           </Card>
@@ -827,139 +919,133 @@ const OSecoursSection = () => {
       <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('request_service')}</DialogTitle>
-            <DialogDescription>{t('describe_service_request') || 'Provide details for your assistance request.'}</DialogDescription>
+            <DialogTitle>{t("request_service")}</DialogTitle>
+            <DialogDescription>
+              {t("describe_service_request") ||
+                "Provide details for your assistance request."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>{t('service')}</Label>
-              <Select value={requestServiceId} onValueChange={setRequestServiceId}>
+              <Label>{t("service")}</Label>
+              <Select
+                value={requestServiceId}
+                onValueChange={setRequestServiceId}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder={t('select_service') || 'Select service'} />
+                  <SelectValue
+                    placeholder={t("select_service") || "Select service"}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {TOKEN_TYPES.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  {services.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>{t('tokens_to_use') || 'Tokens to use'}</Label>
-              <Input type="number" min={1} value={requestTokens} onChange={(e) => setRequestTokens(e.target.value)} />
+              <Label>{t("tokens_to_use") || "Tokens to use"}</Label>
+              <Input
+                type="number"
+                min={1}
+                max={getTokenBalance(requestServiceId)}
+                value={requestTokens}
+                onChange={(e) => setRequestTokens(e.target.value)}
+              />
               <div className="text-xs text-muted-foreground mt-1">
-                {t('available')}: {getTokenBalance(requestServiceId)}
+                {t("available")}: {getTokenBalance(requestServiceId)}
               </div>
             </div>
             <div>
-              <Label>{t('description')}</Label>
-              <Textarea rows={4} value={requestDescription} onChange={(e) => setRequestDescription(e.target.value)} placeholder={t('describe_need') || 'Describe your need...'} />
+              <Label>{t("description")}</Label>
+              <Textarea
+                rows={4}
+                value={requestDescription}
+                onChange={(e) => setRequestDescription(e.target.value)}
+                placeholder={t("describe_need") || "Describe your need..."}
+              />
             </div>
-            <div>
-              <Label>{t('justification_attachment') || 'Justification (optional)'}</Label>
-              <Input type="file" accept="image/*,application/pdf" onChange={(e) => setRequestFile(e.target.files?.[0] || null)} />
-            </div>
+           <div>
+  <Label> "Type de document"</Label>
+  <Select value={fileType} onValueChange={v => setFileType(v as "image" | "pdf")}>
+    <SelectTrigger>
+      <SelectValue placeholder="Choisir le type" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="image">Image</SelectItem>
+      <SelectItem value="pdf">PDF</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+<div>
+  <Label>
+    {t("justification_attachment") || "Justification*"}
+  </Label>
+  <Input
+    type="file"
+
+    accept={fileType === "image" ? "image/*" : "application/pdf"}
+    onChange={e => setRequestFile(e.target.files?.[0] || null)}
+  />
+  {requestFile && (
+    <div className="text-xs mt-1 text-green-700">
+      {t("selected_file") || "Fichier sélectionné"}: {requestFile.name}
+    </div>
+  )}
+</div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRequestDialogOpen(false)}>{t('cancel') || 'Cancel'}</Button>
+            <Button
+              variant="outline"
+              onClick={() => setRequestDialogOpen(false)}
+            >
+              {t("cancel") || "Cancel"}
+            </Button>
             <Button onClick={submitServiceRequest} disabled={submittingRequest}>
-              {submittingRequest ? t('submitting') || 'Submitting...' : t('submit_request') || 'Submit Request'}
+              {submittingRequest
+                ? t("submitting") || "Submitting..."
+                : t("submit_request") || "Submit Request"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
-  <DialogContent className="max-w-4xl w-[90vw]">
-    <DialogHeader>
-      <DialogTitle>Disclaimer</DialogTitle>
-    </DialogHeader>
-    <Card className="bg-orange-50 border-orange-200">
-      <CardContent className="p-6 max-h-[80vh] overflow-y-auto">
-        <div className="space-y-6">
-          <div>
-            <h3 className="font-semibold text-orange-800 text-lg mb-3">
-              Disclaimer:
-            </h3>
-            <p className="text-orange-700">
-              The Ô Secours tokens purchased through our online
-              platform are not deposits and do not constitute a
-              deposit transaction. The token sale is a sale transaction,
-              and the tokens are acquired for their intended use as
-              specified in our terms and conditions. Our token model is
-              designed to facilitate immediate financial assistance in
-              the event of unforeseen eventualities or emergencies, and
-              it is not intended to be treated as a deposit or investment.
-              It is what Elverra describe as "Security Sustenance Guarantee" program.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="font-semibold text-orange-800 text-lg mb-3">
-              Important Notice:
-            </h3>
-            <p className="text-orange-700">
-              By participating in the token sale by Elverra Global, you acknowledge 
-              that you understand the nature of the token transaction and agree to the 
-              terms and conditions. You further acknowledge that our company is not a 
-              bank and does not accept deposits. The tokens are not insured or guaranteed 
-              by any government agency or regulatory body. Therefore, please familiarize 
-              yourself with the Ô Secours plans before buying any tokens.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="font-semibold text-orange-800 text-lg mb-3">
-              Regulatory Compliance:
-            </h3>
-            <p className="text-orange-700">
-              Our token sale is designed to comply with applicable laws 
-              and regulations. We do not intend to offer securities or 
-              engage in any activity that would require a banking license.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="font-semibold text-orange-800 text-lg mb-3">
-              Purchase Risks:
-            </h3>
-            <p className="text-orange-700 mb-3">
-              Purchasers of tokens should be aware 
-              that the value of tokens can fluctuate, and there is 
-              a risk of losses if you fail to adhere to the contractual 
-              terms of your participation. Purchasers should carefully 
-              review our terms and conditions and understand the risks involved.
-            </p>
-            <p className="text-orange-700">
-              By purchasing tokens, you acknowledge that you have read, understood, 
-              and agree to the terms and conditions, including this disclaimer.
-            </p>
-          </div>
-
-          <div className="mt-6 p-4 bg-orange-100 rounded-lg">
-            <h4 className="font-semibold text-orange-800 mb-2">Contact our support team:</h4>
-            <div className="flex flex-wrap items-center gap-4">
-              <a 
-                href="tel:+22344943844" 
-                className="flex items-center gap-2 text-orange-700 hover:text-orange-900"
-              >
-                <Phone className="h-5 w-5" />
-                <span className="font-medium">+223 44 94 38 44</span>
-              </a>
-              <span className="text-orange-300">|</span>
-              <a 
-                href="tel:+22378810191" 
-                className="flex items-center gap-2 text-orange-700 hover:text-orange-900"
-              >
-                <Phone className="h-5 w-5" />
-                <span className="font-medium">+223 78 81 01 91</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  </DialogContent>
-</Dialog>
+        <DialogContent className="max-w-4xl w-[90vw]">
+          <DialogHeader>
+            <DialogTitle>Disclaimer</DialogTitle>
+          </DialogHeader>
+          <Card className="bg-orange-50 border-orange-200">
+            <CardContent className="p-6 max-h-[80vh] overflow-y-auto">
+              {/* ... Ton contenu disclaimer ... */}
+              <div className="mt-6 p-4 bg-orange-100 rounded-lg">
+                <h4 className="font-semibold text-orange-800 mb-2">
+                  Contact our support team:
+                </h4>
+                <div className="flex flex-wrap items-center gap-4">
+                  <a
+                    href="tel:+22344943844"
+                    className="flex items-center gap-2 text-orange-700 hover:text-orange-900"
+                  >
+                    <Phone className="h-5 w-5" />
+                    <span className="font-medium">+223 44 94 38 44</span>
+                  </a>
+                  <span className="text-orange-300">|</span>
+                  <a
+                    href="tel:+22378810191"
+                    className="flex items-center gap-2 text-orange-700 hover:text-orange-900"
+                  >
+                    <Phone className="h-5 w-5" />
+                    <span className="font-medium">+223 78 81 01 91</span>
+                  </a>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
