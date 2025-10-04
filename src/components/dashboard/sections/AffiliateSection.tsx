@@ -1,35 +1,33 @@
-
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Users,
-  DollarSign,
-  TrendingUp,
-  Copy,
-  Share2,
-  Gift,
-  Link as LinkIcon,
-  Clock,
-  CheckCircle,
-  X,
-  Check,
-  ChevronRight,
-  ChevronLeft,
-  Play,
-} from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabaseClient";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  Check,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Copy,
+  DollarSign,
+  Gift,
+  Link as LinkIcon,
+  Share2,
+  TrendingUp,
+  Users,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 // Types for onboarding
 interface Lesson {
@@ -86,21 +84,37 @@ const AffiliateSection = () => {
       id: 1,
       title: "Introduction to the Affiliate Program",
       videoUrl: "https://www.youtube.com/embed/IlhVuGv0zcM",
-      description: "Discover how our affiliate program works and how to earn money with us.",
+      description:
+        "Discover how our affiliate program works and how to earn money with us.",
       questions: [
         {
           question: "What is the name of the card offered by Elverra Global?",
-          options: ["African Card", "ZENIKA Card", "Elverra Card", "Progress Card"],
+          options: [
+            "African Card",
+            "ZENIKA Card",
+            "Elverra Card",
+            "Progress Card",
+          ],
           correctAnswer: "ZENIKA Card",
         },
         {
           question: "What are the benefits of the ZENIKA card?",
-          options: ["Discounts only", "Special privileges only", "Discounts and special privileges", "No benefits"],
+          options: [
+            "Discounts only",
+            "Special privileges only",
+            "Discounts and special privileges",
+            "No benefits",
+          ],
           correctAnswer: "Discounts and special privileges",
         },
         {
           question: "What is the main goal of Elverra Global?",
-          options: ["Provide financial services", "Provide financial services", "Promote empowerment and progress", "Offer jobs"],
+          options: [
+            "Provide financial services",
+            "Provide financial services",
+            "Promote empowerment and progress",
+            "Offer jobs",
+          ],
           correctAnswer: "Promote empowerment and progress",
         },
       ],
@@ -109,11 +123,17 @@ const AffiliateSection = () => {
       id: 2,
       title: "Introduction to the Affiliate Program",
       videoUrl: "https://www.youtube.com/embed/cxvlO0NCG9g",
-      description: "Discover how our affiliate program works and how to earn money with us.",
+      description:
+        "Discover how our affiliate program works and how to earn money with us.",
       questions: [
         {
           question: "What services are offered by Elverra Global?",
-          options: ["Employment center, short-term loans, online store", "Free online library, Ô Secours", "All the services mentioned above", "None of the services mentioned above"],
+          options: [
+            "Employment center, short-term loans, online store",
+            "Free online library, Ô Secours",
+            "All the services mentioned above",
+            "None of the services mentioned above",
+          ],
           correctAnswer: "All the services mentioned above",
         },
         {
@@ -123,7 +143,12 @@ const AffiliateSection = () => {
         },
         {
           question: "When are you paid for your referrals?",
-          options: ["Immediately", "At the end of the month", "After 24 hours", "After manual approval"],
+          options: [
+            "Immediately",
+            "At the end of the month",
+            "After 24 hours",
+            "After manual approval",
+          ],
           correctAnswer: "After 24 hours",
         },
       ],
@@ -132,7 +157,8 @@ const AffiliateSection = () => {
       id: 3,
       title: "Introduction to the Affiliate Program",
       videoUrl: "https://www.youtube.com/embed/Pgd4bfipIKk",
-      description: "Discover how our affiliate program works and how to earn money with us.",
+      description:
+        "Discover how our affiliate program works and how to earn money with us.",
       questions: [
         {
           question: "What is the commission percentage on referrals?",
@@ -146,7 +172,12 @@ const AffiliateSection = () => {
         },
         {
           question: "When are you paid for your referrals?",
-          options: ["Immediately", "At the end of the month", "After 30 days", "After manual approval"],
+          options: [
+            "Immediately",
+            "At the end of the month",
+            "After 30 days",
+            "After manual approval",
+          ],
           correctAnswer: "At the end of the month",
         },
       ],
@@ -312,14 +343,19 @@ const AffiliateSection = () => {
         .maybeSingle();
 
       if (affiliateError) {
-        console.error("❌ Error fetching from affiliates table:", affiliateError);
+        console.error(
+          "❌ Error fetching from affiliates table:",
+          affiliateError
+        );
         throw affiliateError;
       }
 
       console.log("4. affiliates table response:", affiliate);
 
       if (affiliate) {
-        console.log("5. Found affiliate data in affiliates table, updating state...");
+        console.log(
+          "5. Found affiliate data in affiliates table, updating state..."
+        );
 
         // Format data from affiliates table to match our expected structure
         const affiliateData = {
@@ -354,7 +390,9 @@ const AffiliateSection = () => {
       }
 
       // If no data in affiliates table, check affiliate_profiles as fallback (legacy)
-      console.log("7. No data in affiliates table, checking affiliate_profiles...");
+      console.log(
+        "7. No data in affiliates table, checking affiliate_profiles..."
+      );
       const { data: affiliateProfile, error: profileError } = await supabase
         .from("affiliate_profiles")
         .select("*")
@@ -362,10 +400,16 @@ const AffiliateSection = () => {
         .maybeSingle();
 
       if (profileError) {
-        console.error("❌ Error fetching from affiliate_profiles:", profileError);
+        console.error(
+          "❌ Error fetching from affiliate_profiles:",
+          profileError
+        );
         // Continue with empty state
       } else if (affiliateProfile) {
-        console.log("8. Found legacy affiliate profile data:", affiliateProfile);
+        console.log(
+          "8. Found legacy affiliate profile data:",
+          affiliateProfile
+        );
 
         // Migrate data to affiliates table if needed
         if (affiliateProfile.referral_code || affiliateProfile.affiliate_code) {
@@ -375,7 +419,9 @@ const AffiliateSection = () => {
             .insert([
               {
                 user_id: user.id,
-                affiliate_code: affiliateProfile.referral_code || affiliateProfile.affiliate_code,
+                affiliate_code:
+                  affiliateProfile.referral_code ||
+                  affiliateProfile.affiliate_code,
                 approved: true, // Assume approved if they had a profile
                 created_at: new Date().toISOString(),
               },
@@ -564,13 +610,15 @@ const AffiliateSection = () => {
         if (existingAffiliate.approved) {
           toast({
             title: "Already Enrolled",
-            description: "You are already part of the Elverra Global affiliate program!",
+            description:
+              "You are already part of the Elverra Global affiliate program!",
             variant: "default",
           });
         } else {
           toast({
             title: "Pending Approval",
-            description: "Your application is under review. You will be notified once approved.",
+            description:
+              "Your application is under review. You will be notified once approved.",
             variant: "default",
           });
         }
@@ -625,7 +673,8 @@ const AffiliateSection = () => {
       // Display success message
       toast({
         title: "Application Sent!",
-        description: "Your application to join the affiliate program has been received. You will be notified once approved.",
+        description:
+          "Your application to join the affiliate program has been received. You will be notified once approved.",
         variant: "default",
         duration: 5000,
       });
@@ -872,7 +921,8 @@ const AffiliateSection = () => {
         <CardContent className="space-y-4">
           <div className="bg-yellow-50 p-4 rounded-lg">
             <p className="text-yellow-800">
-              Your application to join the affiliate program is under review. You will receive an email notification once approved.
+              Your application to join the affiliate program is under review.
+              You will receive an email notification once approved.
             </p>
           </div>
         </CardContent>
@@ -891,9 +941,7 @@ const AffiliateSection = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p>
-            Your affiliate account is being activated. Please wait.
-          </p>
+          <p>Your affiliate account is being activated. Please wait.</p>
           {affiliateData.affiliate_code ? (
             <p className="mt-2 text-sm text-gray-600">
               Current code: {affiliateData.affiliate_code}
@@ -916,7 +964,8 @@ const AffiliateSection = () => {
           <DialogHeader>
             <div className="flex justify-between items-center">
               <DialogTitle>
-                Affiliate Training - Step {onboardingStep + 1} of {lessons.length}
+                Affiliate Training - Step {onboardingStep + 1} of{" "}
+                {lessons.length}
               </DialogTitle>
               <Button
                 variant="ghost"
@@ -1188,7 +1237,9 @@ const AffiliateSection = () => {
 
             <Button
               className="w-full"
-              onClick={() => alert("The withdrawal feature will be available soon!")}
+              onClick={() =>
+                alert("The withdrawal feature will be available soon!")
+              }
             >
               <Gift className="h-5 w-5 mr-2" />
               Request Withdrawal
@@ -1210,9 +1261,15 @@ const AffiliateSection = () => {
                   <tr>
                     <th className="text-left py-3 px-4 font-semibold">ID</th>
                     <th className="text-left py-3 px-4 font-semibold">User</th>
-                    <th className="text-left py-3 px-4 font-semibold">Join Date</th>
-                    <th className="text-left py-3 px-4 font-semibold">Status</th>
-                    <th className="text-left py-3 px-4 font-semibold">Amount</th>
+                    <th className="text-left py-3 px-4 font-semibold">
+                      Join Date
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold">
+                      Status
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold">
+                      Amount
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1222,7 +1279,9 @@ const AffiliateSection = () => {
                       className="border-b border-gray-100 hover:bg-gray-50"
                     >
                       <td className="py-4 px-4">{referral.user_id}</td>
-                      <td className="py-4 px-4 font-medium">{referral.full_name}</td>
+                      <td className="py-4 px-4 font-medium">
+                        {referral.full_name}
+                      </td>
                       <td className="py-4 px-4">{referral.created_at}</td>
                       <td className="py-4 px-4">
                         <Badge
@@ -1247,7 +1306,8 @@ const AffiliateSection = () => {
           ) : (
             <div className="text-center py-8 text-gray-500">
               <p>
-                You don't have any referrals yet. Share your link to start earning!
+                You don't have any referrals yet. Share your link to start
+                earning!
               </p>
             </div>
           )}
